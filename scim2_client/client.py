@@ -552,13 +552,13 @@ class SCIMClient:
         for schema, resource_type in resource_types_by_schema.items():
             schema_obj = schema_objs_by_schema[schema]
             model = Resource.from_schema(schema_obj)
-            extensions = []
+            extensions = ()
             for ext_schema in resource_type.schema_extensions or []:
                 schema_obj = schema_objs_by_schema[ext_schema.schema_]
                 extension = Extension.from_schema(schema_obj)
-                extensions.append(extension)
+                extensions = extensions + (extension,)
             if extensions:
-                model = model[tuple(extensions)]
+                model = model[Union[extensions]]
             resource_models.append(model)
 
         return tuple(resource_models)
