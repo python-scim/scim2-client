@@ -2,6 +2,7 @@ import asyncio
 import sys
 from collections.abc import Collection
 from dataclasses import dataclass
+from typing import Any
 from typing import Optional
 from typing import Union
 
@@ -552,7 +553,7 @@ class SCIMClient:
         for schema, resource_type in resource_types_by_schema.items():
             schema_obj = schema_objs_by_schema[schema]
             model = Resource.from_schema(schema_obj)
-            extensions = ()
+            extensions: tuple[Any, ...] = ()
             for ext_schema in resource_type.schema_extensions or []:
                 schema_obj = schema_objs_by_schema[ext_schema.schema_]
                 extension = Extension.from_schema(schema_obj)
