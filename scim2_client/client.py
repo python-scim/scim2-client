@@ -183,9 +183,18 @@ class SCIMClient:
     def check_resource_model(
         self, resource_model: type[Resource], payload=None
     ) -> None:
+        # We need to check the actual schema names, comapring the class
+        # types does not work because if the resource_models are
+        # discovered. The classes might differ:
+        #   <class 'scim2_models.rfc7643.user.User'> vs <class 'scim2_models.rfc7643.schema.User'>
+        schema_to_check = resource_model.model_fields["schemas"].default[0]
+        for element in self.resource_models:
+            schema = element.model_fields["schemas"].default[0]
+            if schema_to_check == schema:
+                return
+
         if (
-            resource_model not in self.resource_models
-            and resource_model not in CONFIG_RESOURCES
+            resource_model not in CONFIG_RESOURCES
         ):
             raise SCIMRequestError(
                 f"Unknown resource type: '{resource_model}'", source=payload
