@@ -558,7 +558,7 @@ class SCIMClient:
                 extension = Extension.from_schema(schema_obj)
                 extensions.append(extension)
             if extensions:
-                model = model[tuple(extensions)]
+                model = model[Union[tuple(extensions)]]
             resource_models.append(model)
 
         return tuple(resource_models)
