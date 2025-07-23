@@ -118,7 +118,6 @@ class TestSCIMClient(BaseSyncSCIMClient):
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -156,7 +155,6 @@ class TestSCIMClient(BaseSyncSCIMClient):
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -193,7 +191,6 @@ class TestSCIMClient(BaseSyncSCIMClient):
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -227,7 +224,6 @@ class TestSCIMClient(BaseSyncSCIMClient):
             resource_model=resource_model,
             id=id,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -259,7 +255,6 @@ class TestSCIMClient(BaseSyncSCIMClient):
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -297,7 +292,6 @@ class TestSCIMClient(BaseSyncSCIMClient):
             patch_op=patch_op,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 

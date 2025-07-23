@@ -355,7 +355,6 @@ class SCIMClient:
         resource: Union[AnyResource, dict],
         check_request_payload: Optional[bool] = None,
         expected_status_codes: Optional[list[int]] = None,
-        raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -406,7 +405,6 @@ class SCIMClient:
         search_request: Optional[Union[SearchRequest, dict]] = None,
         check_request_payload: Optional[bool] = None,
         expected_status_codes: Optional[list[int]] = None,
-        raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -461,7 +459,6 @@ class SCIMClient:
         search_request: Optional[SearchRequest] = None,
         check_request_payload: Optional[bool] = None,
         expected_status_codes: Optional[list[int]] = None,
-        raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -493,7 +490,6 @@ class SCIMClient:
         resource_model: type,
         id: str,
         expected_status_codes: Optional[list[int]] = None,
-        raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -511,7 +507,6 @@ class SCIMClient:
         resource: Union[AnyResource, dict],
         check_request_payload: Optional[bool] = None,
         expected_status_codes: Optional[list[int]] = None,
-        raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -568,7 +563,6 @@ class SCIMClient:
         patch_op: Union[PatchOp[ResourceT], dict],
         check_request_payload: Optional[bool] = None,
         expected_status_codes: Optional[list[int]] = None,
-        raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> RequestPayload:
         """Prepare a PATCH request payload.

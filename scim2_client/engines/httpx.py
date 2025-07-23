@@ -85,7 +85,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -123,7 +122,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -159,7 +157,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -193,7 +190,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             resource_model=resource_model,
             id=id,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -225,7 +221,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -263,7 +258,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             patch_op=patch_op,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -321,7 +315,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -361,7 +354,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -397,7 +389,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -433,7 +424,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             resource_model=resource_model,
             id=id,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -465,7 +455,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
@@ -505,7 +494,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             patch_op=patch_op,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
-            raise_scim_errors=raise_scim_errors,
             **kwargs,
         )
 
