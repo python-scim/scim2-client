@@ -117,6 +117,9 @@ docstring-code-format = true
 plugins = [
   "pydantic.mypy"
 ]
+exclude = [
+  "tests/",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode="auto"

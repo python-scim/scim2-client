@@ -9,12 +9,14 @@ class SCIMClientError(Exception):
         caused the exception.
     """
 
-    def __init__(self, message: str, source: Any = None, *args, **kwargs):
+    def __init__(
+        self, message: str, source: Any = None, *args: Any, **kwargs: Any
+    ) -> None:
         self.message = message
         self.source = source
         super().__init__(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.message or "UNKNOWN"
 
 
@@ -29,7 +31,7 @@ class RequestNetworkError(SCIMRequestError):
     The original :class:`~httpx.RequestError` is available with :attr:`~BaseException.__cause__`.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Network error happened during request")
         super().__init__(message, *args, **kwargs)
 
@@ -54,7 +56,7 @@ class RequestPayloadValidationError(SCIMRequestError):
             print("Original validation error cause", exc.__cause__)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Server request payload validation error")
         super().__init__(message, *args, **kwargs)
 
@@ -69,7 +71,7 @@ class SCIMResponseErrorObject(SCIMResponseError):
     Those errors are only raised when the :code:`raise_scim_errors` parameter is :data:`True`.
     """
 
-    def __init__(self, obj, *args, **kwargs):
+    def __init__(self, obj: Any, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop(
             "message", f"The server returned a SCIM Error object: {obj}"
         )
@@ -79,7 +81,7 @@ class SCIMResponseErrorObject(SCIMResponseError):
 class UnexpectedStatusCode(SCIMResponseError):
     """Error raised when a server returned an unexpected status code for a given :class:`~scim2_models.Context`."""
 
-    def __init__(self, status_code: int, *args, **kwargs):
+    def __init__(self, status_code: int, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop(
             "message", f"Unexpected response status code: {status_code}"
         )
@@ -89,7 +91,7 @@ class UnexpectedStatusCode(SCIMResponseError):
 class UnexpectedContentType(SCIMResponseError):
     """Error raised when a server returned an unexpected `Content-Type` header in a response."""
 
-    def __init__(self, content_type, *args, **kwargs):
+    def __init__(self, content_type: str, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", f"Unexpected content type: {content_type}")
         super().__init__(message, *args, **kwargs)
 
@@ -97,7 +99,7 @@ class UnexpectedContentType(SCIMResponseError):
 class UnexpectedContentFormat(SCIMResponseError):
     """Error raised when a server returned a response in a non-JSON format."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Unexpected response content format")
         super().__init__(message, *args, **kwargs)
 
@@ -117,6 +119,6 @@ class ResponsePayloadValidationError(SCIMResponseError):
             print("Original validation error cause", exc.__cause__)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Server response payload validation error")
         super().__init__(message, *args, **kwargs)
