@@ -3,6 +3,7 @@ import sys
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Optional
+from typing import TypeVar
 from typing import Union
 
 from pydantic import ValidationError
@@ -26,6 +27,8 @@ from scim2_client.errors import SCIMResponseError
 from scim2_client.errors import SCIMResponseErrorObject
 from scim2_client.errors import UnexpectedContentType
 from scim2_client.errors import UnexpectedStatusCode
+
+ResourceT = TypeVar("ResourceT", bound=Resource)
 
 BASE_HEADERS = {
     "Accept": "application/scim+json",
@@ -148,6 +151,26 @@ class SCIMClient:
     """Resource querying HTTP codes.
 
     As defined at :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>` and
+    :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
+    """
+
+    PATCH_RESPONSE_STATUS_CODES: list[int] = [
+        200,
+        204,
+        307,
+        308,
+        400,
+        401,
+        403,
+        404,
+        409,
+        412,
+        500,
+        501,
+    ]
+    """Resource patching HTTP codes.
+
+    As defined at :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>` and
     :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
     """
 
@@ -299,11 +322,15 @@ class SCIMClient:
         if not expected_types:
             return response_payload
 
+        # For no-content responses, return None directly
+        if response_payload is None:
+            return None
+
         actual_type = Resource.get_by_payload(
             expected_types, response_payload, with_extensions=False
         )
 
-        if response_payload and not actual_type:
+        if not actual_type:
             expected = ", ".join([type_.__name__ for type_ in expected_types])
             try:
                 schema = ", ".join(response_payload["schemas"])
@@ -534,9 +561,76 @@ class SCIMClient:
 
         return req
 
+    def prepare_patch_request(
+        self,
+        resource_model: type[ResourceT],
+        id: str,
+        patch_op: Union[PatchOp[ResourceT], dict],
+        check_request_payload: Optional[bool] = None,
+        expected_status_codes: Optional[list[int]] = None,
+        raise_scim_errors: Optional[bool] = None,
+        **kwargs,
+    ) -> RequestPayload:
+        """Prepare a PATCH request payload.
+
+        :param resource_model: The resource type to modify (e.g., User, Group).
+        :param id: The resource ID.
+        :param patch_op: A PatchOp instance parameterized with the same resource type as resource_model
+                        (e.g., PatchOp[User] when resource_model is User), or a dict representation.
+        :param check_request_payload: If :data:`False`, :code:`patch_op` is expected to be a dict
+                                     that will be passed as-is in the request. This value can be
+                                     overwritten in methods.
+        :param expected_status_codes: List of HTTP status codes expected for this request.
+        :param raise_scim_errors: If :data:`True` and the server returned an
+                                 :class:`~scim2_models.Error` object during a request, a
+                                 :class:`~scim2_client.SCIMResponseErrorObject` exception will be raised.
+        :param kwargs: Additional request parameters.
+        :return: The prepared request payload.
+        """
+        req = RequestPayload(
+            expected_status_codes=expected_status_codes,
+            request_kwargs=kwargs,
+        )
+
+        if check_request_payload is None:
+            check_request_payload = self.check_request_payload
+
+        self.check_resource_model(resource_model)
+
+        if not check_request_payload:
+            req.payload = patch_op
+            req.url = req.request_kwargs.pop(
+                "url", f"{self.resource_endpoint(resource_model)}/{id}"
+            )
+
+        else:
+            if isinstance(patch_op, dict):
+                req.payload = patch_op
+            else:
+                try:
+                    req.payload = patch_op.model_dump(
+                        scim_ctx=Context.RESOURCE_PATCH_REQUEST
+                    )
+                except ValidationError as exc:
+                    scim_validation_exc = RequestPayloadValidationError(source=patch_op)
+                    if sys.version_info >= (3, 11):  # pragma: no cover
+                        scim_validation_exc.add_note(str(exc))
+                    raise scim_validation_exc from exc
+
+            req.url = req.request_kwargs.pop(
+                "url", f"{self.resource_endpoint(resource_model)}/{id}"
+            )
+
+        req.expected_types = [resource_model]
+        return req
+
     def modify(
-        self, resource: Union[AnyResource, dict], op: PatchOp, **kwargs
-    ) -> Optional[Union[AnyResource, dict]]:
+        self,
+        resource_model: type[ResourceT],
+        id: str,
+        patch_op: Union[PatchOp[ResourceT], dict],
+        **kwargs,
+    ) -> Optional[Union[ResourceT, Error, dict]]:
         raise NotImplementedError()
 
     def build_resource_models(
@@ -820,6 +914,62 @@ class BaseSyncSCIMClient(SCIMClient):
         """
         raise NotImplementedError()
 
+    def modify(
+        self,
+        resource_model: type[ResourceT],
+        id: str,
+        patch_op: Union[PatchOp[ResourceT], dict],
+        check_request_payload: Optional[bool] = None,
+        check_response_payload: Optional[bool] = None,
+        expected_status_codes: Optional[
+            list[int]
+        ] = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: Optional[bool] = None,
+        **kwargs,
+    ) -> Optional[Union[ResourceT, Error, dict]]:
+        """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
+
+        :param resource_model: The type of the resource to modify.
+        :param id: The id of the resource to modify.
+        :param patch_op: The :class:`~scim2_models.PatchOp` object describing the modifications.
+            Must be parameterized with the same resource type as ``resource_model``
+            (e.g., :code:`PatchOp[User]` when ``resource_model`` is :code:`User`).
+        :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
+        :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
+        :param expected_status_codes: The list of expected status codes form the response.
+            If :data:`None` any status code is accepted.
+        :param raise_scim_errors: If set, overwrites :paramref:`scim2_client.SCIMClient.raise_scim_errors`.
+        :param kwargs: Additional parameters passed to the underlying
+            HTTP request library.
+
+        :return:
+            - An :class:`~scim2_models.Error` object in case of error.
+            - The updated object as returned by the server in case of success if status code is 200.
+            - :data:`None` in case of success if status code is 204.
+
+        :usage:
+
+        .. code-block:: python
+            :caption: Modification of a `User` resource
+
+            from scim2_models import User, PatchOp, PatchOperation
+
+            operation = PatchOperation(
+                op="replace", path="displayName", value="New Display Name"
+            )
+            patch_op = PatchOp[User](operations=[operation])
+            response = scim.modify(User, "my-user-id", patch_op)
+            # 'response' may be a User, None, or an Error object
+
+        .. tip::
+
+            Check the :attr:`~scim2_models.Context.RESOURCE_PATCH_REQUEST`
+            and :attr:`~scim2_models.Context.RESOURCE_PATCH_RESPONSE` contexts to understand
+            which value will excluded from the request payload, and which values are expected in
+            the response payload.
+        """
+        raise NotImplementedError()
+
     def discover(self, schemas=True, resource_types=True, service_provider_config=True):
         """Dynamically discover the server configuration objects.
 
@@ -1092,6 +1242,62 @@ class BaseAsyncSCIMClient(SCIMClient):
 
             Check the :attr:`~scim2_models.Context.RESOURCE_REPLACEMENT_REQUEST`
             and :attr:`~scim2_models.Context.RESOURCE_REPLACEMENT_RESPONSE` contexts to understand
+            which value will excluded from the request payload, and which values are expected in
+            the response payload.
+        """
+        raise NotImplementedError()
+
+    async def modify(
+        self,
+        resource_model: type[ResourceT],
+        id: str,
+        patch_op: Union[PatchOp[ResourceT], dict],
+        check_request_payload: Optional[bool] = None,
+        check_response_payload: Optional[bool] = None,
+        expected_status_codes: Optional[
+            list[int]
+        ] = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: Optional[bool] = None,
+        **kwargs,
+    ) -> Optional[Union[ResourceT, Error, dict]]:
+        """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
+
+        :param resource_model: The type of the resource to modify.
+        :param id: The id of the resource to modify.
+        :param patch_op: The :class:`~scim2_models.PatchOp` object describing the modifications.
+            Must be parameterized with the same resource type as ``resource_model``
+            (e.g., :code:`PatchOp[User]` when ``resource_model`` is :code:`User`).
+        :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
+        :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
+        :param expected_status_codes: The list of expected status codes form the response.
+            If :data:`None` any status code is accepted.
+        :param raise_scim_errors: If set, overwrites :paramref:`scim2_client.SCIMClient.raise_scim_errors`.
+        :param kwargs: Additional parameters passed to the underlying
+            HTTP request library.
+
+        :return:
+            - An :class:`~scim2_models.Error` object in case of error.
+            - The updated object as returned by the server in case of success if status code is 200.
+            - :data:`None` in case of success if status code is 204.
+
+        :usage:
+
+        .. code-block:: python
+            :caption: Modification of a `User` resource
+
+            from scim2_models import User, PatchOp, PatchOperation
+
+            operation = PatchOperation(
+                op="replace", path="displayName", value="New Display Name"
+            )
+            patch_op = PatchOp[User](operations=[operation])
+            response = await scim.modify(User, "my-user-id", patch_op)
+            # 'response' may be a User, None, or an Error object
+
+        .. tip::
+
+            Check the :attr:`~scim2_models.Context.RESOURCE_PATCH_REQUEST`
+            and :attr:`~scim2_models.Context.RESOURCE_PATCH_RESPONSE` contexts to understand
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """

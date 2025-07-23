@@ -2,6 +2,7 @@ import json
 import sys
 from contextlib import contextmanager
 from typing import Optional
+from typing import TypeVar
 from typing import Union
 
 from httpx import Client
@@ -11,6 +12,7 @@ from scim2_models import AnyResource
 from scim2_models import Context
 from scim2_models import Error
 from scim2_models import ListResponse
+from scim2_models import PatchOp
 from scim2_models import Resource
 from scim2_models import SearchRequest
 
@@ -19,6 +21,8 @@ from scim2_client.client import BaseSyncSCIMClient
 from scim2_client.errors import RequestNetworkError
 from scim2_client.errors import SCIMClientError
 from scim2_client.errors import UnexpectedContentFormat
+
+ResourceT = TypeVar("ResourceT", bound=Resource)
 
 
 @contextmanager
@@ -240,6 +244,46 @@ class SyncSCIMClient(BaseSyncSCIMClient):
                 scim_ctx=Context.RESOURCE_REPLACEMENT_RESPONSE,
             )
 
+    def modify(
+        self,
+        resource_model: type[ResourceT],
+        id: str,
+        patch_op: Union[PatchOp[ResourceT], dict],
+        check_request_payload: Optional[bool] = None,
+        check_response_payload: Optional[bool] = None,
+        expected_status_codes: Optional[
+            list[int]
+        ] = BaseSyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: Optional[bool] = None,
+        **kwargs,
+    ) -> Optional[Union[ResourceT, Error, dict]]:
+        req = self.prepare_patch_request(
+            resource_model=resource_model,
+            id=id,
+            patch_op=patch_op,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            raise_scim_errors=raise_scim_errors,
+            **kwargs,
+        )
+
+        with handle_request_error(req.payload):
+            response = self.client.patch(
+                req.url, json=req.payload, **req.request_kwargs
+            )
+
+        with handle_response_error(response):
+            return self.check_response(
+                payload=response.json() if response.text else None,
+                status_code=response.status_code,
+                headers=response.headers,
+                expected_status_codes=req.expected_status_codes,
+                expected_types=req.expected_types,
+                check_response_payload=check_response_payload,
+                raise_scim_errors=raise_scim_errors,
+                scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
+            )
+
 
 class AsyncSCIMClient(BaseAsyncSCIMClient):
     """Perform SCIM requests over the network and validate responses.
@@ -440,4 +484,44 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
                 scim_ctx=Context.RESOURCE_REPLACEMENT_RESPONSE,
+            )
+
+    async def modify(
+        self,
+        resource_model: type[ResourceT],
+        id: str,
+        patch_op: Union[PatchOp[ResourceT], dict],
+        check_request_payload: Optional[bool] = None,
+        check_response_payload: Optional[bool] = None,
+        expected_status_codes: Optional[
+            list[int]
+        ] = BaseAsyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: Optional[bool] = None,
+        **kwargs,
+    ) -> Optional[Union[ResourceT, Error, dict]]:
+        req = self.prepare_patch_request(
+            resource_model=resource_model,
+            id=id,
+            patch_op=patch_op,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            raise_scim_errors=raise_scim_errors,
+            **kwargs,
+        )
+
+        with handle_request_error(req.payload):
+            response = await self.client.patch(
+                req.url, json=req.payload, **req.request_kwargs
+            )
+
+        with handle_response_error(response):
+            return self.check_response(
+                payload=response.json() if response.text else None,
+                status_code=response.status_code,
+                headers=response.headers,
+                expected_status_codes=req.expected_status_codes,
+                expected_types=req.expected_types,
+                check_response_payload=check_response_payload,
+                raise_scim_errors=raise_scim_errors,
+                scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
             )

@@ -81,6 +81,7 @@ The following actions are available:
 - :meth:`~scim2_client.BaseSyncSCIMClient.create`
 - :meth:`~scim2_client.BaseSyncSCIMClient.query`
 - :meth:`~scim2_client.BaseSyncSCIMClient.replace`
+- :meth:`~scim2_client.BaseSyncSCIMClient.modify`
 - :meth:`~scim2_client.BaseSyncSCIMClient.delete`
 - :meth:`~scim2_client.BaseSyncSCIMClient.search`
 
@@ -97,9 +98,72 @@ Have a look at the :doc:`reference` to see usage examples and the exhaustive set
 
     return f"User {user.id} have been created!"
 
+PATCH modifications
+===================
+
+The :meth:`~scim2_client.BaseSyncSCIMClient.modify` method allows you to perform partial updates on resources using PATCH operations as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
+
+.. code-block:: python
+
+    from scim2_models import PatchOp, PatchOperation
+
+    # Create a patch operation to update the display name
+    operation = PatchOperation(
+        op=PatchOperation.Op.replace_,
+        path="displayName",
+        value="New Display Name"
+    )
+    patch_op = PatchOp[User](operations=[operation])
+
+    # Apply the patch
+    response = scim.modify(User, user_id, patch_op)
+    if response:  # Server returned 200 with updated resource
+        print(f"User updated: {response.display_name}")
+    else:  # Server returned 204 (no content)
+        print("User updated successfully")
+
+Multiple Operations
+~~~~~~~~~~~~~~~~~~~
+
+You can include multiple operations in a single PATCH request:
+
+.. code-block:: python
+
+    operations = [
+        PatchOperation(
+            op=PatchOperation.Op.replace_,
+            path="displayName",
+            value="Updated Name"
+        ),
+        PatchOperation(
+            op=PatchOperation.Op.replace_,
+            path="active",
+            value=False
+        ),
+        PatchOperation(
+            op=PatchOperation.Op.add,
+            path="emails",
+            value=[{"value": "new@example.com", "primary": True}]
+        )
+    ]
+    patch_op = PatchOp[User](operations=operations)
+    response = scim.modify(User, user_id, patch_op)
+
+Patch Operation Types
+~~~~~~~~~~~~~~~~~~~~~
+
+SCIM supports three types of patch operations:
+
+- :attr:`~scim2_models.PatchOperation.Op.add`: Add new attribute values
+- :attr:`~scim2_models.PatchOperation.Op.remove`: Remove attribute values
+- :attr:`~scim2_models.PatchOperation.Op.replace_`: Replace existing attribute values
+
+Bulk operations
+===============
+
 .. note::
 
-    PATCH modification and bulk operation request are not yet implement,
+    Bulk operation requests are not yet implemented,
     but :doc:`any help is welcome! <contributing>`
 
 Request and response validation

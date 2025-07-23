@@ -1,6 +1,13 @@
 Changelog
 =========
 
+[0.6.0] - Unreleased
+--------------------
+
+Fixed
+^^^^^
+- Add support for PATCH operations with :meth:`~scim2_client.SCIMClient.modify`.
+
 [0.5.2] - 2025-07-17
 --------------------
 
