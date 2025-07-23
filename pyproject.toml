@@ -27,7 +27,7 @@ classifiers = [
 
 requires-python = ">= 3.9"
 dependencies = [
-    "scim2-models>=0.2.0",
+    "scim2-models>=0.4.1",
 ]
 
 [project.optional-dependencies]
@@ -54,7 +54,7 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-coverage>=0.0",
     "pytest-httpserver>=1.1.0",
-    "scim2-server >= 0.1.2; python_version>='3.10'",
+    "scim2-server >= 0.1.6; python_version>='3.10'",
     "tox-uv>=1.16.0",
     "werkzeug>=3.1.3",
 ]
