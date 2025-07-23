@@ -703,7 +703,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def query(
         self,
-        resource_model: Optional[type[Resource]] = None,
+        resource_model: Optional[type[AnyResource]] = None,
         id: Optional[str] = None,
         search_request: Optional[Union[SearchRequest, dict]] = None,
         check_request_payload: Optional[bool] = None,

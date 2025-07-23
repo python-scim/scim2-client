@@ -105,7 +105,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def query(
         self,
-        resource_model: Optional[type[Resource]] = None,
+        resource_model: Optional[type[AnyResource]] = None,
         id: Optional[str] = None,
         search_request: Optional[Union[SearchRequest, dict]] = None,
         check_request_payload: Optional[bool] = None,
@@ -115,7 +115,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         ] = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
-    ):
+    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
@@ -347,7 +347,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
         ] = BaseAsyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
-    ):
+    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
