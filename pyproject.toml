@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scim2-client"
-version = "0.5.2"
+version = "0.6.0"
 description = "Pythonically build SCIM requests and parse SCIM responses"
 authors = [{name="Yaal Coop", email="contact@yaal.coop"}]
 license = {file = "LICENSE.md"}
