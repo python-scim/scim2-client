@@ -202,7 +202,7 @@ class SCIMClient:
                 return resource_model
         return None
 
-    def check_resource_model(
+    def _check_resource_model(
         self, resource_model: type[Resource], payload=None
     ) -> None:
         if (
@@ -350,7 +350,7 @@ class SCIMClient:
                 scim_exc.add_note(str(exc))
             raise scim_exc from exc
 
-    def prepare_create_request(
+    def _prepare_create_request(
         self,
         resource: Union[AnyResource, dict],
         check_request_payload: Optional[bool] = None,
@@ -387,7 +387,7 @@ class SCIMClient:
                         scim_validation_exc.add_note(str(exc))
                     raise scim_validation_exc from exc
 
-            self.check_resource_model(resource_model, resource)
+            self._check_resource_model(resource_model, resource)
             req.expected_types = [resource.__class__]
             req.url = req.request_kwargs.pop(
                 "url", self.resource_endpoint(resource_model)
@@ -398,7 +398,7 @@ class SCIMClient:
 
         return req
 
-    def prepare_query_request(
+    def _prepare_query_request(
         self,
         resource_model: Optional[type[Resource]] = None,
         id: Optional[str] = None,
@@ -416,7 +416,7 @@ class SCIMClient:
             check_request_payload = self.check_request_payload
 
         if resource_model and check_request_payload:
-            self.check_resource_model(resource_model)
+            self._check_resource_model(resource_model)
 
         payload: Optional[SearchRequest]
         if not check_request_payload:
@@ -454,7 +454,7 @@ class SCIMClient:
 
         return req
 
-    def prepare_search_request(
+    def _prepare_search_request(
         self,
         search_request: Optional[SearchRequest] = None,
         check_request_payload: Optional[bool] = None,
@@ -485,7 +485,7 @@ class SCIMClient:
         req.expected_types = [ListResponse[Union[self.resource_models]]]
         return req
 
-    def prepare_delete_request(
+    def _prepare_delete_request(
         self,
         resource_model: type,
         id: str,
@@ -497,12 +497,12 @@ class SCIMClient:
             request_kwargs=kwargs,
         )
 
-        self.check_resource_model(resource_model)
+        self._check_resource_model(resource_model)
         delete_url = self.resource_endpoint(resource_model) + f"/{id}"
         req.url = req.request_kwargs.pop("url", delete_url)
         return req
 
-    def prepare_replace_request(
+    def _prepare_replace_request(
         self,
         resource: Union[AnyResource, dict],
         check_request_payload: Optional[bool] = None,
@@ -541,7 +541,7 @@ class SCIMClient:
                         scim_validation_exc.add_note(str(exc))
                     raise scim_validation_exc from exc
 
-            self.check_resource_model(resource_model, resource)
+            self._check_resource_model(resource_model, resource)
 
             if not resource.id:
                 raise SCIMRequestError("Resource must have an id", source=resource)
@@ -556,7 +556,7 @@ class SCIMClient:
 
         return req
 
-    def prepare_patch_request(
+    def _prepare_patch_request(
         self,
         resource_model: type[ResourceT],
         id: str,
@@ -589,7 +589,7 @@ class SCIMClient:
         if check_request_payload is None:
             check_request_payload = self.check_request_payload
 
-        self.check_resource_model(resource_model)
+        self._check_resource_model(resource_model)
 
         if not check_request_payload:
             req.payload = patch_op

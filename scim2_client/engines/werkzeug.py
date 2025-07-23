@@ -90,7 +90,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         self.scim_prefix = scim_prefix
         self.environ = environ or {}
 
-    def make_url(self, url: Optional[str]) -> str:
+    def _make_url(self, url: Optional[str]) -> str:
         url = url or ""
         prefix = (
             self.scim_prefix[:-1]
@@ -114,7 +114,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> Union[AnyResource, Error, dict]:
-        req = self.prepare_create_request(
+        req = self._prepare_create_request(
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -122,7 +122,9 @@ class TestSCIMClient(BaseSyncSCIMClient):
         )
 
         environ = {**self.environ, **req.request_kwargs}
-        response = self.client.post(self.make_url(req.url), json=req.payload, **environ)
+        response = self.client.post(
+            self._make_url(req.url), json=req.payload, **environ
+        )
 
         with handle_response_error(req.payload):
             return self.check_response(
@@ -149,7 +151,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ):
-        req = self.prepare_query_request(
+        req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
             search_request=search_request,
@@ -161,7 +163,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         query_string = urlencode(req.payload, doseq=False) if req.payload else None
         environ = {**self.environ, **req.request_kwargs}
         response = self.client.get(
-            self.make_url(req.url), query_string=query_string, **environ
+            self._make_url(req.url), query_string=query_string, **environ
         )
 
         with handle_response_error(req.payload):
@@ -187,7 +189,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
-        req = self.prepare_search_request(
+        req = self._prepare_search_request(
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -195,7 +197,9 @@ class TestSCIMClient(BaseSyncSCIMClient):
         )
 
         environ = {**self.environ, **req.request_kwargs}
-        response = self.client.post(self.make_url(req.url), json=req.payload, **environ)
+        response = self.client.post(
+            self._make_url(req.url), json=req.payload, **environ
+        )
 
         with handle_response_error(response):
             return self.check_response(
@@ -220,7 +224,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> Optional[Union[Error, dict]]:
-        req = self.prepare_delete_request(
+        req = self._prepare_delete_request(
             resource_model=resource_model,
             id=id,
             expected_status_codes=expected_status_codes,
@@ -228,7 +232,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         )
 
         environ = {**self.environ, **req.request_kwargs}
-        response = self.client.delete(self.make_url(req.url), **environ)
+        response = self.client.delete(self._make_url(req.url), **environ)
 
         with handle_response_error(response):
             return self.check_response(
@@ -251,7 +255,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> Union[AnyResource, Error, dict]:
-        req = self.prepare_replace_request(
+        req = self._prepare_replace_request(
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -259,7 +263,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         )
 
         environ = {**self.environ, **req.request_kwargs}
-        response = self.client.put(self.make_url(req.url), json=req.payload, **environ)
+        response = self.client.put(self._make_url(req.url), json=req.payload, **environ)
 
         with handle_response_error(response):
             return self.check_response(
@@ -286,7 +290,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         raise_scim_errors: Optional[bool] = None,
         **kwargs,
     ) -> Optional[Union[ResourceT, Error, dict]]:
-        req = self.prepare_patch_request(
+        req = self._prepare_patch_request(
             resource_model=resource_model,
             id=id,
             patch_op=patch_op,
@@ -297,7 +301,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         environ = {**self.environ, **req.request_kwargs}
         response = self.client.patch(
-            self.make_url(req.url), json=req.payload, **environ
+            self._make_url(req.url), json=req.payload, **environ
         )
 
         with handle_response_error(response):
