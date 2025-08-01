@@ -205,10 +205,13 @@ class SCIMClient:
     def _check_resource_model(
         self, resource_model: type[Resource], payload=None
     ) -> None:
-        if (
-            resource_model not in self.resource_models
-            and resource_model not in CONFIG_RESOURCES
-        ):
+        schema_to_check = resource_model.model_fields["schemas"].default[0]
+        for element in self.resource_models:
+            schema = element.model_fields["schemas"].default[0]
+            if schema_to_check == schema:
+                return
+
+        if resource_model not in CONFIG_RESOURCES:
             raise SCIMRequestError(
                 f"Unknown resource type: '{resource_model}'", source=payload
             )
@@ -640,13 +643,13 @@ class SCIMClient:
         for schema, resource_type in resource_types_by_schema.items():
             schema_obj = schema_objs_by_schema[schema]
             model = Resource.from_schema(schema_obj)
-            extensions = []
+            extensions: tuple[type[Extension], ...] = ()
             for ext_schema in resource_type.schema_extensions or []:
                 schema_obj = schema_objs_by_schema[ext_schema.schema_]
                 extension = Extension.from_schema(schema_obj)
-                extensions.append(extension)
+                extensions = extensions + (extension,)
             if extensions:
-                model = model[Union[tuple(extensions)]]
+                model = model[Union[extensions]]
             resource_models.append(model)
 
         return tuple(resource_models)
