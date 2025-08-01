@@ -1,4 +1,6 @@
 import pytest
+from scim2_models import PatchOp
+from scim2_models import PatchOperation
 from scim2_models import SearchRequest
 from scim2_models import User
 from werkzeug.test import Client
@@ -58,6 +60,17 @@ def test_werkzeug_engine(scim_client):
     response_user = scim_client.query(User, response_user.id)
     assert response_user.user_name == "foo"
     assert response_user.display_name == "baz"
+
+    # Test patch operation followed by query
+    operation = PatchOperation(
+        op=PatchOperation.Op.replace_, path="displayName", value="werkzeug patched"
+    )
+    patch_op = PatchOp[User](operations=[operation])
+    scim_client.modify(User, response_user.id, patch_op)
+
+    # Verify patch result with query
+    queried_user = scim_client.query(User, response_user.id)
+    assert queried_user.display_name == "werkzeug patched"
 
     scim_client.delete(User, response_user.id)
     with pytest.raises(SCIMResponseErrorObject):
