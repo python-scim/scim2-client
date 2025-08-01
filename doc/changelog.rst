@@ -1,6 +1,14 @@
 Changelog
 =========
 
+[0.6.1] - 2025-08-01
+--------------------
+
+Fixed
+^^^^^
+- Discovery for models with several extensions. :pr:`30` :pr:`32`
+
+
 [0.6.0] - 2025-07-23
 --------------------
 
