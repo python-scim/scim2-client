@@ -2,7 +2,6 @@ import asyncio
 import sys
 from collections.abc import Collection
 from dataclasses import dataclass
-from typing import Any
 from typing import Optional
 from typing import TypeVar
 from typing import Union
@@ -206,7 +205,7 @@ class SCIMClient:
     def _check_resource_model(
         self, resource_model: type[Resource], payload=None
     ) -> None:
-        # We need to check the actual schema names, comapring the class
+        # We need to check the actual schema names, comparing the class
         # types does not work because if the resource_models are
         # discovered. The classes might differ:
         #   <class 'scim2_models.rfc7643.user.User'> vs <class 'scim2_models.rfc7643.schema.User'>
@@ -216,9 +215,7 @@ class SCIMClient:
             if schema_to_check == schema:
                 return
 
-        if (
-            resource_model not in CONFIG_RESOURCES
-        ):
+        if resource_model not in CONFIG_RESOURCES:
             raise SCIMRequestError(
                 f"Unknown resource type: '{resource_model}'", source=payload
             )
@@ -650,7 +647,7 @@ class SCIMClient:
         for schema, resource_type in resource_types_by_schema.items():
             schema_obj = schema_objs_by_schema[schema]
             model = Resource.from_schema(schema_obj)
-            extensions: tuple[Any, ...] = ()
+            extensions: tuple[type[Extension], ...] = ()
             for ext_schema in resource_type.schema_extensions or []:
                 schema_obj = schema_objs_by_schema[ext_schema.schema_]
                 extension = Extension.from_schema(schema_obj)

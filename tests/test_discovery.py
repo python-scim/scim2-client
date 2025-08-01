@@ -90,5 +90,7 @@ def test_discovery_resource_types_multiple_extensions(server):
     assert scim_client.get_resource_model("Group")
 
     # Try to create a user to see if discover filled everything correctly
-    user_request = User[Union[EnterpriseUser, OtherExtension]](user_name="bjensen@example.com")
+    user_request = User[Union[EnterpriseUser, OtherExtension]](
+        user_name="bjensen@example.com"
+    )
     scim_client.create(user_request)
