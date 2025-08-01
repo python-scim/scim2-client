@@ -205,10 +205,6 @@ class SCIMClient:
     def _check_resource_model(
         self, resource_model: type[Resource], payload=None
     ) -> None:
-        # We need to check the actual schema names, comparing the class
-        # types does not work because if the resource_models are
-        # discovered. The classes might differ:
-        #   <class 'scim2_models.rfc7643.user.User'> vs <class 'scim2_models.rfc7643.schema.User'>
         schema_to_check = resource_model.model_fields["schemas"].default[0]
         for element in self.resource_models:
             schema = element.model_fields["schemas"].default[0]

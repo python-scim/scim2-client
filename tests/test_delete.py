@@ -1,10 +1,14 @@
 import pytest
 from scim2_models import Error
-from scim2_models import Group
+from scim2_models import Resource
 from scim2_models import User
 
 from scim2_client import RequestNetworkError
 from scim2_client import SCIMRequestError
+
+
+class UnregisteredResource(Resource):
+    schemas: list[str] = ["urn:test:schemas:UnregisteredResource"]
 
 
 def test_delete_user(httpserver, sync_client):
@@ -45,7 +49,7 @@ def test_errors(httpserver, code, sync_client):
 def test_invalid_resource_model(httpserver, sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
     with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
-        sync_client.delete(Group(display_name="foobar"), id="foobar")
+        sync_client.delete(UnregisteredResource, id="foobar")
 
 
 def test_dont_check_response_payload(httpserver, sync_client):
