@@ -1,7 +1,6 @@
 import threading
 import wsgiref.simple_server
 from typing import Annotated
-from typing import Union
 
 import portpicker
 import pytest
@@ -47,7 +46,7 @@ def get_schemas():
 
 def get_resource_types():
     resource_types = [
-        ResourceType.from_resource(User[Union[EnterpriseUser, OtherExtension]]),
+        ResourceType.from_resource(User[EnterpriseUser | OtherExtension]),
         ResourceType.from_resource(Group),
     ]
 
@@ -90,7 +89,7 @@ def test_discovery_resource_types_multiple_extensions(server):
     assert scim_client.get_resource_model("Group")
 
     # Try to create a user to see if discover filled everything correctly
-    user_request = User[Union[EnterpriseUser, OtherExtension]](
+    user_request = User[EnterpriseUser | OtherExtension](
         user_name="bjensen@example.com"
     )
     scim_client.create(user_request)

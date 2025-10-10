@@ -13,11 +13,11 @@ keywords = ["scim", "scim2", "provisioning", "rfc7643", "rfc7644", "httpx", "api
 classifiers = [
     "Intended Audience :: Developers",
     "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "License :: OSI Approved :: Apache Software License",
     "Environment :: Web Environment",
@@ -25,7 +25,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 dependencies = [
     "scim2-models>=0.4.1",
 ]
@@ -132,11 +132,11 @@ asyncio_default_fixture_loop_scope = "function"
 requires = ["tox>=4.19"]
 env_list = [
     "style",
-    "py39",
     "py310",
     "py311",
     "py312",
     "py313",
+    "py314",
     "minversions",
     "doc",
     "coverage",

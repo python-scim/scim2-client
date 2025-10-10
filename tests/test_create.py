@@ -1,5 +1,4 @@
 import datetime
-from typing import Optional
 
 import pytest
 from scim2_models import Error
@@ -259,7 +258,7 @@ def test_invalid_resource_model(sync_client):
 
     class MyResource(Resource):
         schemas: list[str] = ["urn:ietf:params:scim:schemas:core:2.0:MyResource"]
-        display_name: Optional[str] = None
+        display_name: str | None = None
 
     with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
         sync_client.create(MyResource(display_name="foobar"))
