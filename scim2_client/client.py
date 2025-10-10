@@ -2,7 +2,6 @@ import asyncio
 import sys
 from collections.abc import Collection
 from dataclasses import dataclass
-from typing import Optional
 from typing import TypeVar
 from typing import Union
 
@@ -40,10 +39,10 @@ CONFIG_RESOURCES = (ResourceType, Schema, ServiceProviderConfig)
 @dataclass
 class RequestPayload:
     request_kwargs: dict
-    url: Optional[str] = None
-    payload: Optional[dict] = None
-    expected_types: Optional[list[type[Resource]]] = None
-    expected_status_codes: Optional[list[int]] = None
+    url: str | None = None
+    payload: dict | None = None
+    expected_types: list[type[Resource]] | None = None
+    expected_status_codes: list[int] | None = None
 
 
 class SCIMClient:
@@ -176,9 +175,9 @@ class SCIMClient:
 
     def __init__(
         self,
-        resource_models: Optional[Collection[type[Resource]]] = None,
-        resource_types: Optional[Collection[ResourceType]] = None,
-        service_provider_config: Optional[ServiceProviderConfig] = None,
+        resource_models: Collection[type[Resource]] | None = None,
+        resource_types: Collection[ResourceType] | None = None,
+        service_provider_config: ServiceProviderConfig | None = None,
         check_request_payload: bool = True,
         check_response_payload: bool = True,
         check_response_content_type: bool = True,
@@ -194,7 +193,7 @@ class SCIMClient:
         self.check_response_status_codes = check_response_status_codes
         self.raise_scim_errors = raise_scim_errors
 
-    def get_resource_model(self, name: str) -> Optional[type[Resource]]:
+    def get_resource_model(self, name: str) -> type[Resource] | None:
         """Get a registered model by its name or its schema."""
         for resource_model in self.resource_models:
             schema = resource_model.model_fields["schemas"].default[0]
@@ -216,7 +215,7 @@ class SCIMClient:
                 f"Unknown resource type: '{resource_model}'", source=payload
             )
 
-    def resource_endpoint(self, resource_model: Optional[type[Resource]]) -> str:
+    def resource_endpoint(self, resource_model: type[Resource] | None) -> str:
         """Find the :attr:`~scim2_models.ResourceType.endpoint` associated with a given :class:`~scim2_models.Resource`.
 
         Internally, it looks if any :paramref:`resource_type <scim2_client.SCIMClient.resource_models>`
@@ -253,7 +252,7 @@ class SCIMClient:
         ]
 
     def _check_status_codes(
-        self, status_code: int, expected_status_codes: Optional[list[int]]
+        self, status_code: int, expected_status_codes: list[int] | None
     ):
         if (
             self.check_response_status_codes
@@ -279,15 +278,15 @@ class SCIMClient:
 
     def check_response(
         self,
-        payload: Optional[dict],
+        payload: dict | None,
         status_code: int,
         headers: dict,
-        expected_status_codes: Optional[list[int]] = None,
-        expected_types: Optional[list[type[Resource]]] = None,
-        check_response_payload: Optional[bool] = None,
-        raise_scim_errors: Optional[bool] = None,
-        scim_ctx: Optional[Context] = None,
-    ) -> Union[Error, None, dict, type[Resource]]:
+        expected_status_codes: list[int] | None = None,
+        expected_types: list[type[Resource]] | None = None,
+        check_response_payload: bool | None = None,
+        raise_scim_errors: bool | None = None,
+        scim_ctx: Context | None = None,
+    ) -> Error | None | dict | type[Resource]:
         if raise_scim_errors is None:
             raise_scim_errors = self.raise_scim_errors
 
@@ -355,9 +354,9 @@ class SCIMClient:
 
     def _prepare_create_request(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        expected_status_codes: Optional[list[int]] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -403,11 +402,11 @@ class SCIMClient:
 
     def _prepare_query_request(
         self,
-        resource_model: Optional[type[Resource]] = None,
-        id: Optional[str] = None,
-        search_request: Optional[Union[SearchRequest, dict]] = None,
-        check_request_payload: Optional[bool] = None,
-        expected_status_codes: Optional[list[int]] = None,
+        resource_model: type[Resource] | None = None,
+        id: str | None = None,
+        search_request: SearchRequest | dict | None = None,
+        check_request_payload: bool | None = None,
+        expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -421,7 +420,7 @@ class SCIMClient:
         if resource_model and check_request_payload:
             self._check_resource_model(resource_model)
 
-        payload: Optional[SearchRequest]
+        payload: SearchRequest | None
         if not check_request_payload:
             payload = search_request
 
@@ -440,7 +439,7 @@ class SCIMClient:
         if resource_model is None:
             req.expected_types = [
                 *self.resource_models,
-                ListResponse[Union[self.resource_models]],
+                ListResponse[Union[self.resource_models]],  # noqa: UP007
             ]
 
         elif resource_model == ServiceProviderConfig:
@@ -459,9 +458,9 @@ class SCIMClient:
 
     def _prepare_search_request(
         self,
-        search_request: Optional[SearchRequest] = None,
-        check_request_payload: Optional[bool] = None,
-        expected_status_codes: Optional[list[int]] = None,
+        search_request: SearchRequest | None = None,
+        check_request_payload: bool | None = None,
+        expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -485,14 +484,14 @@ class SCIMClient:
             )
 
         req.url = req.request_kwargs.pop("url", "/.search")
-        req.expected_types = [ListResponse[Union[self.resource_models]]]
+        req.expected_types = [ListResponse[Union[self.resource_models]]]  # noqa: UP007
         return req
 
     def _prepare_delete_request(
         self,
         resource_model: type,
         id: str,
-        expected_status_codes: Optional[list[int]] = None,
+        expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -507,9 +506,9 @@ class SCIMClient:
 
     def _prepare_replace_request(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        expected_status_codes: Optional[list[int]] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
         req = RequestPayload(
@@ -563,9 +562,9 @@ class SCIMClient:
         self,
         resource_model: type[ResourceT],
         id: str,
-        patch_op: Union[PatchOp[ResourceT], dict],
-        check_request_payload: Optional[bool] = None,
-        expected_status_codes: Optional[list[int]] = None,
+        patch_op: PatchOp[ResourceT] | dict,
+        check_request_payload: bool | None = None,
+        expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
         """Prepare a PATCH request payload.
@@ -625,9 +624,9 @@ class SCIMClient:
         self,
         resource_model: type[ResourceT],
         id: str,
-        patch_op: Union[PatchOp[ResourceT], dict],
+        patch_op: PatchOp[ResourceT] | dict,
         **kwargs,
-    ) -> Optional[Union[ResourceT, Error, dict]]:
+    ) -> ResourceT | Error | dict | None:
         raise NotImplementedError()
 
     def build_resource_models(
@@ -649,7 +648,7 @@ class SCIMClient:
                 extension = Extension.from_schema(schema_obj)
                 extensions = extensions + (extension,)
             if extensions:
-                model = model[Union[extensions]]
+                model = model[Union[extensions]]  # noqa: UP007
             resource_models.append(model)
 
         return tuple(resource_models)
@@ -660,15 +659,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def create(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.CREATION_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.CREATION_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, Error, dict]:
+    ) -> AnyResource | Error | dict:
         """Perform a POST request to create, as defined in :rfc:`RFC7644 §3.3 <7644#section-3.3>`.
 
         :param resource: The resource to create
@@ -706,17 +704,16 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def query(
         self,
-        resource_model: Optional[type[AnyResource]] = None,
-        id: Optional[str] = None,
-        search_request: Optional[Union[SearchRequest, dict]] = None,
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource_model: type[AnyResource] | None = None,
+        id: str | None = None,
+        search_request: SearchRequest | dict | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
+    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         - If `id` is not :data:`None`, the resource with the exact id will be reached.
@@ -780,15 +777,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def search(
         self,
-        search_request: Optional[SearchRequest] = None,
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        search_request: SearchRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
+    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param resource_models: Resource type or union of types expected
@@ -830,13 +826,12 @@ class BaseSyncSCIMClient(SCIMClient):
         self,
         resource_model: type,
         id: str,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Optional[Union[Error, dict]]:
+    ) -> Error | dict | None:
         """Perform a DELETE request to create, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
 
         :param resource_model: The type of the resource to delete.
@@ -866,15 +861,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def replace(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, Error, dict]:
+    ) -> AnyResource | Error | dict:
         """Perform a PUT request to replace a resource, as defined in :rfc:`RFC7644 §3.5.1 <7644#section-3.5.1>`.
 
         :param resource: The new resource to replace.
@@ -915,15 +909,14 @@ class BaseSyncSCIMClient(SCIMClient):
         self,
         resource_model: type[ResourceT],
         id: str,
-        patch_op: Union[PatchOp[ResourceT], dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        patch_op: PatchOp[ResourceT] | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Optional[Union[ResourceT, Error, dict]]:
+    ) -> ResourceT | Error | dict | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
 
         :param resource_model: The type of the resource to modify.
@@ -993,15 +986,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def create(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.CREATION_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.CREATION_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, Error, dict]:
+    ) -> AnyResource | Error | dict:
         """Perform a POST request to create, as defined in :rfc:`RFC7644 §3.3 <7644#section-3.3>`.
 
         :param resource: The resource to create
@@ -1039,17 +1031,16 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def query(
         self,
-        resource_model: Optional[type[Resource]] = None,
-        id: Optional[str] = None,
-        search_request: Optional[Union[SearchRequest, dict]] = None,
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource_model: type[Resource] | None = None,
+        id: str | None = None,
+        search_request: SearchRequest | dict | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
+    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         - If `id` is not :data:`None`, the resource with the exact id will be reached.
@@ -1113,15 +1104,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def search(
         self,
-        search_request: Optional[SearchRequest] = None,
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        search_request: SearchRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
+    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param resource_models: Resource type or union of types expected
@@ -1163,13 +1153,12 @@ class BaseAsyncSCIMClient(SCIMClient):
         self,
         resource_model: type,
         id: str,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Optional[Union[Error, dict]]:
+    ) -> Error | dict | None:
         """Perform a DELETE request to create, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
 
         :param resource_model: The type of the resource to delete.
@@ -1199,15 +1188,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def replace(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, Error, dict]:
+    ) -> AnyResource | Error | dict:
         """Perform a PUT request to replace a resource, as defined in :rfc:`RFC7644 §3.5.1 <7644#section-3.5.1>`.
 
         :param resource: The new resource to replace.
@@ -1248,15 +1236,14 @@ class BaseAsyncSCIMClient(SCIMClient):
         self,
         resource_model: type[ResourceT],
         id: str,
-        patch_op: Union[PatchOp[ResourceT], dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        patch_op: PatchOp[ResourceT] | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Optional[Union[ResourceT, Error, dict]]:
+    ) -> ResourceT | Error | dict | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
 
         :param resource_model: The type of the resource to modify.

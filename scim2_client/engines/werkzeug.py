@@ -1,8 +1,6 @@
 import json
 from contextlib import contextmanager
-from typing import Optional
 from typing import TypeVar
-from typing import Union
 from urllib.parse import urlencode
 
 from scim2_models import AnyResource
@@ -80,7 +78,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
     def __init__(
         self,
         client: Client,
-        environ: Optional[dict] = None,
+        environ: dict | None = None,
         scim_prefix: str = "",
         *args,
         **kwargs,
@@ -90,7 +88,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         self.scim_prefix = scim_prefix
         self.environ = environ or {}
 
-    def _make_url(self, url: Optional[str]) -> str:
+    def _make_url(self, url: str | None) -> str:
         url = url or ""
         prefix = (
             self.scim_prefix[:-1]
@@ -105,15 +103,14 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def create(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = BaseSyncSCIMClient.CREATION_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.CREATION_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, Error, dict]:
+    ) -> AnyResource | Error | dict:
         req = self._prepare_create_request(
             resource=resource,
             check_request_payload=check_request_payload,
@@ -140,17 +137,16 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def query(
         self,
-        resource_model: Optional[type[AnyResource]] = None,
-        id: Optional[str] = None,
-        search_request: Optional[Union[SearchRequest, dict]] = None,
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource_model: type[AnyResource] | None = None,
+        id: str | None = None,
+        search_request: SearchRequest | dict | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
+    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
@@ -180,15 +176,14 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def search(
         self,
-        search_request: Optional[SearchRequest] = None,
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = BaseSyncSCIMClient.SEARCH_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        search_request: SearchRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.SEARCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, ListResponse[AnyResource], Error, dict]:
+    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
         req = self._prepare_search_request(
             search_request=search_request,
             check_request_payload=check_request_payload,
@@ -217,13 +212,12 @@ class TestSCIMClient(BaseSyncSCIMClient):
         self,
         resource_model: type,
         id: str,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = BaseSyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Optional[Union[Error, dict]]:
+    ) -> Error | dict | None:
         req = self._prepare_delete_request(
             resource_model=resource_model,
             id=id,
@@ -246,15 +240,14 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def replace(
         self,
-        resource: Union[AnyResource, dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = BaseSyncSCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        resource: AnyResource | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Union[AnyResource, Error, dict]:
+    ) -> AnyResource | Error | dict:
         req = self._prepare_replace_request(
             resource=resource,
             check_request_payload=check_request_payload,
@@ -281,15 +274,14 @@ class TestSCIMClient(BaseSyncSCIMClient):
         self,
         resource_model: type[ResourceT],
         id: str,
-        patch_op: Union[PatchOp[ResourceT], dict],
-        check_request_payload: Optional[bool] = None,
-        check_response_payload: Optional[bool] = None,
-        expected_status_codes: Optional[
-            list[int]
-        ] = BaseSyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
-        raise_scim_errors: Optional[bool] = None,
+        patch_op: PatchOp[ResourceT] | dict,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> Optional[Union[ResourceT, Error, dict]]:
+    ) -> ResourceT | Error | dict | None:
         req = self._prepare_patch_request(
             resource_model=resource_model,
             id=id,
