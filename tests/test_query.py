@@ -476,7 +476,7 @@ def test_response_bad_content_type(sync_client):
 
 
 def test_search_request(httpserver, sync_client):
-    query_string = "schemas=urn%3Aietf%3Aparams%3Ascim%3Aapi%3Amessages%3A2.0%3ASearchRequest&attributes=userName&attributes=displayName&filter=userName+Eq+%22john%22&sortBy=userName&sortOrder=ascending&startIndex=1&count=10"
+    query_string = "attributes=userName&attributes=displayName&filter=userName+Eq+%22john%22&sortBy=userName&sortOrder=ascending&startIndex=1&count=10"
 
     httpserver.expect_request(
         "/Users/with-qs", query_string=query_string

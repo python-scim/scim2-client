@@ -424,6 +424,7 @@ class SCIMClient:
         elif isinstance(search_request, SearchRequest):
             payload = search_request.model_dump(
                 exclude_unset=True,
+                exclude={"schemas"},
                 scim_ctx=Context.RESOURCE_QUERY_REQUEST,
             )
 
