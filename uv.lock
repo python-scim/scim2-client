@@ -1229,7 +1229,7 @@ wheels = [
 
 [[package]]
 name = "scim2-client"
-version = "0.7.0"
+version = "0.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "scim2-models" },
@@ -1317,6 +1317,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic", extra = ["email"] },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/11/14/608096b289057ddcce011c29866cf7bbceb5e1c4bb48e4c8a432a8d98f27/scim2_models-0.6.2.tar.gz", hash = "sha256:b817c82c3172f9122072b40b69da1ce6bac1d5f8c4578ac13d7485fc02fc41fc", size = 45234, upload-time = "2026-01-25T15:47:24.815Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/ec/24a5208dea108047cafba3c82983634666e7b43f7b6ba7383b97c872cf93/scim2_models-0.6.2-py3-none-any.whl", hash = "sha256:15ff5e38f719a9429736156fdb74f9de21a36297870756d2f0f8a73f5b01520e", size = 56542, upload-time = "2026-01-25T15:47:23.102Z" },
 ]

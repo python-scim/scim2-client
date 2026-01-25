@@ -1,6 +1,13 @@
 Changelog
 =========
 
+[0.7.1] - 2025-01-25
+--------------------
+
+Fixed
+^^^^^
+- ``schemas`` is no longer included in GET query parameters per RFC 7644 §3.4.2.
+
 [0.7.0] - 2025-01-25
 --------------------
 
@@ -12,10 +19,6 @@ Added
 Removed
 ^^^^^^^
 - Support for Python 3.9.
-
-Fixed
-^^^^^
-- ``schemas`` is no longer included in GET query parameters per RFC 7644 §3.4.2.
 
 [0.6.1] - 2025-08-01
 --------------------
