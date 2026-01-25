@@ -14,6 +14,17 @@ Provisioning is the action of managing a set of resources across different servi
 SCIM is often used between Identity Providers and applications in completion of standards like OAuth2 and OpenID Connect.
 It allows users and groups creations, modifications and deletions to be synchronized between applications.
 
+## Features
+
+- **CRUD Operations**: `create`, `query`, `replace`, `delete` methods for SCIM resources
+- **PATCH Support**: Partial resource modifications with `add`, `remove` and `replace` operations
+- **Server Discovery**: Automatic retrieval of `ServiceProviderConfig`, `ResourceTypes` and `Schemas`
+- **Search & Filtering**: Support for SCIM filters, sorting, pagination and attribute selection
+- **Sync & Async**: Both synchronous and asynchronous clients available
+- **Multiple HTTP Engines**: Built-in support for [httpx](https://github.com/encode/httpx) (sync/async) and [werkzeug](https://werkzeug.palletsprojects.com/) (testing)
+- **Request & Response Validation**: Automatic payload validation against SCIM schemas
+- **Error Handling**: Structured exceptions for network, request and response errors
+
 ## Installation
 
 ```shell
