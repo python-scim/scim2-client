@@ -1,6 +1,5 @@
 import threading
 import wsgiref.simple_server
-from typing import Annotated
 
 import portpicker
 import pytest
@@ -9,7 +8,6 @@ from scim2_models import EnterpriseUser
 from scim2_models import Extension
 from scim2_models import Group
 from scim2_models import Meta
-from scim2_models import Required
 from scim2_models import ResourceType
 from scim2_models import User
 
@@ -21,9 +19,7 @@ from scim2_server.provider import SCIMProvider  # noqa: E402
 
 
 class OtherExtension(Extension):
-    schemas: Annotated[list[str], Required.true] = [
-        "urn:ietf:params:scim:schemas:extension:Other:1.0:User"
-    ]
+    __schema__ = "urn:ietf:params:scim:schemas:extension:Other:1.0:User"
 
     test: str | None = None
     test2: list[str] | None = None

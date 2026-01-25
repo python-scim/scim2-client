@@ -8,7 +8,7 @@ from scim2_client import SCIMRequestError
 
 
 class UnregisteredResource(Resource):
-    schemas: list[str] = ["urn:test:schemas:UnregisteredResource"]
+    __schema__ = "urn:test:schemas:UnregisteredResource"
 
 
 def test_delete_user(httpserver, sync_client):

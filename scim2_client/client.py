@@ -196,7 +196,7 @@ class SCIMClient:
     def get_resource_model(self, name: str) -> type[Resource] | None:
         """Get a registered model by its name or its schema."""
         for resource_model in self.resource_models:
-            schema = resource_model.model_fields["schemas"].default[0]
+            schema = resource_model.__schema__
             if schema == name or schema.split(":")[-1] == name:
                 return resource_model
         return None
@@ -204,9 +204,9 @@ class SCIMClient:
     def _check_resource_model(
         self, resource_model: type[Resource], payload=None
     ) -> None:
-        schema_to_check = resource_model.model_fields["schemas"].default[0]
+        schema_to_check = resource_model.__schema__
         for element in self.resource_models:
-            schema = element.model_fields["schemas"].default[0]
+            schema = element.__schema__
             if schema_to_check == schema:
                 return
 
@@ -231,7 +231,7 @@ class SCIMClient:
         if resource_model is ServiceProviderConfig:
             return "/ServiceProviderConfig"
 
-        schema = resource_model.model_fields["schemas"].default[0]
+        schema = resource_model.__schema__
         for resource_type in self.resource_types or []:
             if schema == resource_type.schema_:
                 return resource_type.endpoint
@@ -310,10 +310,7 @@ class SCIMClient:
             self._check_status_codes(status_code, expected_status_codes)
             return response_payload
 
-        if (
-            response_payload
-            and response_payload.get("schemas") == Error.model_fields["schemas"].default
-        ):
+        if response_payload and response_payload.get("schemas") == [Error.__schema__]:
             error = Error.model_validate(response_payload)
             if raise_scim_errors:
                 raise SCIMResponseErrorObject(obj=error.detail, source=error)

@@ -257,7 +257,7 @@ def test_invalid_resource_model(sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
 
     class MyResource(Resource):
-        schemas: list[str] = ["urn:ietf:params:scim:schemas:core:2.0:MyResource"]
+        __schema__ = "urn:ietf:params:scim:schemas:core:2.0:MyResource"
         display_name: str | None = None
 
     with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):

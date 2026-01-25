@@ -13,7 +13,7 @@ from scim2_client.engines.httpx import SyncSCIMClient
 
 def test_guess_resource_endpoint():
     class Foobar(Resource):
-        schemas: list[str] = ["urn:ietf:params:scim:schemas:core:2.0:Foobar"]
+        __schema__ = "urn:ietf:params:scim:schemas:core:2.0:Foobar"
 
     client = SyncSCIMClient(
         None,
