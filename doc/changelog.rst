@@ -1,12 +1,13 @@
 Changelog
 =========
 
-[0.6.2] - Unreleased
+[0.7.0] - 2025-01-25
 --------------------
 
 Added
 ^^^^^
 - Support for Python 3.14.
+- Compatibility with scim2-models 0.6.
 
 Removed
 ^^^^^^^
