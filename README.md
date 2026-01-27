@@ -21,7 +21,7 @@ It allows users and groups creations, modifications and deletions to be synchron
 - **Server Discovery**: Automatic retrieval of `ServiceProviderConfig`, `ResourceTypes` and `Schemas`
 - **Search & Filtering**: Support for SCIM filters, sorting, pagination and attribute selection
 - **Sync & Async**: Both synchronous and asynchronous clients available
-- **Multiple HTTP Engines**: Built-in support for [httpx](https://github.com/encode/httpx) (sync/async) and [werkzeug](https://werkzeug.palletsprojects.com/) (testing)
+- **Multiple HTTP Engines**: Built-in support for [httpx](https://github.com/encode/httpx) (sync/async) and [werkzeug](https://werkzeug.palletsprojects.com/) (testing). Adaptable to any network engine.
 - **Request & Response Validation**: Automatic payload validation against SCIM schemas
 - **Error Handling**: Structured exceptions for network, request and response errors
 
