@@ -74,6 +74,7 @@ class SCIMClient:
     """
 
     CREATION_RESPONSE_STATUS_CODES: list[int] = [
+        200,
         201,
         409,
         307,
@@ -136,6 +137,7 @@ class SCIMClient:
 
     REPLACEMENT_RESPONSE_STATUS_CODES: list[int] = [
         200,
+        201,
         307,
         308,
         400,

@@ -204,32 +204,6 @@ def test_conflict(httpserver, sync_client):
     )
 
 
-def test_no_200(httpserver, sync_client):
-    """User creation object should return 201 codes and no 200."""
-    httpserver.expect_request("/Users", method="POST").respond_with_json(
-        {
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-            "id": "2819c223-7f76-453a-919d-413861904646",
-            "userName": "bjensen@example.com",
-            "meta": {
-                "resourceType": "User",
-                "created": "2010-01-23T04:56:22Z",
-                "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
-                "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
-            },
-        },
-        status=200,
-    )
-
-    user_request = User(user_name="bjensen@example.com")
-
-    with pytest.raises(UnexpectedStatusCode):
-        sync_client.create(user_request)
-    sync_client.create(user_request, expected_status_codes=None)
-    sync_client.create(user_request, expected_status_codes=[200, 201])
-
-
 @pytest.mark.parametrize("code", [400, 401, 403, 404, 500])
 def test_errors(httpserver, code, sync_client):
     """Test error cases defined in RFC7644."""
