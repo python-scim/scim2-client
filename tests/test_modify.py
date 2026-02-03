@@ -69,6 +69,27 @@ def test_modify_user_204(httpserver, sync_client):
     assert response is None
 
 
+def test_modify_user_204_without_content_type_header(httpserver, sync_client):
+    """Server returns 204 without Content-Type header, which is valid per RFC 7231."""
+    httpserver.expect_request(
+        "/Users/2819c223-7f76-453a-919d-413861904646", method="PATCH"
+    ).respond_with_data(
+        "",
+        status=204,
+    )
+
+    operation = PatchOperation(
+        op=PatchOperation.Op.replace_, path="active", value=False
+    )
+    patch_op = PatchOp[User](operations=[operation])
+
+    response = sync_client.modify(
+        User, "2819c223-7f76-453a-919d-413861904646", patch_op
+    )
+
+    assert response is None
+
+
 def test_modify_user_multiple_operations(httpserver, sync_client):
     """Test User modification with multiple patch operations."""
     httpserver.expect_request(

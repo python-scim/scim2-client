@@ -1,6 +1,13 @@
 Changelog
 =========
 
+[0.7.2] - Unreleased
+--------------------
+
+Fixed
+^^^^^
+- Skip ``Content-Type`` header validation for 204 responses. :issue:`34`
+
 [0.7.1] - 2025-01-25
 --------------------
 

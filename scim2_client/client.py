@@ -290,8 +290,6 @@ class SCIMClient:
         if raise_scim_errors is None:
             raise_scim_errors = self.raise_scim_errors
 
-        self._check_content_types(headers)
-
         # In addition to returning an HTTP response code, implementers MUST return
         # the errors in the body of the response in a JSON format
         # https://datatracker.ietf.org/doc/html/rfc7644.html#section-3.12
@@ -301,6 +299,7 @@ class SCIMClient:
             response_payload = None
 
         else:
+            self._check_content_types(headers)
             response_payload = payload
 
         if check_response_payload is None:
