@@ -1229,7 +1229,7 @@ wheels = [
 
 [[package]]
 name = "scim2-client"
-version = "0.7.1"
+version = "0.7.2"
 source = { editable = "." }
 dependencies = [
     { name = "scim2-models" },
