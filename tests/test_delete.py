@@ -21,6 +21,16 @@ def test_delete_user(httpserver, sync_client):
     assert response is None
 
 
+def test_delete_user_without_content_type_header(httpserver, sync_client):
+    """Server returns 204 without Content-Type header, which is valid per RFC 7231."""
+    httpserver.expect_request(
+        "/Users/2819c223-7f76-453a-919d-413861904646", method="DELETE"
+    ).respond_with_data(status=204)
+
+    response = sync_client.delete(User, "2819c223-7f76-453a-919d-413861904646")
+    assert response is None
+
+
 @pytest.mark.parametrize("code", [400, 401, 403, 404, 412, 500, 501])
 def test_errors(httpserver, code, sync_client):
     """Test error cases defined in RFC7644."""
