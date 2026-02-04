@@ -60,6 +60,24 @@ def httpserver(httpserver):
         status=400,
     )
 
+    httpserver.expect_request("/Users/conflict").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+            "scimType": "uniqueness",
+            "detail": "User already exists",
+            "status": "409",
+        },
+        status=409,
+    )
+
+    httpserver.expect_request("/Users/no-detail").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+            "status": "500",
+        },
+        status=500,
+    )
+
     httpserver.expect_request("/Users/status-201").respond_with_json(
         {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -305,12 +323,40 @@ def test_user_with_invalid_id(sync_client):
 
 
 def test_raise_scim_errors(sync_client):
-    """Test that querying an user with an invalid id instantiate an Error object."""
+    """Test that querying an user with an invalid id raises an exception."""
     with pytest.raises(
         SCIMResponseErrorObject,
-        match="The server returned a SCIM Error object: Resource unknown not found",
-    ):
+        match="Resource unknown not found",
+    ) as exc_info:
         sync_client.query(User, "unknown", raise_scim_errors=True)
+
+    assert exc_info.value.to_error() == Error(
+        detail="Resource unknown not found", status=404
+    )
+
+
+def test_raise_scim_errors_with_scim_type(sync_client):
+    """Test that the exception message includes scim_type when present."""
+    with pytest.raises(
+        SCIMResponseErrorObject,
+        match="uniqueness: User already exists",
+    ) as exc_info:
+        sync_client.query(User, "conflict", raise_scim_errors=True)
+
+    assert exc_info.value.to_error() == Error(
+        detail="User already exists", status=409, scim_type="uniqueness"
+    )
+
+
+def test_raise_scim_errors_without_detail(sync_client):
+    """Test that the exception works when the error has no detail."""
+    with pytest.raises(
+        SCIMResponseErrorObject,
+        match="SCIM Error",
+    ) as exc_info:
+        sync_client.query(User, "no-detail", raise_scim_errors=True)
+
+    assert exc_info.value.to_error() == Error(status=500)
 
 
 def test_all_users(sync_client):

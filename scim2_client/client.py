@@ -312,7 +312,7 @@ class SCIMClient:
         if response_payload and response_payload.get("schemas") == [Error.__schema__]:
             error = Error.model_validate(response_payload)
             if raise_scim_errors:
-                raise SCIMResponseErrorObject(obj=error.detail, source=error)
+                raise SCIMResponseErrorObject(error)
             return error
 
         self._check_status_codes(status_code, expected_status_codes)

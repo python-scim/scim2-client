@@ -1,4 +1,8 @@
+from typing import TYPE_CHECKING
 from typing import Any
+
+if TYPE_CHECKING:
+    from scim2_models import Error
 
 
 class SCIMClientError(Exception):
@@ -69,13 +73,23 @@ class SCIMResponseErrorObject(SCIMResponseError):
     """The server response returned a :class:`scim2_models.Error` object.
 
     Those errors are only raised when the :code:`raise_scim_errors` parameter is :data:`True`.
+
+    :param error: The :class:`~scim2_models.Error` object returned by the server.
     """
 
-    def __init__(self, obj: Any, *args: Any, **kwargs: Any) -> None:
-        message = kwargs.pop(
-            "message", f"The server returned a SCIM Error object: {obj}"
-        )
+    def __init__(self, error: "Error", *args: Any, **kwargs: Any) -> None:
+        self._error = error
+        parts = []
+        if error.scim_type:
+            parts.append(error.scim_type + ":")
+        if error.detail:
+            parts.append(error.detail)
+        message = " ".join(parts) if parts else "SCIM Error"
         super().__init__(message, *args, **kwargs)
+
+    def to_error(self) -> "Error":
+        """Return the :class:`~scim2_models.Error` object returned by the server."""
+        return self._error
 
 
 class UnexpectedStatusCode(SCIMResponseError):

@@ -83,6 +83,7 @@ exclude_lines = [
     "@pytest.mark.skip",
     "pragma: no cover",
     "raise NotImplementedError",
+    "if TYPE_CHECKING:",
     "\\.\\.\\.\\s*$", # ignore ellipsis
 ]
 
