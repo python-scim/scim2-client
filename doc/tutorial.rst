@@ -89,14 +89,22 @@ Have a look at the :doc:`reference` to see usage examples and the exhaustive set
 
 .. code-block:: python
 
-    from scim2_models import Error
-
     request = User(user_name="bjensen@example.com")
     response = scim.create(request)
-    if isinstance(response, Error):
-        raise SomethingIsWrong(response.detail)
+    print(f"User {response.id} has been created!")
 
-    return f"User {user.id} have been created!"
+By default, if the server returns an error, a :class:`~scim2_client.SCIMResponseErrorObject` exception is raised.
+The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object:
+
+.. code-block:: python
+
+    from scim2_client import SCIMResponseErrorObject
+
+    try:
+        response = scim.create(request)
+    except SCIMResponseErrorObject as exc:
+        error = exc.to_error()
+        print(f"SCIM error [{error.status}] {error.scim_type}: {error.detail}")
 
 PATCH modifications
 ===================
@@ -183,7 +191,8 @@ To achieve this, all the methods provide the following parameters, all are :data
   If :data:`None` any status code is accepted.
   If an unexpected status code is returned, a :class:`~scim2_client.errors.UnexpectedStatusCode` exception is raised.
 - :paramref:`~scim2_client.SCIMClient.raise_scim_errors`: If :data:`True` (the default) and the server returned an :class:`~scim2_models.Error` object, a :class:`~scim2_client.SCIMResponseErrorObject` exception will be raised.
-  If :data:`False` the error object is returned.
+  The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object.
+  If :data:`False` the error object is returned directly.
 
 
 .. tip::

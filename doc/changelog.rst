@@ -1,6 +1,14 @@
 Changelog
 =========
 
+[Unreleased]
+------------
+
+Changed
+^^^^^^^
+- :class:`~scim2_client.SCIMResponseErrorObject` now exposes a :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method
+  returning the :class:`~scim2_models.Error` object from the server. :issue:`37`
+
 [0.7.2] - 2026-02-03
 --------------------
 
