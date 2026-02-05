@@ -52,7 +52,7 @@ User = scim.get_resource_model("User")
 # Query resources
 user = scim.query(User, "2819c223-7f76-453a-919d-413861904646")
 assert user.user_name == "bjensen@example.com"
-assert user.meta.last_updated == datetime.datetime(
+assert user.meta.last_modified == datetime.datetime(
     2024, 4, 13, 12, 0, 0, tzinfo=datetime.timezone.utc
 )
 
@@ -60,7 +60,7 @@ assert user.meta.last_updated == datetime.datetime(
 user.display_name = "Babs Jensen"
 user = scim.replace(user)
 assert user.display_name == "Babs Jensen"
-assert user.meta.last_updated == datetime.datetime(
+assert user.meta.last_modified == datetime.datetime(
     2024, 4, 13, 12, 0, 30, tzinfo=datetime.timezone.utc
 )
 
