@@ -1,10 +1,10 @@
 import pytest
 from scim2_models import Error
+from scim2_models import InvalidValueException
 from scim2_models import Resource
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import SCIMRequestError
+from scim2_client import RequestNetworkException
 
 
 class UnregisteredResource(Resource):
@@ -58,7 +58,7 @@ def test_errors(httpserver, code, sync_client):
 
 def test_invalid_resource_model(httpserver, sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.delete(UnregisteredResource, id="foobar")
 
 
@@ -86,8 +86,8 @@ def test_dont_check_response_payload(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx exceptions are transformed in RequestNetworkException."""
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.delete(User, "anything", url="http://invalid.test")

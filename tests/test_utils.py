@@ -1,13 +1,13 @@
 import pytest
 from scim2_models import EnterpriseUser
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import Schema
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
-from scim2_client import SCIMRequestError
 from scim2_client.engines.httpx import SyncSCIMClient
 
 
@@ -32,7 +32,7 @@ def test_guess_resource_endpoint():
     # This one is special as it does not take an ending 's'
     assert client.resource_endpoint(ServiceProviderConfig) == "/ServiceProviderConfig"
 
-    with pytest.raises(SCIMRequestError):
+    with pytest.raises(InvalidValueException):
         client.resource_endpoint(Foobar)
 
 
