@@ -28,7 +28,7 @@ You can either provision those objects manually or automatically.
 Automatic provisioning
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The easiest way is to let the client discover what configuration and resources are available on the server.
+The easiest way is to let the client discover the server's configuration and available resources.
 The :meth:`~scim2_client.BaseSyncSCIMClient.discover` method looks for the server :class:`~scim2_models.ServiceProviderConfig`, :class:`~scim2_models.Schema` and :class:`~scim2_models.ResourceType` endpoints,
 and dynamically generate local Python models based on those schemas.
 They are then available to use with :meth:`~scim2_client.SCIMClient.get_resource_model`.
@@ -177,7 +177,7 @@ Bulk operations
 Request and response validation
 ===============================
 
-By default, the data passed to the :class:`SCIM client <scim2_client.SCIMClient>` as well as the server response will be validated against the SCIM specifications, and will raise an error if they don't respect them.
+By default, scim2-client validates both request payloads and server responses against the SCIM specifications, raising an error on non-compliance.
 However sometimes you want to accept invalid inputs and outputs.
 To achieve this, all the methods provide the following parameters, all are :data:`True` by default:
 
@@ -218,7 +218,7 @@ You can easily implement your own engine by inheriting from :class:`~scim2_clien
 Additional request parameters
 =============================
 
-Any additional parameter will be passed to the underlying engine methods.
+Pass additional parameters directly to the underlying engine methods.
 This can be useful if you need to explicitly pass a certain URL for example:
 
 .. code-block:: python
