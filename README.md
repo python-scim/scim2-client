@@ -41,7 +41,7 @@ Here is an example of usage:
 ```python
 import datetime
 from httpx import Client
-from scim2_models import Error
+from scim2_client import SCIMResponseErrorObject
 from scim2_client.engines.httpx import SyncSCIMClient
 
 client = Client(base_url="https://auth.example/scim/v2", headers={"Authorization": "Bearer foobar"})
@@ -66,9 +66,11 @@ assert user.meta.last_modified == datetime.datetime(
 
 # Create resources
 user = User(user_name="bjensen@example.com")
-response = scim.create(user)
-assert isinstance(response, Error)
-assert response.detail == "One or more of the attribute values are already in use or are reserved."
+try:
+    scim.create(user)
+except SCIMResponseErrorObject as exc:
+    error = exc.to_error()
+    assert error.detail == "One or more of the attribute values are already in use or are reserved."
 ```
 
 scim2-client belongs in a collection of SCIM tools developed by [Yaal Coop](https://yaal.coop),
