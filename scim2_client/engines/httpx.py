@@ -3,6 +3,7 @@ import sys
 from contextlib import contextmanager
 from typing import TypeVar
 
+from httpx import AsyncClient
 from httpx import Client
 from httpx import RequestError
 from httpx import Response
@@ -288,7 +289,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     """
 
-    def __init__(self, client: Client, *args, **kwargs):
+    def __init__(self, client: AsyncClient, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = client
 
