@@ -350,7 +350,7 @@ class SCIMClient:
 
     def _prepare_create_request(
         self,
-        resource: AnyResource | dict,
+        resource: Resource | dict,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
         **kwargs,
@@ -486,7 +486,7 @@ class SCIMClient:
 
     def _prepare_delete_request(
         self,
-        resource_model: type,
+        resource_model: type[Resource],
         id: str,
         expected_status_codes: list[int] | None = None,
         **kwargs,
@@ -503,7 +503,7 @@ class SCIMClient:
 
     def _prepare_replace_request(
         self,
-        resource: AnyResource | dict,
+        resource: Resource | dict,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
         **kwargs,
@@ -701,7 +701,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def query(
         self,
-        resource_model: type[AnyResource] | None = None,
+        resource_model: type[Resource] | None = None,
         id: str | None = None,
         search_request: SearchRequest | dict | None = None,
         check_request_payload: bool | None = None,
@@ -710,7 +710,7 @@ class BaseSyncSCIMClient(SCIMClient):
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         - If `id` is not :data:`None`, the resource with the exact id will be reached.
@@ -781,7 +781,7 @@ class BaseSyncSCIMClient(SCIMClient):
         | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param resource_models: Resource type or union of types expected
@@ -1037,7 +1037,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         - If `id` is not :data:`None`, the resource with the exact id will be reached.
@@ -1108,7 +1108,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param resource_models: Resource type or union of types expected

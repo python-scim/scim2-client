@@ -103,7 +103,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def query(
         self,
-        resource_model: type[AnyResource] | None = None,
+        resource_model: type[Resource] | None = None,
         id: str | None = None,
         search_request: SearchRequest | dict | None = None,
         check_request_payload: bool | None = None,
@@ -112,7 +112,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         | None = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
@@ -148,7 +148,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         | None = BaseSyncSCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         req = self._prepare_search_request(
             search_request=search_request,
             check_request_payload=check_request_payload,
@@ -173,7 +173,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def delete(
         self,
-        resource_model: type,
+        resource_model: type[Resource],
         id: str,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
@@ -338,7 +338,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
         | None = BaseAsyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
@@ -374,7 +374,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
         | None = BaseAsyncSCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
-    ) -> AnyResource | ListResponse[AnyResource] | Error | dict:
+    ) -> Resource | ListResponse[Resource] | Error | dict:
         req = self._prepare_search_request(
             search_request=search_request,
             check_request_payload=check_request_payload,
@@ -401,7 +401,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     async def delete(
         self,
-        resource_model: type,
+        resource_model: type[Resource],
         id: str,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
