@@ -1,6 +1,15 @@
 Changelog
 =========
 
+[0.8.0] - 2026-02-05
+--------------------
+
+Changed
+^^^^^^^
+- **Breaking:** SCIM errors now raise :class:`~scim2_models.SCIMException` (and subclasses) from scim2-models instead of custom exceptions. :issue:`39`
+- **Breaking:** ``SCIMRequestError``, ``RequestPayloadValidationError``, and ``SCIMResponseErrorObject`` have been removed.
+- Exceptions renamed from ``*Error`` to ``*Exception`` suffix. Old names are deprecated (removal in 0.9).
+
 [0.7.3] - 2026-02-04
 --------------------
 
@@ -16,14 +25,14 @@ Fixed
 ^^^^^
 - Skip ``Content-Type`` header validation for 204 responses. :issue:`34`
 
-[0.7.1] - 2025-01-25
+[0.7.1] - 2026-01-25
 --------------------
 
 Fixed
 ^^^^^
 - ``schemas`` is no longer included in GET query parameters per RFC 7644 §3.4.2.
 
-[0.7.0] - 2025-01-25
+[0.7.0] - 2026-01-25
 --------------------
 
 Added

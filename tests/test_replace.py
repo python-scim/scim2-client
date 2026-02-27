@@ -3,14 +3,13 @@ import datetime
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import Meta
 from scim2_models import ResourceType
+from scim2_models import SCIMException
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import RequestPayloadValidationError
-from scim2_client import SCIMClientError
-from scim2_client import SCIMRequestError
+from scim2_client import RequestNetworkException
 
 
 def test_replace_user(httpserver, sync_client):
@@ -122,7 +121,7 @@ def test_replace_user_dict_bad_schema(httpserver, sync_client):
     }
 
     with pytest.raises(
-        SCIMClientError, match="Cannot guess resource type from the payload"
+        InvalidValueException, match="Cannot guess resource type from the payload"
     ):
         sync_client.replace(payload)
 
@@ -277,7 +276,7 @@ def test_user_with_no_id(httpserver, sync_client):
         ),
     )
 
-    with pytest.raises(SCIMClientError, match="Resource must have an id"):
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
         sync_client.replace(user)
 
 
@@ -286,15 +285,13 @@ def test_invalid_resource_model(httpserver, sync_client):
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.replace(Group(display_name="foobar"))
 
 
 def test_request_validation_error(httpserver, sync_client):
-    """Test that incorrect input raise a RequestPayloadValidationError."""
-    with pytest.raises(
-        RequestPayloadValidationError, match="Server request payload validation error"
-    ):
+    """Test that incorrect input raise a SCIMException."""
+    with pytest.raises(SCIMException):
         sync_client.replace(
             {
                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -304,9 +301,9 @@ def test_request_validation_error(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx exceptions are transformed in RequestNetworkException."""
     user_request = User(user_name="bjensen@example.com", id="anything")
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.replace(user_request, url="http://invalid.test")

@@ -17,9 +17,9 @@ from scim2_models import SearchRequest
 
 from scim2_client.client import BaseAsyncSCIMClient
 from scim2_client.client import BaseSyncSCIMClient
-from scim2_client.errors import RequestNetworkError
-from scim2_client.errors import SCIMClientError
-from scim2_client.errors import UnexpectedContentFormat
+from scim2_client.errors import RequestNetworkException
+from scim2_client.errors import SCIMClientException
+from scim2_client.errors import UnexpectedContentFormatException
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
@@ -30,7 +30,7 @@ def handle_request_error(payload=None):
         yield
 
     except RequestError as exc:
-        scim_network_exc = RequestNetworkError(source=payload)
+        scim_network_exc = RequestNetworkException(source=payload)
         if sys.version_info >= (3, 11):  # pragma: no cover
             scim_network_exc.add_note(str(exc))
         raise scim_network_exc from exc
@@ -42,9 +42,9 @@ def handle_response_error(response: Response):
         yield
 
     except json.decoder.JSONDecodeError as exc:
-        raise UnexpectedContentFormat(source=response) from exc
+        raise UnexpectedContentFormatException(source=response) from exc
 
-    except SCIMClientError as exc:
+    except SCIMClientException as exc:
         exc.source = response
         raise exc
 
@@ -61,7 +61,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
     :param check_response_payload: Whether to validate that the response payloads are valid.
         If set, the raw payload will be returned. This value can be overwritten in methods.
     :param raise_scim_errors: If :data:`True` and the server returned an
-        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_client.SCIMResponseErrorObject`
+        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_models.SCIMException`
         exception will be raised. If :data:`False` the error object is returned. This value can be overwritten in methods.
     """
 
@@ -284,7 +284,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
     :param check_response_payload: Whether to validate that the response payloads are valid.
         If set, the raw payload will be returned. This value can be overwritten in methods.
     :param raise_scim_errors: If :data:`True` and the server returned an
-        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_client.SCIMResponseErrorObject`
+        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_models.SCIMException`
         exception will be raised. If :data:`False` the error object is returned. This value can be overwritten in methods.
 
     """

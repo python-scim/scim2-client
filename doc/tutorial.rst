@@ -93,18 +93,35 @@ Have a look at the :doc:`reference` to see usage examples and the exhaustive set
     response = scim.create(request)
     print(f"User {response.id} has been created!")
 
-By default, if the server returns an error, a :class:`~scim2_client.SCIMResponseErrorObject` exception is raised.
-The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object:
+Error management
+================
+
+By default, if the server returns an error, a :class:`~scim2_models.SCIMException` exception is raised.
+The :meth:`~scim2_models.SCIMException.to_error` method gives access to the :class:`~scim2_models.Error` object:
 
 .. code-block:: python
 
-    from scim2_client import SCIMResponseErrorObject
+    from scim2_models import SCIMException
 
     try:
         response = scim.create(request)
-    except SCIMResponseErrorObject as exc:
+    except SCIMException as exc:
         error = exc.to_error()
         print(f"SCIM error [{error.status}] {error.scim_type}: {error.detail}")
+
+The :attr:`~scim2_models.SCIMException.scim_ctx` attribute indicates whether the error originated from request validation or server response:
+
+.. code-block:: python
+
+    from scim2_models import Context, SCIMException
+
+    try:
+        response = scim.create(request)
+    except SCIMException as exc:
+        if Context.is_request(exc.scim_ctx):
+            print("Local validation error")
+        else:
+            print("Server returned an error")
 
 PATCH modifications
 ===================
@@ -189,9 +206,8 @@ To achieve this, all the methods provide the following parameters, all are :data
   If :data:`False` the server response is returned as-is.
 - :code:`expected_status_codes`: The list of expected status codes in the response.
   If :data:`None` any status code is accepted.
-  If an unexpected status code is returned, a :class:`~scim2_client.errors.UnexpectedStatusCode` exception is raised.
-- :paramref:`~scim2_client.SCIMClient.raise_scim_errors`: If :data:`True` (the default) and the server returned an :class:`~scim2_models.Error` object, a :class:`~scim2_client.SCIMResponseErrorObject` exception will be raised.
-  The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object.
+  If an unexpected status code is returned, a :class:`~scim2_client.errors.UnexpectedStatusCodeException` exception is raised.
+- :paramref:`~scim2_client.SCIMClient.raise_scim_errors`: If :data:`True` (the default) and the server returned an :class:`~scim2_models.Error` object, a :class:`~scim2_models.SCIMException` exception will be raised.
   If :data:`False` the error object is returned directly.
 
 

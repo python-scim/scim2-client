@@ -9,7 +9,7 @@ from scim2_models import Meta
 from scim2_models import SearchRequest
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
+from scim2_client import RequestNetworkException
 from scim2_client.engines.httpx import SyncSCIMClient
 
 
@@ -244,10 +244,10 @@ def test_errors(httpserver, code):
 
 
 def test_request_network_error(httpserver):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx exceptions are transformed in RequestNetworkException."""
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(client, resource_models=(User,))
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         scim_client.search(url="http://invalid.test")

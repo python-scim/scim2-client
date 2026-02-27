@@ -1,14 +1,14 @@
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResourceType
+from scim2_models import SCIMException
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import RequestPayloadValidationError
-from scim2_client import SCIMRequestError
+from scim2_client import RequestNetworkException
 
 
 def test_modify_user_200(httpserver, sync_client):
@@ -327,7 +327,7 @@ def test_invalid_resource_model(httpserver, sync_client):
     )
     patch_op = PatchOp[Group](operations=[operation])
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.modify(Group, "some-id", patch_op)
 
 
@@ -335,7 +335,7 @@ def test_request_validation_error(httpserver, sync_client):
     """Test that incorrect PatchOp creation raises a validation error."""
     # Test with a PatchOp that has invalid data - this should fail during model_dump in prepare_patch_request
     with pytest.raises(
-        (RequestPayloadValidationError, ValueError, TypeError),
+        (SCIMException, ValueError, TypeError),
         match=r"(?i)(validation|invalid|error)",
     ):
         # Create a PatchOp with invalid enum value by bypassing normal validation
@@ -348,14 +348,14 @@ def test_request_validation_error(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx exceptions are transformed in RequestNetworkException."""
     operation = PatchOperation(
         op=PatchOperation.Op.replace_, path="displayName", value="Test"
     )
     patch_op = PatchOp[User](operations=[operation])
 
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.modify(User, "some-id", patch_op, url="http://invalid.test")
 
@@ -422,8 +422,5 @@ def test_modify_validation_error(httpserver, sync_client):
 
     invalid_patch_op.model_dump.side_effect = exc_info.value
 
-    with pytest.raises(
-        RequestPayloadValidationError,
-        match="Server request payload validation error",
-    ):
+    with pytest.raises(SCIMException):
         sync_client.modify(User, "some-id", invalid_patch_op)

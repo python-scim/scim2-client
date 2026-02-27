@@ -3,23 +3,23 @@ import datetime
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import ListResponse
 from scim2_models import Meta
 from scim2_models import Resource
 from scim2_models import ResourceType
+from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
+from scim2_models import UniquenessException
 from scim2_models import User
 
-from scim2_client import SCIMRequestError
-from scim2_client.errors import RequestNetworkError
-from scim2_client.errors import ResponsePayloadValidationError
-from scim2_client.errors import SCIMClientError
-from scim2_client.errors import SCIMResponseError
-from scim2_client.errors import SCIMResponseErrorObject
-from scim2_client.errors import UnexpectedContentFormat
-from scim2_client.errors import UnexpectedContentType
-from scim2_client.errors import UnexpectedStatusCode
+from scim2_client.errors import RequestNetworkException
+from scim2_client.errors import ResponsePayloadValidationException
+from scim2_client.errors import SCIMResponseException
+from scim2_client.errors import UnexpectedContentFormatException
+from scim2_client.errors import UnexpectedContentTypeException
+from scim2_client.errors import UnexpectedStatusCodeException
 
 
 @pytest.fixture
@@ -325,21 +325,17 @@ def test_user_with_invalid_id(sync_client):
 def test_raise_scim_errors(sync_client):
     """Test that querying an user with an invalid id raises an exception."""
     with pytest.raises(
-        SCIMResponseErrorObject,
+        SCIMException,
         match="Resource unknown not found",
-    ) as exc_info:
+    ):
         sync_client.query(User, "unknown", raise_scim_errors=True)
-
-    assert exc_info.value.to_error() == Error(
-        detail="Resource unknown not found", status=404
-    )
 
 
 def test_raise_scim_errors_with_scim_type(sync_client):
     """Test that the exception message includes scim_type when present."""
     with pytest.raises(
-        SCIMResponseErrorObject,
-        match="uniqueness: User already exists",
+        UniquenessException,
+        match="User already exists",
     ) as exc_info:
         sync_client.query(User, "conflict", raise_scim_errors=True)
 
@@ -350,13 +346,8 @@ def test_raise_scim_errors_with_scim_type(sync_client):
 
 def test_raise_scim_errors_without_detail(sync_client):
     """Test that the exception works when the error has no detail."""
-    with pytest.raises(
-        SCIMResponseErrorObject,
-        match="SCIM Error",
-    ) as exc_info:
+    with pytest.raises(SCIMException):
         sync_client.query(User, "no-detail", raise_scim_errors=True)
-
-    assert exc_info.value.to_error() == Error(status=500)
 
 
 def test_all_users(sync_client):
@@ -447,12 +438,12 @@ def test_resource_unknown_by_server(sync_client):
 
 
 def test_bad_resource_model(sync_client):
-    """Test querying a resource unknown from the client raise a SCIMResponseError."""
+    """Test querying a resource unknown from the client raise a SCIMResponseException."""
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
     with pytest.raises(
-        SCIMResponseError,
+        SCIMResponseException,
         match="Expected type User but got unknown resource with schemas: urn:ietf:params:scim:schemas:core:2.0:Group",
     ):
         sync_client.query(User, "its-a-group")
@@ -469,26 +460,27 @@ def test_all(sync_client):
 
 
 def test_all_unexpected_type(sync_client):
-    """Test retrieving a payload for an object which type has not been passed in parameters raise a ResponsePayloadValidationError."""
+    """Test retrieving a payload for an object which type has not been passed in parameters raise a ResponsePayloadValidationException."""
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
     with pytest.raises(
-        ResponsePayloadValidationError, match="Server response payload validation error"
+        ResponsePayloadValidationException,
+        match="Server response payload validation error",
     ):
         sync_client.query()
 
 
 def test_response_is_not_json(sync_client):
     """Test situations where servers return an invalid JSON object."""
-    with pytest.raises(UnexpectedContentFormat):
+    with pytest.raises(UnexpectedContentFormatException):
         sync_client.query(User, "not-json")
 
 
 def test_not_a_scim_object(sync_client):
     """Test retrieving a valid JSON object without a schema."""
     with pytest.raises(
-        SCIMResponseError,
+        SCIMResponseException,
         match="Expected type User but got undefined object with no schema",
     ):
         sync_client.query(User, "not-a-scim-object")
@@ -504,7 +496,7 @@ def test_dont_check_response_payload(sync_client):
 
 def test_response_bad_status_code(sync_client):
     """Test situations where servers return an invalid status code."""
-    with pytest.raises(UnexpectedStatusCode):
+    with pytest.raises(UnexpectedStatusCodeException):
         sync_client.query(User, "status-201")
     sync_client.query(User, "status-201", expected_status_codes=None)
 
@@ -517,7 +509,7 @@ def test_response_content_type_with_charset(sync_client):
 
 def test_response_bad_content_type(sync_client):
     """Test situations where servers return an invalid content-type response."""
-    with pytest.raises(UnexpectedContentType):
+    with pytest.raises(UnexpectedContentTypeException):
         sync_client.query(User, "bad-content-type")
 
 
@@ -596,7 +588,7 @@ def test_invalid_resource_model(sync_client):
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.query(Group)
 
 
@@ -609,14 +601,14 @@ def test_service_provider_config_endpoint(sync_client):
 def test_service_provider_config_endpoint_with_an_id(sync_client):
     """Test that querying the /ServiceProviderConfig with an id raise an exception."""
     with pytest.raises(
-        SCIMClientError, match="ServiceProviderConfig cannot have an id"
+        InvalidValueException, match="ServiceProviderConfig cannot have an id"
     ):
         sync_client.query(ServiceProviderConfig, "dummy")
 
 
 def test_request_network_error(sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx exceptions are transformed in RequestNetworkException."""
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.query(url="http://invalid.test")

@@ -2,15 +2,14 @@ import datetime
 
 import pytest
 from scim2_models import Error
+from scim2_models import InvalidValueException
 from scim2_models import Meta
 from scim2_models import Resource
+from scim2_models import SCIMException
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import RequestPayloadValidationError
-from scim2_client import SCIMClientError
-from scim2_client import SCIMRequestError
-from scim2_client import UnexpectedStatusCode
+from scim2_client import RequestNetworkException
+from scim2_client import UnexpectedStatusCodeException
 
 
 def test_create_user(httpserver, sync_client):
@@ -119,7 +118,7 @@ def test_create_dict_user_bad_schema(httpserver, sync_client):
     }
 
     with pytest.raises(
-        SCIMClientError, match="Cannot guess resource type from the payload"
+        InvalidValueException, match="Cannot guess resource type from the payload"
     ):
         sync_client.create(user_request)
 
@@ -224,7 +223,7 @@ def test_no_200(httpserver, sync_client):
 
     user_request = User(user_name="bjensen@example.com")
 
-    with pytest.raises(UnexpectedStatusCode):
+    with pytest.raises(UnexpectedStatusCodeException):
         sync_client.create(user_request)
     sync_client.create(user_request, expected_status_codes=None)
     sync_client.create(user_request, expected_status_codes=[200, 201])
@@ -260,15 +259,13 @@ def test_invalid_resource_model(sync_client):
         __schema__ = "urn:ietf:params:scim:schemas:core:2.0:MyResource"
         display_name: str | None = None
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.create(MyResource(display_name="foobar"))
 
 
 def test_request_validation_error(sync_client):
-    """Test that incorrect input raise a RequestPayloadValidationError."""
-    with pytest.raises(
-        RequestPayloadValidationError, match="Server request payload validation error"
-    ):
+    """Test that incorrect input raise a SCIMException."""
+    with pytest.raises(SCIMException):
         sync_client.create(
             {
                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -278,9 +275,9 @@ def test_request_validation_error(sync_client):
 
 
 def test_request_network_error(sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx exceptions are transformed in RequestNetworkException."""
     user_request = User(user_name="bjensen@example.com")
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.create(user_request, url="http://invalid.test")

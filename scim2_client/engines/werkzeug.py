@@ -13,8 +13,8 @@ from scim2_models import SearchRequest
 from werkzeug.test import Client
 
 from scim2_client.client import BaseSyncSCIMClient
-from scim2_client.errors import SCIMClientError
-from scim2_client.errors import UnexpectedContentFormat
+from scim2_client.errors import SCIMClientException
+from scim2_client.errors import UnexpectedContentFormatException
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
@@ -25,9 +25,9 @@ def handle_response_error(response):
         yield
 
     except json.decoder.JSONDecodeError as exc:
-        raise UnexpectedContentFormat(source=response) from exc
+        raise UnexpectedContentFormatException(source=response) from exc
 
-    except SCIMClientError as exc:
+    except SCIMClientException as exc:
         exc.source = response
         raise exc
 
@@ -51,7 +51,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
     :param check_response_payload: Whether to validate that the response payloads are valid.
         If set, the raw payload will be returned. This value can be overwritten in methods.
     :param raise_scim_errors: If :data:`True` and the server returned an
-        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_client.SCIMResponseErrorObject`
+        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_models.SCIMException`
         exception will be raised. If :data:`False` the error object is returned. This value can be overwritten in methods.
 
     .. code-block:: python
