@@ -1,5 +1,6 @@
 import asyncio
 import sys
+import warnings
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import TypeVar
@@ -14,6 +15,7 @@ from scim2_models import ListResponse
 from scim2_models import PatchOp
 from scim2_models import Resource
 from scim2_models import ResourceType
+from scim2_models import ResponseParameters
 from scim2_models import Schema
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
@@ -396,11 +398,32 @@ class SCIMClient:
 
         return req
 
+    @staticmethod
+    def _resolve_query_parameters(
+        query_parameters: ResponseParameters | dict | None,
+        search_request: ResponseParameters | dict | None,
+    ) -> ResponseParameters | dict | None:
+        if search_request is not None:
+            if query_parameters is not None:
+                raise TypeError(
+                    "Cannot pass both 'query_parameters' and "
+                    "deprecated 'search_request'"
+                )
+            warnings.warn(
+                "The 'search_request' parameter of 'query' is deprecated, "
+                "use 'query_parameters' instead. "
+                "Will be removed in 0.9.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return search_request
+        return query_parameters
+
     def _prepare_query_request(
         self,
         resource_model: type[Resource] | None = None,
         id: str | None = None,
-        search_request: SearchRequest | dict | None = None,
+        query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
         **kwargs,
@@ -416,15 +439,21 @@ class SCIMClient:
         if resource_model and check_request_payload:
             self._check_resource_model(resource_model)
 
-        payload: SearchRequest | None
+        payload: ResponseParameters | None
         if not check_request_payload:
-            payload = search_request
+            payload = query_parameters
 
-        elif isinstance(search_request, SearchRequest):
-            payload = search_request.model_dump(
+        elif isinstance(query_parameters, SearchRequest):
+            payload = query_parameters.model_dump(
                 exclude_unset=True,
                 exclude={"schemas"},
                 scim_ctx=Context.RESOURCE_QUERY_REQUEST,
+            )
+
+        elif isinstance(query_parameters, ResponseParameters):
+            payload = query_parameters.model_dump(
+                exclude_unset=True,
+                by_alias=True,
             )
 
         else:
@@ -703,12 +732,13 @@ class BaseSyncSCIMClient(SCIMClient):
         self,
         resource_model: type[Resource] | None = None,
         id: str | None = None,
-        search_request: SearchRequest | dict | None = None,
+        query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
+        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
@@ -718,7 +748,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
         :param resource_model: A :class:`~scim2_models.Resource` subtype or :data:`None`
         :param id: The SCIM id of an object to get, or :data:`None`
-        :param search_request: An object detailing the search query parameters.
+        :param query_parameters: A :class:`~scim2_models.ResponseParameters` or
+            :class:`~scim2_models.SearchRequest` detailing the query parameters.
+            Use :class:`~scim2_models.ResponseParameters` when querying a single
+            resource by id, where only ``attributes`` and ``excludedAttributes``
+            are meaningful (:rfc:`RFC 7644 §3.4.1 <7644#section-3.4.1>`).
+            Use :class:`~scim2_models.SearchRequest` when listing resources, to
+            also pass ``filter``, ``sortBy``, ``sortOrder``, ``startIndex`` and
+            ``count`` (:rfc:`RFC 7644 §3.4.2 <7644#section-3.4.2>`).
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -752,13 +789,13 @@ class BaseSyncSCIMClient(SCIMClient):
             from scim2_models import User, SearchRequest
 
             req = SearchRequest(filter='userName sw "john"')
-            response = scim.query(User, search_request=search_request)
+            response = scim.query(User, query_parameters=req)
             # 'response' may be a ListResponse[User] or an Error object
 
         .. code-block:: python
             :caption: Query of all the available resources
 
-            from scim2_models import User, SearchRequest
+            from scim2_models import User
 
             response = scim.query()
             # 'response' may be a ListResponse[Union[User, Group, ...]] or an Error object
@@ -1030,12 +1067,13 @@ class BaseAsyncSCIMClient(SCIMClient):
         self,
         resource_model: type[Resource] | None = None,
         id: str | None = None,
-        search_request: SearchRequest | dict | None = None,
+        query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
+        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
@@ -1045,7 +1083,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
         :param resource_model: A :class:`~scim2_models.Resource` subtype or :data:`None`
         :param id: The SCIM id of an object to get, or :data:`None`
-        :param search_request: An object detailing the search query parameters.
+        :param query_parameters: A :class:`~scim2_models.ResponseParameters` or
+            :class:`~scim2_models.SearchRequest` detailing the query parameters.
+            Use :class:`~scim2_models.ResponseParameters` when querying a single
+            resource by id, where only ``attributes`` and ``excludedAttributes``
+            are meaningful (:rfc:`RFC 7644 §3.4.1 <7644#section-3.4.1>`).
+            Use :class:`~scim2_models.SearchRequest` when listing resources, to
+            also pass ``filter``, ``sortBy``, ``sortOrder``, ``startIndex`` and
+            ``count`` (:rfc:`RFC 7644 §3.4.2 <7644#section-3.4.2>`).
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -1079,13 +1124,13 @@ class BaseAsyncSCIMClient(SCIMClient):
             from scim2_models import User, SearchRequest
 
             req = SearchRequest(filter='userName sw "john"')
-            response = scim.query(User, search_request=search_request)
+            response = scim.query(User, query_parameters=req)
             # 'response' may be a ListResponse[User] or an Error object
 
         .. code-block:: python
             :caption: Query of all the available resources
 
-            from scim2_models import User, SearchRequest
+            from scim2_models import User
 
             response = scim.query()
             # 'response' may be a ListResponse[Union[User, Group, ...]] or an Error object
