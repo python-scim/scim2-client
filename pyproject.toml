@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "scim2-client"
-version = "0.7.4"
+version = "0.7.5"
 description = "Pythonically build SCIM requests and parse SCIM responses"
 authors = [{name="Yaal Coop", email="contact@yaal.coop"}]
 license = {file = "LICENSE.md"}
