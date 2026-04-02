@@ -1,6 +1,13 @@
 Changelog
 =========
 
+[unreleased]
+------------
+
+Fixed
+^^^^^
+- Werkzeug engine now correctly serializes list query parameters (``attributes``, ``excludedAttributes``).
+
 [0.7.4] - 2026-04-02
 --------------------
 

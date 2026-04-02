@@ -1,6 +1,7 @@
 import pytest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
+from scim2_models import ResponseParameters
 from scim2_models import SearchRequest
 from scim2_models import User
 from werkzeug.test import Client
@@ -75,6 +76,18 @@ def test_werkzeug_engine(scim_client):
     scim_client.delete(User, response_user.id)
     with pytest.raises(SCIMResponseErrorObject):
         scim_client.query(User, response_user.id)
+
+
+def test_werkzeug_query_with_attributes(scim_client):
+    """List query parameters like attributes are correctly serialized in the query string."""
+    User = scim_client.get_resource_model("User")
+    request_user = User(user_name="foo", display_name="bar", title="Engineer")
+    response_user = scim_client.create(request_user)
+
+    params = ResponseParameters(attributes=["displayName"])
+    result = scim_client.query(User, response_user.id, query_parameters=params)
+    assert result.display_name == "bar"
+    assert result.title is None
 
 
 def test_no_json():

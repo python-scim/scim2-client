@@ -161,7 +161,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
             **kwargs,
         )
 
-        query_string = urlencode(req.payload, doseq=False) if req.payload else None
+        query_string = urlencode(req.payload, doseq=True) if req.payload else None
         environ = {**self.environ, **req.request_kwargs}
         response = self.client.get(
             self._make_url(req.url), query_string=query_string, **environ
