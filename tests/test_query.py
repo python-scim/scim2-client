@@ -7,6 +7,7 @@ from scim2_models import ListResponse
 from scim2_models import Meta
 from scim2_models import Resource
 from scim2_models import ResourceType
+from scim2_models import ResponseParameters
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
@@ -555,8 +556,35 @@ def test_search_request(httpserver, sync_client):
     assert response.id == "with-qs"
 
 
+def test_query_parameters(httpserver, sync_client):
+    """ResponseParameters can be used instead of SearchRequest for single-resource queries."""
+    query_string = "attributes=userName&attributes=displayName"
+
+    httpserver.expect_request(
+        "/Users/with-rp", query_string=query_string
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "with-rp",
+            "userName": "bjensen@example.com",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "version": 'W\\/"3694e05e9dff590"',
+                "location": "https://example.com/v2/Users/with-rp",
+            },
+        },
+        status=200,
+    )
+    params = ResponseParameters(attributes=["userName", "displayName"])
+    response = sync_client.query(User, "with-rp", params)
+    assert isinstance(response, User)
+    assert response.id == "with-rp"
+
+
 def test_query_dont_check_request_payload(httpserver, sync_client):
-    """Test the check_request_payload attribute on query."""
+    """Raw dict payloads are forwarded as-is when check_request_payload is False."""
     query_string = "attributes=userName&attributes=displayName&excluded_attributes=timezone&excluded_attributes=phoneNumbers&filter=userName+Eq+%22john%22&sort_by=userName&sort_order=ascending&start_index=1&count=10"
 
     httpserver.expect_request(
@@ -589,6 +617,41 @@ def test_query_dont_check_request_payload(httpserver, sync_client):
     response = sync_client.query(User, "with-qs", req, check_request_payload=False)
     assert isinstance(response, User)
     assert response.id == "with-qs"
+
+
+def test_deprecated_search_request_keyword(httpserver, sync_client):
+    """Passing search_request as keyword argument emits a DeprecationWarning."""
+    query_string = "attributes=userName"
+
+    httpserver.expect_request(
+        "/Users/with-dep", query_string=query_string
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "with-dep",
+            "userName": "bjensen@example.com",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "version": 'W\\/"3694e05e9dff590"',
+                "location": "https://example.com/v2/Users/with-dep",
+            },
+        },
+        status=200,
+    )
+    params = ResponseParameters(attributes=["userName"])
+    with pytest.warns(DeprecationWarning, match="search_request.*deprecated"):
+        response = sync_client.query(User, "with-dep", search_request=params)
+    assert isinstance(response, User)
+    assert response.id == "with-dep"
+
+
+def test_both_search_request_and_query_parameters_raises(sync_client):
+    """Passing both search_request and query_parameters raises TypeError."""
+    params = ResponseParameters(attributes=["userName"])
+    with pytest.raises(TypeError, match="Cannot pass both"):
+        sync_client.query(User, "some-id", params, search_request=params)
 
 
 def test_invalid_resource_model(sync_client):

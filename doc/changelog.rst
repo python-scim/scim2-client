@@ -1,6 +1,16 @@
 Changelog
 =========
 
+[0.7.4] - Unreleased
+--------------------
+
+Changed
+^^^^^^^
+- The ``query`` method now accepts :class:`~scim2_models.ResponseParameters` in addition
+  to :class:`~scim2_models.SearchRequest`.
+- The ``search_request`` parameter of ``query`` is renamed to ``query_parameters``.
+  The old name is deprecated and will be removed in 0.9.
+
 [0.7.3] - 2026-02-04
 --------------------
 

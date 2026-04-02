@@ -13,6 +13,7 @@ from scim2_models import Error
 from scim2_models import ListResponse
 from scim2_models import PatchOp
 from scim2_models import Resource
+from scim2_models import ResponseParameters
 from scim2_models import SearchRequest
 
 from scim2_client.client import BaseAsyncSCIMClient
@@ -105,18 +106,22 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         self,
         resource_model: type[Resource] | None = None,
         id: str | None = None,
-        search_request: SearchRequest | dict | None = None,
+        query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
+        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
+        query_parameters = self._resolve_query_parameters(
+            query_parameters, search_request
+        )
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
-            search_request=search_request,
+            query_parameters=query_parameters,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
             **kwargs,
@@ -331,18 +336,22 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
         self,
         resource_model: type[Resource] | None = None,
         id: str | None = None,
-        search_request: SearchRequest | dict | None = None,
+        query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
+        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
+        query_parameters = self._resolve_query_parameters(
+            query_parameters, search_request
+        )
         req = self._prepare_query_request(
             resource_model=resource_model,
             id=id,
-            search_request=search_request,
+            query_parameters=query_parameters,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
             **kwargs,
