@@ -86,13 +86,13 @@ def test_sync_engine(server):
         op=PatchOperation.Op.replace_, path="displayName", value="patched name"
     )
     patch_op = PatchOp[User](operations=[operation])
-    scim_client.modify(User, response_user.id, patch_op)
+    scim_client.modify(response_user, patch_op)
 
     # Verify patch result with query
     queried_user = scim_client.query(User, response_user.id)
     assert queried_user.display_name == "patched name"
 
-    scim_client.delete(User, response_user.id)
+    scim_client.delete(response_user)
     with pytest.raises(SCIMResponseErrorObject):
         scim_client.query(User, response_user.id)
 
@@ -145,12 +145,12 @@ async def test_async_engine(server):
         op=PatchOperation.Op.replace_, path="displayName", value="async patched name"
     )
     patch_op = PatchOp[User](operations=[operation])
-    await scim_client.modify(User, response_user.id, patch_op)
+    await scim_client.modify(response_user, patch_op)
 
     # Verify patch result with query
     queried_user = await scim_client.query(User, response_user.id)
     assert queried_user.display_name == "async patched name"
 
-    await scim_client.delete(User, response_user.id)
+    await scim_client.delete(response_user)
     with pytest.raises(SCIMResponseErrorObject):
         await scim_client.query(User, response_user.id)

@@ -1,6 +1,22 @@
 Changelog
 =========
 
+[0.7.6] - Unreleased
+--------------------
+
+Added
+^^^^^
+- Support for ETags: ``replace``, ``modify`` and ``delete`` automatically send
+  an ``If-Match`` header when the server advertises ETag support and the resource
+  has a ``meta.version``. :issue:`47`
+
+Breaking changes
+^^^^^^^^^^^^^^^^
+- ``delete`` now takes a resource instance instead of a resource type and id.
+  :issue:`13`
+- ``modify`` now takes a resource instance and a patch operation instead of a
+  resource type, id and patch operation. :issue:`13`
+
 [0.7.5] - 2026-04-02
 --------------------
 

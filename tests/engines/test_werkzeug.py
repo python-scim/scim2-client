@@ -67,13 +67,13 @@ def test_werkzeug_engine(scim_client):
         op=PatchOperation.Op.replace_, path="displayName", value="werkzeug patched"
     )
     patch_op = PatchOp[User](operations=[operation])
-    scim_client.modify(User, response_user.id, patch_op)
+    scim_client.modify(response_user, patch_op)
 
     # Verify patch result with query
     queried_user = scim_client.query(User, response_user.id)
     assert queried_user.display_name == "werkzeug patched"
 
-    scim_client.delete(User, response_user.id)
+    scim_client.delete(response_user)
     with pytest.raises(SCIMResponseErrorObject):
         scim_client.query(User, response_user.id)
 
