@@ -215,8 +215,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def delete(
         self,
-        resource_model: type[Resource],
-        id: str,
+        resource: Resource,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
@@ -224,8 +223,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs,
     ) -> Error | dict | None:
         req = self._prepare_delete_request(
-            resource_model=resource_model,
-            id=id,
+            resource=resource,
             expected_status_codes=expected_status_codes,
             **kwargs,
         )
@@ -277,8 +275,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def modify(
         self,
-        resource_model: type[ResourceT],
-        id: str,
+        resource: ResourceT,
         patch_op: PatchOp[ResourceT] | dict,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -288,8 +285,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs,
     ) -> ResourceT | Error | dict | None:
         req = self._prepare_patch_request(
-            resource_model=resource_model,
-            id=id,
+            resource=resource,
             patch_op=patch_op,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,

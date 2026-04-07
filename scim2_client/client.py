@@ -195,6 +195,19 @@ class SCIMClient:
         self.check_response_status_codes = check_response_status_codes
         self.raise_scim_errors = raise_scim_errors
 
+    @property
+    def _etag_supported(self) -> bool:
+        spc = self.service_provider_config
+        return bool(spc and spc.etag and spc.etag.supported)
+
+    def _set_if_match(self, req: RequestPayload, resource: Resource) -> None:
+        """Add ``If-Match`` header to the request if the server supports ETags."""
+        if not self._etag_supported:
+            return
+        if resource.meta and resource.meta.version:
+            headers = req.request_kwargs.setdefault("headers", {})
+            headers.setdefault("If-Match", resource.meta.version)
+
     def get_resource_model(self, name: str) -> type[Resource] | None:
         """Get a registered model by its name or its schema."""
         for resource_model in self.resource_models:
@@ -515,8 +528,7 @@ class SCIMClient:
 
     def _prepare_delete_request(
         self,
-        resource_model: type[Resource],
-        id: str,
+        resource: Resource,
         expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
@@ -525,9 +537,13 @@ class SCIMClient:
             request_kwargs=kwargs,
         )
 
+        resource_model = type(resource)
         self._check_resource_model(resource_model)
-        delete_url = self.resource_endpoint(resource_model) + f"/{id}"
+        if not resource.id:
+            raise SCIMRequestError("Resource must have an id", source=resource)
+        delete_url = self.resource_endpoint(resource_model) + f"/{resource.id}"
         req.url = req.request_kwargs.pop("url", delete_url)
+        self._set_if_match(req, resource)
         return req
 
     def _prepare_replace_request(
@@ -575,6 +591,7 @@ class SCIMClient:
                 raise SCIMRequestError("Resource must have an id", source=resource)
 
             req.expected_types = [resource.__class__]
+            self._set_if_match(req, resource)
             req.payload = resource.model_dump(
                 scim_ctx=Context.RESOURCE_REPLACEMENT_REQUEST
             )
@@ -586,29 +603,15 @@ class SCIMClient:
 
     def _prepare_patch_request(
         self,
-        resource_model: type[ResourceT],
-        id: str,
-        patch_op: PatchOp[ResourceT] | dict,
+        resource: Resource,
+        patch_op: PatchOp | dict,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
-        """Prepare a PATCH request payload.
-
-        :param resource_model: The resource type to modify (e.g., User, Group).
-        :param id: The resource ID.
-        :param patch_op: A PatchOp instance parameterized with the same resource type as resource_model
-                        (e.g., PatchOp[User] when resource_model is User), or a dict representation.
-        :param check_request_payload: If :data:`False`, :code:`patch_op` is expected to be a dict
-                                     that will be passed as-is in the request. This value can be
-                                     overwritten in methods.
-        :param expected_status_codes: List of HTTP status codes expected for this request.
-        :param raise_scim_errors: If :data:`True` and the server returned an
-                                 :class:`~scim2_models.Error` object during a request, a
-                                 :class:`~scim2_client.SCIMResponseErrorObject` exception will be raised.
-        :param kwargs: Additional request parameters.
-        :return: The prepared request payload.
-        """
+        """Prepare a PATCH request payload."""
+        resource_model = type(resource)
+        id = resource.id
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
             request_kwargs=kwargs,
@@ -644,12 +647,12 @@ class SCIMClient:
             )
 
         req.expected_types = [resource_model]
+        self._set_if_match(req, resource)
         return req
 
     def modify(
         self,
-        resource_model: type[ResourceT],
-        id: str,
+        resource: ResourceT,
         patch_op: PatchOp[ResourceT] | dict,
         **kwargs,
     ) -> ResourceT | Error | dict | None:
@@ -858,18 +861,19 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def delete(
         self,
-        resource_model: type,
-        id: str,
+        resource: Resource,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
     ) -> Error | dict | None:
-        """Perform a DELETE request to create, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
+        """Perform a DELETE request, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
 
-        :param resource_model: The type of the resource to delete.
-        :param id: The type id the resource to delete.
+        :param resource: The resource to delete. If the server supports ETags
+            and the resource has ``meta.version``, an ``If-Match`` header is sent.
+        :param resource_model: Deprecated. The type of the resource to delete.
+        :param id: Deprecated. The id of the resource to delete.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
             If :data:`None` any status code is accepted.
@@ -884,11 +888,10 @@ class BaseSyncSCIMClient(SCIMClient):
         :usage:
 
         .. code-block:: python
-            :caption: Deleting an `User` which `id` is `foobar`
+            :caption: Deleting a User resource
 
-            from scim2_models import User, SearchRequest
-
-            response = scim.delete(User, "foobar")
+            user = scim.query(User, "foobar")
+            response = scim.delete(resource=user)
             # 'response' may be None, or an Error object
         """
         raise NotImplementedError()
@@ -941,8 +944,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def modify(
         self,
-        resource_model: type[ResourceT],
-        id: str,
+        resource: ResourceT,
         patch_op: PatchOp[ResourceT] | dict,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -953,11 +955,11 @@ class BaseSyncSCIMClient(SCIMClient):
     ) -> ResourceT | Error | dict | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
 
-        :param resource_model: The type of the resource to modify.
-        :param id: The id of the resource to modify.
+        :param resource: The resource to modify. If the server supports ETags
+            and the resource has ``meta.version``, an ``If-Match`` header is sent.
         :param patch_op: The :class:`~scim2_models.PatchOp` object describing the modifications.
-            Must be parameterized with the same resource type as ``resource_model``
-            (e.g., :code:`PatchOp[User]` when ``resource_model`` is :code:`User`).
+        :param resource_model: Deprecated. The type of the resource to modify.
+        :param id: Deprecated. The id of the resource to modify.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -978,11 +980,12 @@ class BaseSyncSCIMClient(SCIMClient):
 
             from scim2_models import User, PatchOp, PatchOperation
 
+            user = scim.query(User, "my-user-id")
             operation = PatchOperation(
                 op="replace", path="displayName", value="New Display Name"
             )
             patch_op = PatchOp[User](operations=[operation])
-            response = scim.modify(User, "my-user-id", patch_op)
+            response = scim.modify(resource=user, patch_op=patch_op)
             # 'response' may be a User, None, or an Error object
 
         .. tip::
@@ -1193,18 +1196,19 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def delete(
         self,
-        resource_model: type,
-        id: str,
+        resource: Resource,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs,
     ) -> Error | dict | None:
-        """Perform a DELETE request to create, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
+        """Perform a DELETE request, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
 
-        :param resource_model: The type of the resource to delete.
-        :param id: The type id the resource to delete.
+        :param resource: The resource to delete. If the server supports ETags
+            and the resource has ``meta.version``, an ``If-Match`` header is sent.
+        :param resource_model: Deprecated. The type of the resource to delete.
+        :param id: Deprecated. The id of the resource to delete.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
             If :data:`None` any status code is accepted.
@@ -1219,11 +1223,10 @@ class BaseAsyncSCIMClient(SCIMClient):
         :usage:
 
         .. code-block:: python
-            :caption: Deleting an `User` which `id` is `foobar`
+            :caption: Deleting a User resource
 
-            from scim2_models import User, SearchRequest
-
-            response = scim.delete(User, "foobar")
+            user = scim.query(User, "foobar")
+            response = await scim.delete(resource=user)
             # 'response' may be None, or an Error object
         """
         raise NotImplementedError()
@@ -1276,8 +1279,7 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def modify(
         self,
-        resource_model: type[ResourceT],
-        id: str,
+        resource: ResourceT,
         patch_op: PatchOp[ResourceT] | dict,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -1288,11 +1290,11 @@ class BaseAsyncSCIMClient(SCIMClient):
     ) -> ResourceT | Error | dict | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
 
-        :param resource_model: The type of the resource to modify.
-        :param id: The id of the resource to modify.
+        :param resource: The resource to modify. If the server supports ETags
+            and the resource has ``meta.version``, an ``If-Match`` header is sent.
         :param patch_op: The :class:`~scim2_models.PatchOp` object describing the modifications.
-            Must be parameterized with the same resource type as ``resource_model``
-            (e.g., :code:`PatchOp[User]` when ``resource_model`` is :code:`User`).
+        :param resource_model: Deprecated. The type of the resource to modify.
+        :param id: Deprecated. The id of the resource to modify.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -1313,11 +1315,12 @@ class BaseAsyncSCIMClient(SCIMClient):
 
             from scim2_models import User, PatchOp, PatchOperation
 
+            user = scim.query(User, "my-user-id")
             operation = PatchOperation(
                 op="replace", path="displayName", value="New Display Name"
             )
             patch_op = PatchOp[User](operations=[operation])
-            response = await scim.modify(User, "my-user-id", patch_op)
+            response = await scim.modify(resource=user, patch_op=patch_op)
             # 'response' may be a User, None, or an Error object
 
         .. tip::

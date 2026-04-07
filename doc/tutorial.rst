@@ -124,7 +124,8 @@ The :meth:`~scim2_client.BaseSyncSCIMClient.modify` method allows you to perform
     patch_op = PatchOp[User](operations=[operation])
 
     # Apply the patch
-    response = scim.modify(User, user_id, patch_op)
+    user = scim.query(User, user_id)
+    response = scim.modify(user, patch_op)
     if response:  # Server returned 200 with updated resource
         print(f"User updated: {response.display_name}")
     else:  # Server returned 204 (no content)
@@ -155,7 +156,7 @@ You can include multiple operations in a single PATCH request:
         )
     ]
     patch_op = PatchOp[User](operations=operations)
-    response = scim.modify(User, user_id, patch_op)
+    response = scim.modify(user, patch_op)
 
 Patch Operation Types
 ~~~~~~~~~~~~~~~~~~~~~
@@ -200,6 +201,39 @@ To achieve this, all the methods provide the following parameters, all are :data
    Check the request :class:`Contexts <scim2_models.Context>` to understand
    which value will excluded from the request payload, and which values are
    expected in the response payload.
+
+Resource versioning (ETags)
+==========================
+
+SCIM supports resource versioning through HTTP ETags
+(:rfc:`RFC 7644 §3.14 <7644#section-3.14>`).
+When the server advertises ETag support in its
+:class:`~scim2_models.ServiceProviderConfig`, scim2-client automatically sends
+an ``If-Match`` header on write operations
+(:meth:`~scim2_client.BaseSyncSCIMClient.replace`,
+:meth:`~scim2_client.BaseSyncSCIMClient.modify`,
+:meth:`~scim2_client.BaseSyncSCIMClient.delete`)
+using the :attr:`meta.version <scim2_models.Meta.version>` value from the resource.
+
+This enables optimistic concurrency control: the server will reject the request
+with ``412 Precondition Failed`` if the resource has been modified since it was
+last read.
+
+.. code-block:: python
+
+    # Read a resource — meta.version is populated by the server
+    user = scim.query(User, user_id)
+
+    # Modify it — If-Match is sent automatically
+    user.display_name = "Updated Name"
+    updated_user = scim.replace(user)
+
+    # Delete it — If-Match is sent automatically
+    scim.delete(user)
+
+No additional configuration is needed.  If the server does not advertise ETag
+support, or if the resource has no :attr:`meta.version <scim2_models.Meta.version>`, no
+``If-Match`` header is sent.
 
 Engines
 =======

@@ -11,32 +11,30 @@ class UnregisteredResource(Resource):
     __schema__ = "urn:test:schemas:UnregisteredResource"
 
 
-def test_delete_user(httpserver, sync_client):
+def test_delete_user(httpserver, sync_client, user):
     """Nominal case for a User deletion."""
-    httpserver.expect_request(
-        "/Users/2819c223-7f76-453a-919d-413861904646", method="DELETE"
-    ).respond_with_data(status=204, content_type="application/scim+json")
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
 
-    response = sync_client.delete(User, "2819c223-7f76-453a-919d-413861904646")
+    response = sync_client.delete(user)
     assert response is None
 
 
-def test_delete_user_without_content_type_header(httpserver, sync_client):
+def test_delete_user_without_content_type_header(httpserver, sync_client, user):
     """Server returns 204 without Content-Type header, which is valid per RFC 7231."""
-    httpserver.expect_request(
-        "/Users/2819c223-7f76-453a-919d-413861904646", method="DELETE"
-    ).respond_with_data(status=204)
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_data(
+        status=204
+    )
 
-    response = sync_client.delete(User, "2819c223-7f76-453a-919d-413861904646")
+    response = sync_client.delete(user)
     assert response is None
 
 
 @pytest.mark.parametrize("code", [400, 401, 403, 404, 412, 500, 501])
-def test_errors(httpserver, code, sync_client):
+def test_errors(httpserver, code, sync_client, user):
     """Test error cases defined in RFC7644."""
-    httpserver.expect_request(
-        "/Users/2819c223-7f76-453a-919d-413861904646", method="DELETE"
-    ).respond_with_json(
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_json(
         {
             "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
             "status": str(code),
@@ -45,9 +43,7 @@ def test_errors(httpserver, code, sync_client):
         status=code,
     )
 
-    response = sync_client.delete(
-        User, "2819c223-7f76-453a-919d-413861904646", raise_scim_errors=False
-    )
+    response = sync_client.delete(user, raise_scim_errors=False)
 
     assert response == Error(
         schemas=["urn:ietf:params:scim:api:messages:2.0:Error"],
@@ -56,17 +52,24 @@ def test_errors(httpserver, code, sync_client):
     )
 
 
+def test_delete_resource_without_id(sync_client):
+    """Deleting a resource without an id raises an error."""
+    no_id_user = User(user_name="no-id")
+    with pytest.raises(SCIMRequestError, match="Resource must have an id"):
+        sync_client.delete(no_id_user)
+
+
 def test_invalid_resource_model(httpserver, sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
+    unregistered = UnregisteredResource()
+    unregistered.id = "foobar"
     with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
-        sync_client.delete(UnregisteredResource, id="foobar")
+        sync_client.delete(unregistered)
 
 
-def test_dont_check_response_payload(httpserver, sync_client):
+def test_dont_check_response_payload(httpserver, sync_client, user):
     """Test the check_response_payload attribute."""
-    httpserver.expect_request(
-        "/Users/2819c223-7f76-453a-919d-413861904646", method="DELETE"
-    ).respond_with_json(
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_json(
         {
             "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
             "status": "404",
@@ -75,9 +78,7 @@ def test_dont_check_response_payload(httpserver, sync_client):
         status=404,
     )
 
-    response = sync_client.delete(
-        User, "2819c223-7f76-453a-919d-413861904646", check_response_payload=False
-    )
+    response = sync_client.delete(user, check_response_payload=False)
     assert response == {
         "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
         "status": "404",
@@ -85,9 +86,9 @@ def test_dont_check_response_payload(httpserver, sync_client):
     }
 
 
-def test_request_network_error(httpserver, sync_client):
+def test_request_network_error(httpserver, sync_client, user):
     """Test that httpx exceptions are transformed in RequestNetworkError."""
     with pytest.raises(
         RequestNetworkError, match="Network error happened during request"
     ):
-        sync_client.delete(User, "anything", url="http://invalid.test")
+        sync_client.delete(user, url="http://invalid.test")

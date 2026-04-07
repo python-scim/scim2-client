@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import Client
 from scim2_models import Group
@@ -15,3 +17,17 @@ def sync_client(httpserver):
         )
         scim_client.register_naive_resource_types()
         yield scim_client
+
+
+@pytest.fixture
+def user():
+    u = User(user_name="bjensen@example.com")
+    u.id = str(uuid.uuid4())
+    return u
+
+
+@pytest.fixture
+def group():
+    g = Group(display_name="Tour Guides")
+    g.id = str(uuid.uuid4())
+    return g
