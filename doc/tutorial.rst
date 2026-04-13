@@ -76,22 +76,88 @@ Performing actions
 ==================
 
 scim2-client allows your application to interact with a SCIM server as described in :rfc:`RFC7644 §3 <7644#section-3>`, so you can read and manage the resources.
-The following actions are available:
+Have a look at the :doc:`reference` to see the exhaustive set of parameters.
 
-- :meth:`~scim2_client.BaseSyncSCIMClient.create`
-- :meth:`~scim2_client.BaseSyncSCIMClient.query`
-- :meth:`~scim2_client.BaseSyncSCIMClient.replace`
-- :meth:`~scim2_client.BaseSyncSCIMClient.modify`
-- :meth:`~scim2_client.BaseSyncSCIMClient.delete`
-- :meth:`~scim2_client.BaseSyncSCIMClient.search`
+Create
+~~~~~~
 
-Have a look at the :doc:`reference` to see usage examples and the exhaustive set of parameters, but generally it looks like this:
+:meth:`~scim2_client.BaseSyncSCIMClient.create` issues a ``POST`` to provision a new resource:
 
 .. code-block:: python
 
     request = User(user_name="bjensen@example.com")
     response = scim.create(request)
     print(f"User {response.id} has been created!")
+
+Query
+~~~~~
+
+:meth:`~scim2_client.BaseSyncSCIMClient.query` issues a ``GET`` to read a single resource by its id, or list resources of a given type:
+
+.. code-block:: python
+
+    from scim2_models import SearchRequest
+
+    user = scim.query(User, "my-user-id")
+
+    response = scim.query(User, query_parameters=SearchRequest(filter='userName sw "john"'))
+    for user in response.resources:
+        print(user.user_name)
+
+Search
+~~~~~~
+
+:meth:`~scim2_client.BaseSyncSCIMClient.search` issues a ``POST`` on the ``/.search`` endpoint to query across all resource types at once:
+
+.. code-block:: python
+
+    response = scim.search(SearchRequest(filter='id co "admin"'))
+
+Replace
+~~~~~~~
+
+:meth:`~scim2_client.BaseSyncSCIMClient.replace` issues a ``PUT`` to fully overwrite an existing resource:
+
+.. code-block:: python
+
+    user = scim.query(User, "my-user-id")
+    user.display_name = "Fancy New Name"
+    updated_user = scim.replace(user)
+
+Delete
+~~~~~~
+
+:meth:`~scim2_client.BaseSyncSCIMClient.delete` issues a ``DELETE`` and returns :data:`None` on success:
+
+.. code-block:: python
+
+    scim.delete(User, "my-user-id")
+
+Modify
+~~~~~~
+
+:meth:`~scim2_client.BaseSyncSCIMClient.modify` issues a ``PATCH`` to apply partial updates as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`:
+
+.. code-block:: python
+
+    from scim2_models import PatchOp, PatchOperation
+
+    patch = PatchOp[User](operations=[
+        PatchOperation(op=PatchOperation.Op.replace_, path="displayName", value="New Name"),
+        PatchOperation(op=PatchOperation.Op.add, path="emails", value=[{"value": "new@example.com"}]),
+    ])
+    response = scim.modify(User, "my-user-id", patch)
+
+Bulk
+~~~~
+
+.. note::
+
+    Bulk operation requests are not yet implemented,
+    but :doc:`any help is welcome! <contributing>`
+
+Error handling
+==============
 
 By default, if the server returns an error, a :class:`~scim2_client.SCIMResponseErrorObject` exception is raised.
 The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object:
@@ -105,74 +171,6 @@ The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access t
     except SCIMResponseErrorObject as exc:
         error = exc.to_error()
         print(f"SCIM error [{error.status}] {error.scim_type}: {error.detail}")
-
-PATCH modifications
-===================
-
-The :meth:`~scim2_client.BaseSyncSCIMClient.modify` method allows you to perform partial updates on resources using PATCH operations as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
-
-.. code-block:: python
-
-    from scim2_models import PatchOp, PatchOperation
-
-    # Create a patch operation to update the display name
-    operation = PatchOperation(
-        op=PatchOperation.Op.replace_,
-        path="displayName",
-        value="New Display Name"
-    )
-    patch_op = PatchOp[User](operations=[operation])
-
-    # Apply the patch
-    response = scim.modify(User, user_id, patch_op)
-    if response:  # Server returned 200 with updated resource
-        print(f"User updated: {response.display_name}")
-    else:  # Server returned 204 (no content)
-        print("User updated successfully")
-
-Multiple Operations
-~~~~~~~~~~~~~~~~~~~
-
-You can include multiple operations in a single PATCH request:
-
-.. code-block:: python
-
-    operations = [
-        PatchOperation(
-            op=PatchOperation.Op.replace_,
-            path="displayName",
-            value="Updated Name"
-        ),
-        PatchOperation(
-            op=PatchOperation.Op.replace_,
-            path="active",
-            value=False
-        ),
-        PatchOperation(
-            op=PatchOperation.Op.add,
-            path="emails",
-            value=[{"value": "new@example.com", "primary": True}]
-        )
-    ]
-    patch_op = PatchOp[User](operations=operations)
-    response = scim.modify(User, user_id, patch_op)
-
-Patch Operation Types
-~~~~~~~~~~~~~~~~~~~~~
-
-SCIM supports three types of patch operations:
-
-- :attr:`~scim2_models.PatchOperation.Op.add`: Add new attribute values
-- :attr:`~scim2_models.PatchOperation.Op.remove`: Remove attribute values
-- :attr:`~scim2_models.PatchOperation.Op.replace_`: Replace existing attribute values
-
-Bulk operations
-===============
-
-.. note::
-
-    Bulk operation requests are not yet implemented,
-    but :doc:`any help is welcome! <contributing>`
 
 Request and response validation
 ===============================
