@@ -124,7 +124,7 @@ The :meth:`~scim2_client.BaseSyncSCIMClient.modify` method allows you to perform
     patch_op = PatchOp[User](operations=[operation])
 
     # Apply the patch
-    user = scim.query(User, user_id)
+    user = scim.query(User(id=user_id))
     response = scim.modify(user, patch_op)
     if response:  # Server returned 200 with updated resource
         print(f"User updated: {response.display_name}")
@@ -219,10 +219,18 @@ This enables optimistic concurrency control: the server will reject the request
 with ``412 Precondition Failed`` if the resource has been modified since it was
 last read.
 
+For read operations, :meth:`~scim2_client.BaseSyncSCIMClient.query` sends an
+``If-None-Match`` header when passed a resource instance with
+:attr:`meta.version <scim2_models.Meta.version>`.  If the server responds with
+``304 Not Modified``, the original instance is returned without parsing.
+
 .. code-block:: python
 
     # Read a resource — meta.version is populated by the server
-    user = scim.query(User, user_id)
+    user = scim.query(User(id=user_id))
+
+    # Re-read — If-None-Match is sent; returns the same object on 304
+    user = scim.query(user)
 
     # Modify it — If-Match is sent automatically
     user.display_name = "Updated Name"
@@ -233,7 +241,7 @@ last read.
 
 No additional configuration is needed.  If the server does not advertise ETag
 support, or if the resource has no :attr:`meta.version <scim2_models.Meta.version>`, no
-``If-Match`` header is sent.
+conditional header is sent.
 
 Engines
 =======

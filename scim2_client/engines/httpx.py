@@ -104,8 +104,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def query(
         self,
-        resource_model: type[Resource] | None = None,
-        id: str | None = None,
+        target: type[Resource] | Resource | None = None,
         query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -119,8 +118,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             query_parameters, search_request
         )
         req = self._prepare_query_request(
-            resource_model=resource_model,
-            id=id,
+            target=target,
             query_parameters=query_parameters,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -142,6 +140,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
                 scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                target=req.target,
             )
 
     def search(
@@ -330,8 +329,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     async def query(
         self,
-        resource_model: type[Resource] | None = None,
-        id: str | None = None,
+        target: type[Resource] | Resource | None = None,
         query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -345,8 +343,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             query_parameters, search_request
         )
         req = self._prepare_query_request(
-            resource_model=resource_model,
-            id=id,
+            target=target,
             query_parameters=query_parameters,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -368,6 +365,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
                 scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                target=req.target,
             )
 
     async def search(

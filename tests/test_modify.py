@@ -1,10 +1,13 @@
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import Meta
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResourceType
+from scim2_models import ServiceProviderConfig
 from scim2_models import User
+from scim2_models.resources.service_provider_config import ETag
 
 from scim2_client import RequestNetworkError
 from scim2_client import RequestPayloadValidationError
@@ -388,3 +391,28 @@ def test_modify_validation_error(httpserver, sync_client, user):
         match="Server request payload validation error",
     ):
         sync_client.modify(user, invalid_patch_op)
+
+
+def test_modify_sends_if_match(httpserver, sync_client):
+    """If-Match header is sent when modifying a resource with ETag support."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+    user = User(
+        user_name="bjensen@example.com",
+        meta=Meta(version='W/"3694e05e9dff590"'),
+    )
+    user.id = "2819c223-7f76-453a-919d-413861904646"
+
+    httpserver.expect_request(
+        f"/Users/{user.id}",
+        method="PATCH",
+        headers={"If-Match": 'W/"3694e05e9dff590"'},
+    ).respond_with_data(status=204, content_type="application/scim+json")
+
+    operation = PatchOperation(
+        op=PatchOperation.Op.replace_, path="displayName", value="Updated"
+    )
+    patch_op = PatchOp[User](operations=[operation])
+    response = sync_client.modify(user, patch_op)
+    assert response is None

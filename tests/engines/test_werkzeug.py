@@ -44,7 +44,7 @@ def test_werkzeug_engine(scim_client):
     assert response_user.user_name == "foo"
     assert response_user.display_name == "bar"
 
-    response_user = scim_client.query(User, response_user.id)
+    response_user = scim_client.query(response_user)
     assert response_user.user_name == "foo"
     assert response_user.display_name == "bar"
 
@@ -58,7 +58,7 @@ def test_werkzeug_engine(scim_client):
     assert response_user.user_name == "foo"
     assert response_user.display_name == "baz"
 
-    response_user = scim_client.query(User, response_user.id)
+    response_user = scim_client.query(response_user)
     assert response_user.user_name == "foo"
     assert response_user.display_name == "baz"
 
@@ -70,12 +70,12 @@ def test_werkzeug_engine(scim_client):
     scim_client.modify(response_user, patch_op)
 
     # Verify patch result with query
-    queried_user = scim_client.query(User, response_user.id)
+    queried_user = scim_client.query(response_user)
     assert queried_user.display_name == "werkzeug patched"
 
     scim_client.delete(response_user)
     with pytest.raises(SCIMResponseErrorObject):
-        scim_client.query(User, response_user.id)
+        scim_client.query(response_user)
 
 
 def test_werkzeug_query_with_attributes(scim_client):
@@ -85,7 +85,7 @@ def test_werkzeug_query_with_attributes(scim_client):
     response_user = scim_client.create(request_user)
 
     params = ResponseParameters(attributes=["displayName"])
-    result = scim_client.query(User, response_user.id, query_parameters=params)
+    result = scim_client.query(response_user, query_parameters=params)
     assert result.display_name == "bar"
     assert result.title is None
 

@@ -1,7 +1,10 @@
 import pytest
 from scim2_models import Error
+from scim2_models import Meta
 from scim2_models import Resource
+from scim2_models import ServiceProviderConfig
 from scim2_models import User
+from scim2_models.resources.service_provider_config import ETag
 
 from scim2_client import RequestNetworkError
 from scim2_client import SCIMRequestError
@@ -92,3 +95,34 @@ def test_request_network_error(httpserver, sync_client, user):
         RequestNetworkError, match="Network error happened during request"
     ):
         sync_client.delete(user, url="http://invalid.test")
+
+
+def test_delete_sends_if_match(httpserver, sync_client):
+    """If-Match header is sent when deleting a resource with ETag support."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+    user = User(
+        user_name="bjensen@example.com",
+        meta=Meta(version='W/"3694e05e9dff590"'),
+    )
+    user.id = "2819c223-7f76-453a-919d-413861904646"
+
+    httpserver.expect_request(
+        f"/Users/{user.id}",
+        method="DELETE",
+        headers={"If-Match": 'W/"3694e05e9dff590"'},
+    ).respond_with_data(status=204, content_type="application/scim+json")
+
+    response = sync_client.delete(user)
+    assert response is None
+
+
+def test_delete_no_if_match_without_etag_support(httpserver, sync_client, user):
+    """No If-Match header when the server does not support ETags."""
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    response = sync_client.delete(user)
+    assert response is None

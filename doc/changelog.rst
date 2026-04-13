@@ -9,9 +9,14 @@ Added
 - Support for ETags: ``replace``, ``modify`` and ``delete`` automatically send
   an ``If-Match`` header when the server advertises ETag support and the resource
   has a ``meta.version``. :issue:`47`
+- ``query`` sends an ``If-None-Match`` header when passed a resource instance
+  with ``meta.version`` and the server supports ETags. On ``304 Not Modified``
+  the original instance is returned. :issue:`47`
 
 Breaking changes
 ^^^^^^^^^^^^^^^^
+- ``query`` now takes a resource type, a resource instance, or ``None`` instead
+  of a resource type and id. :issue:`13`
 - ``delete`` now takes a resource instance instead of a resource type and id.
   :issue:`13`
 - ``modify`` now takes a resource instance and a patch operation instead of a

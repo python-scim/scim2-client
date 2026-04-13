@@ -45,6 +45,7 @@ class RequestPayload:
     payload: dict | None = None
     expected_types: list[type[Resource]] | None = None
     expected_status_codes: list[int] | None = None
+    target: Resource | None = None
 
 
 class SCIMClient:
@@ -92,10 +93,21 @@ class SCIMClient:
     :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
     """
 
-    QUERY_RESPONSE_STATUS_CODES: list[int] = [200, 400, 307, 308, 401, 403, 404, 500]
+    QUERY_RESPONSE_STATUS_CODES: list[int] = [
+        200,
+        304,
+        400,
+        307,
+        308,
+        401,
+        403,
+        404,
+        500,
+    ]
     """Resource querying HTTP codes.
 
-    As defined at :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>` and
+    As defined at :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`,
+    :rfc:`RFC7644 §3.14 <7644#section-3.14>` and
     :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
     """
 
@@ -208,6 +220,14 @@ class SCIMClient:
             headers = req.request_kwargs.setdefault("headers", {})
             headers.setdefault("If-Match", resource.meta.version)
 
+    def _set_if_none_match(self, req: RequestPayload, resource: Resource) -> None:
+        """Add ``If-None-Match`` header to the request if the server supports ETags."""
+        if not self._etag_supported:
+            return
+        if resource.meta and resource.meta.version:
+            headers = req.request_kwargs.setdefault("headers", {})
+            headers.setdefault("If-None-Match", resource.meta.version)
+
     def get_resource_model(self, name: str) -> type[Resource] | None:
         """Get a registered model by its name or its schema."""
         for resource_model in self.resource_models:
@@ -301,9 +321,13 @@ class SCIMClient:
         check_response_payload: bool | None = None,
         raise_scim_errors: bool | None = None,
         scim_ctx: Context | None = None,
+        target: Resource | None = None,
     ) -> Error | None | dict | type[Resource]:
         if raise_scim_errors is None:
             raise_scim_errors = self.raise_scim_errors
+
+        if status_code == 304 and target:
+            return target
 
         # In addition to returning an HTTP response code, implementers MUST return
         # the errors in the body of the response in a JSON format
@@ -434,8 +458,7 @@ class SCIMClient:
 
     def _prepare_query_request(
         self,
-        resource_model: type[Resource] | None = None,
-        id: str | None = None,
+        target: type[Resource] | Resource | None = None,
         query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
@@ -445,6 +468,14 @@ class SCIMClient:
             expected_status_codes=expected_status_codes,
             request_kwargs=kwargs,
         )
+
+        resource_model: type[Resource] | None
+        if isinstance(target, Resource):
+            resource_model = type(target)
+            id = target.id
+        else:
+            resource_model = target
+            id = None
 
         if check_request_payload is None:
             check_request_payload = self.check_request_payload
@@ -489,6 +520,9 @@ class SCIMClient:
         elif id:
             req.expected_types = [resource_model]
             req.url = f"{req.url}/{id}"
+            if isinstance(target, Resource) and not payload:
+                req.target = target
+                self._set_if_none_match(req, target)
 
         else:
             req.expected_types = [ListResponse[resource_model]]
@@ -733,8 +767,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def query(
         self,
-        resource_model: type[Resource] | None = None,
-        id: str | None = None,
+        target: type[Resource] | Resource | None = None,
         query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -746,11 +779,15 @@ class BaseSyncSCIMClient(SCIMClient):
     ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
-        - If `id` is not :data:`None`, the resource with the exact id will be reached.
-        - If `id` is :data:`None`, all the resources with the given type will be reached.
+        - If ``target`` is a :class:`~scim2_models.Resource` instance, the resource
+          with the same id will be queried. If the server supports ETags and the
+          resource has ``meta.version``, an ``If-None-Match`` header is sent;
+          on ``304 Not Modified`` the original instance is returned.
+        - If ``target`` is a :class:`~scim2_models.Resource` subtype, all the
+          resources with the given type will be reached.
+        - If ``target`` is :data:`None`, all available resources will be reached.
 
-        :param resource_model: A :class:`~scim2_models.Resource` subtype or :data:`None`
-        :param id: The SCIM id of an object to get, or :data:`None`
+        :param target: A :class:`~scim2_models.Resource` instance, subtype, or :data:`None`.
         :param query_parameters: A :class:`~scim2_models.ResponseParameters` or
             :class:`~scim2_models.SearchRequest` detailing the query parameters.
             Use :class:`~scim2_models.ResponseParameters` when querying a single
@@ -768,8 +805,9 @@ class BaseSyncSCIMClient(SCIMClient):
 
         :return:
             - A :class:`~scim2_models.Error` object in case of error.
-            - A `resource_model` object in case of success if `id` is not :data:`None`
-            - A :class:`~scim2_models.ListResponse[resource_model]` object in case of success if `id` is :data:`None`
+            - The original ``target`` instance if the server responds with ``304 Not Modified``.
+            - A ``target`` type object in case of success if ``target`` is a resource instance.
+            - A :class:`~scim2_models.ListResponse` object in case of success if ``target`` is a resource type.
 
         .. note::
 
@@ -783,7 +821,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
             from scim2_models import User
 
-            response = scim.query(User, "my-user-id)
+            response = scim.query(User(id="my-user-id"))
             # 'response' may be a User or an Error object
 
         .. code-block:: python
@@ -1068,8 +1106,7 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def query(
         self,
-        resource_model: type[Resource] | None = None,
-        id: str | None = None,
+        target: type[Resource] | Resource | None = None,
         query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -1081,11 +1118,15 @@ class BaseAsyncSCIMClient(SCIMClient):
     ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
-        - If `id` is not :data:`None`, the resource with the exact id will be reached.
-        - If `id` is :data:`None`, all the resources with the given type will be reached.
+        - If ``target`` is a :class:`~scim2_models.Resource` instance, the resource
+          with the same id will be queried. If the server supports ETags and the
+          resource has ``meta.version``, an ``If-None-Match`` header is sent;
+          on ``304 Not Modified`` the original instance is returned.
+        - If ``target`` is a :class:`~scim2_models.Resource` subtype, all the
+          resources with the given type will be reached.
+        - If ``target`` is :data:`None`, all available resources will be reached.
 
-        :param resource_model: A :class:`~scim2_models.Resource` subtype or :data:`None`
-        :param id: The SCIM id of an object to get, or :data:`None`
+        :param target: A :class:`~scim2_models.Resource` instance, subtype, or :data:`None`.
         :param query_parameters: A :class:`~scim2_models.ResponseParameters` or
             :class:`~scim2_models.SearchRequest` detailing the query parameters.
             Use :class:`~scim2_models.ResponseParameters` when querying a single
@@ -1103,8 +1144,9 @@ class BaseAsyncSCIMClient(SCIMClient):
 
         :return:
             - A :class:`~scim2_models.Error` object in case of error.
-            - A `resource_model` object in case of success if `id` is not :data:`None`
-            - A :class:`~scim2_models.ListResponse[resource_model]` object in case of success if `id` is :data:`None`
+            - The original ``target`` instance if the server responds with ``304 Not Modified``.
+            - A ``target`` type object in case of success if ``target`` is a resource instance.
+            - A :class:`~scim2_models.ListResponse` object in case of success if ``target`` is a resource type.
 
         .. note::
 
@@ -1118,7 +1160,7 @@ class BaseAsyncSCIMClient(SCIMClient):
 
             from scim2_models import User
 
-            response = scim.query(User, "my-user-id)
+            response = await scim.query(User(id="my-user-id"))
             # 'response' may be a User or an Error object
 
         .. code-block:: python
@@ -1127,7 +1169,7 @@ class BaseAsyncSCIMClient(SCIMClient):
             from scim2_models import User, SearchRequest
 
             req = SearchRequest(filter='userName sw "john"')
-            response = scim.query(User, query_parameters=req)
+            response = await scim.query(User, query_parameters=req)
             # 'response' may be a ListResponse[User] or an Error object
 
         .. code-block:: python
@@ -1135,7 +1177,7 @@ class BaseAsyncSCIMClient(SCIMClient):
 
             from scim2_models import User
 
-            response = scim.query()
+            response = await scim.query()
             # 'response' may be a ListResponse[Union[User, Group, ...]] or an Error object
 
         .. tip::

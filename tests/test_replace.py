@@ -5,7 +5,9 @@ from scim2_models import Error
 from scim2_models import Group
 from scim2_models import Meta
 from scim2_models import ResourceType
+from scim2_models import ServiceProviderConfig
 from scim2_models import User
+from scim2_models.resources.service_provider_config import ETag
 
 from scim2_client import RequestNetworkError
 from scim2_client import RequestPayloadValidationError
@@ -310,3 +312,38 @@ def test_request_network_error(httpserver, sync_client):
         RequestNetworkError, match="Network error happened during request"
     ):
         sync_client.replace(user_request, url="http://invalid.test")
+
+
+def test_replace_sends_if_match(httpserver, sync_client):
+    """If-Match header is sent when replacing a resource with ETag support."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+    user = User(
+        id="2819c223-7f76-453a-919d-413861904646",
+        user_name="bjensen@example.com",
+        meta=Meta(version='W/"3694e05e9dff590"'),
+    )
+
+    httpserver.expect_request(
+        f"/Users/{user.id}",
+        method="PUT",
+        headers={"If-Match": 'W/"3694e05e9dff590"'},
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "version": 'W/"new-version"',
+                "location": f"https://example.com/v2/Users/{user.id}",
+            },
+        },
+        status=200,
+    )
+
+    response = sync_client.replace(user)
+    assert isinstance(response, User)

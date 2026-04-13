@@ -63,7 +63,7 @@ def test_sync_engine(server):
     assert response_user.user_name == "foo"
     assert response_user.display_name == "bar"
 
-    response_user = scim_client.query(User, response_user.id)
+    response_user = scim_client.query(response_user)
     assert response_user.user_name == "foo"
     assert response_user.display_name == "bar"
 
@@ -77,7 +77,7 @@ def test_sync_engine(server):
     assert response_user.user_name == "foo"
     assert response_user.display_name == "baz"
 
-    response_user = scim_client.query(User, response_user.id)
+    response_user = scim_client.query(response_user)
     assert response_user.user_name == "foo"
     assert response_user.display_name == "baz"
 
@@ -89,12 +89,12 @@ def test_sync_engine(server):
     scim_client.modify(response_user, patch_op)
 
     # Verify patch result with query
-    queried_user = scim_client.query(User, response_user.id)
+    queried_user = scim_client.query(response_user)
     assert queried_user.display_name == "patched name"
 
     scim_client.delete(response_user)
     with pytest.raises(SCIMResponseErrorObject):
-        scim_client.query(User, response_user.id)
+        scim_client.query(response_user)
 
 
 async def test_async_engine(server):
@@ -118,7 +118,7 @@ async def test_async_engine(server):
     assert response_user.user_name == "async_foo"
     assert response_user.display_name == "async_bar"
 
-    response_user = await scim_client.query(User, response_user.id)
+    response_user = await scim_client.query(response_user)
     assert response_user.user_name == "async_foo"
     assert response_user.display_name == "async_bar"
 
@@ -136,7 +136,7 @@ async def test_async_engine(server):
     assert response_user.user_name == "async_foo"
     assert response_user.display_name == "async_baz"
 
-    response_user = await scim_client.query(User, response_user.id)
+    response_user = await scim_client.query(response_user)
     assert response_user.user_name == "async_foo"
     assert response_user.display_name == "async_baz"
 
@@ -148,9 +148,9 @@ async def test_async_engine(server):
     await scim_client.modify(response_user, patch_op)
 
     # Verify patch result with query
-    queried_user = await scim_client.query(User, response_user.id)
+    queried_user = await scim_client.query(response_user)
     assert queried_user.display_name == "async patched name"
 
     await scim_client.delete(response_user)
     with pytest.raises(SCIMResponseErrorObject):
-        await scim_client.query(User, response_user.id)
+        await scim_client.query(response_user)

@@ -11,6 +11,7 @@ from scim2_models import ResponseParameters
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
+from scim2_models.resources.service_provider_config import ETag
 
 from scim2_client import SCIMRequestError
 from scim2_client.errors import RequestNetworkError
@@ -298,7 +299,7 @@ def httpserver(httpserver):
 def test_user_with_valid_id(sync_client):
     """Test that querying an existing user with an id correctly instantiate an User object."""
     response = sync_client.query(
-        User, "2819c223-7f76-453a-919d-413861904646", raise_scim_errors=False
+        User(id="2819c223-7f76-453a-919d-413861904646"), raise_scim_errors=False
     )
     assert response == User(
         id="2819c223-7f76-453a-919d-413861904646",
@@ -319,7 +320,7 @@ def test_user_with_valid_id(sync_client):
 
 def test_user_with_invalid_id(sync_client):
     """Test that querying an user with an invalid id instantiate an Error object."""
-    response = sync_client.query(User, "unknown", raise_scim_errors=False)
+    response = sync_client.query(User(id="unknown"), raise_scim_errors=False)
     assert response == Error(detail="Resource unknown not found", status=404)
 
 
@@ -329,7 +330,7 @@ def test_raise_scim_errors(sync_client):
         SCIMResponseErrorObject,
         match="Resource unknown not found",
     ) as exc_info:
-        sync_client.query(User, "unknown", raise_scim_errors=True)
+        sync_client.query(User(id="unknown"), raise_scim_errors=True)
 
     assert exc_info.value.to_error() == Error(
         detail="Resource unknown not found", status=404
@@ -342,7 +343,7 @@ def test_raise_scim_errors_with_scim_type(sync_client):
         SCIMResponseErrorObject,
         match="uniqueness: User already exists",
     ) as exc_info:
-        sync_client.query(User, "conflict", raise_scim_errors=True)
+        sync_client.query(User(id="conflict"), raise_scim_errors=True)
 
     assert exc_info.value.to_error() == Error(
         detail="User already exists", status=409, scim_type="uniqueness"
@@ -355,7 +356,7 @@ def test_raise_scim_errors_without_detail(sync_client):
         SCIMResponseErrorObject,
         match="SCIM Error",
     ) as exc_info:
-        sync_client.query(User, "no-detail", raise_scim_errors=True)
+        sync_client.query(User(id="no-detail"), raise_scim_errors=True)
 
     assert exc_info.value.to_error() == Error(status=500)
 
@@ -428,7 +429,7 @@ def test_no_result(sync_client):
 
 def test_bad_request(sync_client):
     """Test querying a resource unknown from the server instantiate an Error object."""
-    response = sync_client.query(User, "bad-request", raise_scim_errors=False)
+    response = sync_client.query(User(id="bad-request"), raise_scim_errors=False)
     assert response == Error(status=400, detail="Bad request")
 
 
@@ -456,7 +457,7 @@ def test_bad_resource_model(sync_client):
         SCIMResponseError,
         match="Expected type User but got unknown resource with schemas: urn:ietf:params:scim:schemas:core:2.0:Group",
     ):
-        sync_client.query(User, "its-a-group")
+        sync_client.query(User(id="its-a-group"))
 
 
 def test_all(sync_client):
@@ -483,7 +484,7 @@ def test_all_unexpected_type(sync_client):
 def test_response_is_not_json(sync_client):
     """Test situations where servers return an invalid JSON object."""
     with pytest.raises(UnexpectedContentFormat):
-        sync_client.query(User, "not-json")
+        sync_client.query(User(id="not-json"))
 
 
 def test_not_a_scim_object(sync_client):
@@ -492,13 +493,13 @@ def test_not_a_scim_object(sync_client):
         SCIMResponseError,
         match="Expected type User but got undefined object with no schema",
     ):
-        sync_client.query(User, "not-a-scim-object")
+        sync_client.query(User(id="not-a-scim-object"))
 
 
 def test_dont_check_response_payload(sync_client):
     """Test the check_response_payload attribute."""
     response = sync_client.query(
-        User, "not-a-scim-object", check_response_payload=False
+        User(id="not-a-scim-object"), check_response_payload=False
     )
     assert response == {"foo": "bar"}
 
@@ -506,20 +507,20 @@ def test_dont_check_response_payload(sync_client):
 def test_response_bad_status_code(sync_client):
     """Test situations where servers return an invalid status code."""
     with pytest.raises(UnexpectedStatusCode):
-        sync_client.query(User, "status-201")
-    sync_client.query(User, "status-201", expected_status_codes=None)
+        sync_client.query(User(id="status-201"))
+    sync_client.query(User(id="status-201"), expected_status_codes=None)
 
 
 def test_response_content_type_with_charset(sync_client):
     """Test situations where servers return a valid content-type with a charset information."""
-    user = sync_client.query(User, "content-type-with-charset")
+    user = sync_client.query(User(id="content-type-with-charset"))
     assert isinstance(user, User)
 
 
 def test_response_bad_content_type(sync_client):
     """Test situations where servers return an invalid content-type response."""
     with pytest.raises(UnexpectedContentType):
-        sync_client.query(User, "bad-content-type")
+        sync_client.query(User(id="bad-content-type"))
 
 
 def test_search_request(httpserver, sync_client):
@@ -551,7 +552,7 @@ def test_search_request(httpserver, sync_client):
         count=10,
     )
 
-    response = sync_client.query(User, "with-qs", req)
+    response = sync_client.query(User(id="with-qs"), req)
     assert isinstance(response, User)
     assert response.id == "with-qs"
 
@@ -578,7 +579,7 @@ def test_query_parameters(httpserver, sync_client):
         status=200,
     )
     params = ResponseParameters(attributes=["userName", "displayName"])
-    response = sync_client.query(User, "with-rp", params)
+    response = sync_client.query(User(id="with-rp"), params)
     assert isinstance(response, User)
     assert response.id == "with-rp"
 
@@ -614,7 +615,7 @@ def test_query_dont_check_request_payload(httpserver, sync_client):
         "count": 10,
     }
 
-    response = sync_client.query(User, "with-qs", req, check_request_payload=False)
+    response = sync_client.query(User(id="with-qs"), req, check_request_payload=False)
     assert isinstance(response, User)
     assert response.id == "with-qs"
 
@@ -642,7 +643,7 @@ def test_deprecated_search_request_keyword(httpserver, sync_client):
     )
     params = ResponseParameters(attributes=["userName"])
     with pytest.warns(DeprecationWarning, match="search_request.*deprecated"):
-        response = sync_client.query(User, "with-dep", search_request=params)
+        response = sync_client.query(User(id="with-dep"), search_request=params)
     assert isinstance(response, User)
     assert response.id == "with-dep"
 
@@ -651,7 +652,7 @@ def test_both_search_request_and_query_parameters_raises(sync_client):
     """Passing both search_request and query_parameters raises TypeError."""
     params = ResponseParameters(attributes=["userName"])
     with pytest.raises(TypeError, match="Cannot pass both"):
-        sync_client.query(User, "some-id", params, search_request=params)
+        sync_client.query(User(id="some-id"), params, search_request=params)
 
 
 def test_invalid_resource_model(sync_client):
@@ -674,7 +675,9 @@ def test_service_provider_config_endpoint_with_an_id(sync_client):
     with pytest.raises(
         SCIMClientError, match="ServiceProviderConfig cannot have an id"
     ):
-        sync_client.query(ServiceProviderConfig, "dummy")
+        spc = ServiceProviderConfig()
+        spc.id = "dummy"
+        sync_client.query(spc)
 
 
 def test_request_network_error(sync_client):
@@ -683,3 +686,147 @@ def test_request_network_error(sync_client):
         RequestNetworkError, match="Network error happened during request"
     ):
         sync_client.query(url="http://invalid.test")
+
+
+def test_query_sends_if_none_match(httpserver, sync_client):
+    """If-None-Match is sent when querying a resource instance with ETag support."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+    user = User(
+        id="etag-304-user",
+        user_name="bjensen@example.com",
+        meta=Meta(version='W/"3694e05e9dff590"'),
+    )
+
+    httpserver.expect_request(
+        "/Users/etag-304-user",
+        headers={"If-None-Match": 'W/"3694e05e9dff590"'},
+    ).respond_with_data(status=304)
+
+    response = sync_client.query(user)
+    assert response is user
+
+
+def test_query_returns_fresh_resource_on_200(httpserver, sync_client):
+    """Server returns 200 with updated resource when ETag does not match."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+    user = User(
+        id="etag-200-user",
+        user_name="bjensen@example.com",
+        meta=Meta(version='W/"old-version"'),
+    )
+
+    httpserver.expect_request(
+        "/Users/etag-200-user",
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "etag-200-user",
+            "userName": "bjensen@example.com",
+            "displayName": "Updated Name",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "version": 'W/"new-version"',
+                "location": "https://example.com/v2/Users/etag-200-user",
+            },
+        },
+        status=200,
+    )
+
+    response = sync_client.query(user)
+    assert response is not user
+    assert response.display_name == "Updated Name"
+
+
+def test_query_no_if_none_match_without_version(httpserver, sync_client):
+    """No If-None-Match header when the resource has no meta.version."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+
+    httpserver.expect_request(
+        "/Users/etag-no-version",
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "etag-no-version",
+            "userName": "bjensen@example.com",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "location": "https://example.com/v2/Users/etag-no-version",
+            },
+        },
+        status=200,
+    )
+
+    user = User(id="etag-no-version")
+    response = sync_client.query(user)
+    assert isinstance(response, User)
+
+
+def test_query_no_if_none_match_without_etag_support(httpserver, sync_client):
+    """No If-None-Match header when the server does not support ETags."""
+    httpserver.expect_request(
+        "/Users/etag-unsupported",
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "etag-unsupported",
+            "userName": "bjensen@example.com",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "version": 'W/"3694e05e9dff590"',
+                "location": "https://example.com/v2/Users/etag-unsupported",
+            },
+        },
+        status=200,
+    )
+
+    user = User(
+        id="etag-unsupported",
+        meta=Meta(version='W/"3694e05e9dff590"'),
+    )
+    response = sync_client.query(user)
+    assert isinstance(response, User)
+
+
+def test_query_no_if_none_match_with_query_parameters(httpserver, sync_client):
+    """No If-None-Match header when query_parameters are present."""
+    sync_client.service_provider_config = ServiceProviderConfig(
+        etag=ETag(supported=True)
+    )
+
+    httpserver.expect_request(
+        "/Users/etag-with-params",
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "etag-with-params",
+            "userName": "bjensen@example.com",
+            "meta": {
+                "resourceType": "User",
+                "created": "2010-01-23T04:56:22Z",
+                "lastModified": "2011-05-13T04:42:34Z",
+                "version": 'W/"3694e05e9dff590"',
+                "location": "https://example.com/v2/Users/etag-with-params",
+            },
+        },
+        status=200,
+    )
+
+    user = User(
+        id="etag-with-params",
+        meta=Meta(version='W/"3694e05e9dff590"'),
+    )
+    params = ResponseParameters(attributes=["userName"])
+    response = sync_client.query(user, params)
+    assert isinstance(response, User)
