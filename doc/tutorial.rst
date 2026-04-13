@@ -11,6 +11,7 @@ As a start you will need to instantiate a httpx :code:`Client` (or :code:`AsyncC
 In addition to your SCIM server root endpoint, you will probably want to provide some authorization headers through the httpx :code:`Client` :code:`headers` parameter:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -53,6 +54,7 @@ and dynamically generate local Python models based on those schemas.
 They are then available to use with :meth:`~scim2_client.SCIMClient.get_resource_model`.
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -80,6 +82,7 @@ To manually register models and resource types, you can simply use the :paramref
 
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -115,6 +118,7 @@ To manually register models and resource types, you can simply use the :paramref
    and simply call :meth:`~scim2_client.SCIMClient.register_naive_resource_types`.
 
     .. tab-set::
+       :class: outline
 
        .. tab-item:: Sync
           :sync: sync
@@ -154,6 +158,7 @@ Create
 :meth:`~scim2_client.BaseSyncSCIMClient.create` issues a ``POST`` to provision a new resource:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -179,6 +184,7 @@ Query
 :meth:`~scim2_client.BaseSyncSCIMClient.query` issues a ``GET`` to read a single resource by its id, or list resources of a given type:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -212,6 +218,7 @@ Search
 :meth:`~scim2_client.BaseSyncSCIMClient.search` issues a ``POST`` on the ``/.search`` endpoint to query across all resource types at once:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -233,6 +240,7 @@ Replace
 :meth:`~scim2_client.BaseSyncSCIMClient.replace` issues a ``PUT`` to fully overwrite an existing resource:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -258,6 +266,7 @@ Delete
 :meth:`~scim2_client.BaseSyncSCIMClient.delete` issues a ``DELETE`` and returns :data:`None` on success:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -279,6 +288,7 @@ Modify
 :meth:`~scim2_client.BaseSyncSCIMClient.modify` issues a ``PATCH`` to apply partial updates as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -321,6 +331,7 @@ By default, if the server returns an error, a :class:`~scim2_client.SCIMResponse
 The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
@@ -396,6 +407,7 @@ Pass additional parameters directly to the underlying engine methods.
 This can be useful if you need to explicitly pass a certain URL for example:
 
 .. tab-set::
+   :class: outline
 
    .. tab-item:: Sync
       :sync: sync
