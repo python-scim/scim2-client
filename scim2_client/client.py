@@ -20,6 +20,7 @@ from scim2_models import Schema
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 
+from scim2_client.errors import InvalidCursorError
 from scim2_client.errors import RequestPayloadValidationError
 from scim2_client.errors import ResponsePayloadValidationError
 from scim2_client.errors import SCIMClientError
@@ -345,6 +346,12 @@ class SCIMClient:
         try:
             return actual_type.model_validate(response_payload, scim_ctx=scim_ctx)
         except ValidationError as exc:
+            cursor_errors = [e for e in exc.errors() if e["type"] == "scim_invalidCursor"]
+            if cursor_errors:
+                scim_exc = InvalidCursorError()
+                if sys.version_info >= (3, 11):  # pragma: no cover
+                    scim_exc.add_note(str(exc))
+                raise scim_exc from exc
             scim_exc = ResponsePayloadValidationError()
             if sys.version_info >= (3, 11):  # pragma: no cover
                 scim_exc.add_note(str(exc))
@@ -444,6 +451,10 @@ class SCIMClient:
             payload = query_parameters
 
         elif isinstance(query_parameters, SearchRequest):
+            if query_parameters.cursor and query_parameters.start_index:
+                raise InvalidCursorError(
+                    message="cursor and startIndex are mutually exclusive"
+                )
             payload = query_parameters.model_dump(
                 exclude_unset=True,
                 exclude={"schemas"},

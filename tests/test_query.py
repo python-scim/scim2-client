@@ -13,6 +13,7 @@ from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
 from scim2_client import SCIMRequestError
+from scim2_client.errors import InvalidCursorError
 from scim2_client.errors import RequestNetworkError
 from scim2_client.errors import ResponsePayloadValidationError
 from scim2_client.errors import SCIMClientError
@@ -661,6 +662,40 @@ def test_invalid_resource_model(sync_client):
 
     with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
         sync_client.query(Group)
+
+
+def test_cursor_and_start_index_mutually_exclusive(sync_client):
+    """cursor and startIndex MUST NOT be used together per RFC 9865."""
+
+    req = SearchRequest(cursor="abc123", start_index=1)
+    with pytest.raises(InvalidCursorError, match="mutually exclusive"):
+        sync_client.query(User, query_parameters=req)
+
+
+def test_response_invalid_cursor_chars(sync_client):
+    """Server returning a nextCursor with reserved characters raises InvalidCursorError."""
+    from scim2_models import Context
+
+    payload = {
+        "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+        "totalResults": 1,
+        "nextCursor": "invalid%cursor",
+        "Resources": [
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                "id": "2819c223-7f76-453a-919d-413861904646",
+                "userName": "bjensen@example.com",
+            }
+        ],
+    }
+    with pytest.raises(InvalidCursorError):
+        sync_client.check_response(
+            payload=payload,
+            status_code=200,
+            headers={"content-type": "application/scim+json"},
+            expected_types=[ListResponse[User]],
+            scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+        )
 
 
 def test_service_provider_config_endpoint(sync_client):
