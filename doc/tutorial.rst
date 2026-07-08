@@ -319,10 +319,66 @@ Modify
 Bulk
 ~~~~
 
-.. note::
+:meth:`~scim2_client.BaseSyncSCIMClient.bulk` issues a ``POST`` on the ``/Bulk`` endpoint to execute multiple operations at once:
 
-    Bulk operation requests are not yet implemented,
-    but :doc:`any help is welcome! <contributing>`
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          from scim2_models import BulkRequest, BulkOperation, Group, GroupMember, User
+
+          request = BulkRequest(
+            operations=[
+                BulkOperation(
+                    method="POST",
+                    path="/Users",
+                    bulk_id="qwerty",
+                    data=User(user_name="Alice"),
+                ),
+                BulkOperation(
+                    method="POST",
+                    path="/Groups",
+                    bulk_id="ytrewq",
+                    data=Group(
+                        display_name="Tour Guides",
+                        members=[GroupMember(type="User", value="bulkId:qwerty")],
+                    ),
+                ),
+            ]
+          )
+          response = scim.bulk(request)
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          from scim2_models import BulkRequest, BulkOperation, Group, GroupMember, User
+
+          request = BulkRequest(
+            operations=[
+                BulkOperation(
+                    method="POST",
+                    path="/Users",
+                    bulk_id="qwerty",
+                    data=User(user_name="Alice"),
+                ),
+                BulkOperation(
+                    method="POST",
+                    path="/Groups",
+                    bulk_id="ytrewq",
+                    data=Group(
+                        display_name="Tour Guides",
+                        members=[GroupMember(type="User", value="bulkId:qwerty")],
+                    ),
+                ),
+            ]
+          )
+          response = await scim.bulk(request)
 
 Error handling
 ==============

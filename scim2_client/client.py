@@ -8,6 +8,8 @@ from typing import Union
 
 from pydantic import ValidationError
 from scim2_models import AnyResource
+from scim2_models import BulkRequest
+from scim2_models import BulkResponse
 from scim2_models import Context
 from scim2_models import Error
 from scim2_models import Extension
@@ -115,6 +117,25 @@ class SCIMClient:
     """Resource querying HTTP codes.
 
     As defined at :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>` and
+    :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
+    """
+
+    BULK_RESPONSE_STATUS_CODES: list[int] = [
+        200,
+        307,
+        308,
+        400,
+        401,
+        403,
+        404,
+        409,
+        413,
+        500,
+        501,
+    ]
+    """Bulk request HTTP codes.
+
+    As defined at :rfc:`RFC7644 §3.7 <7644#section-3.7>` and
     :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
     """
 
@@ -513,6 +534,38 @@ class SCIMClient:
         req.expected_types = [ListResponse[Union[self.resource_models]]]  # noqa: UP007
         return req
 
+    def _prepare_bulk_request(
+        self,
+        bulk_request: BulkRequest | None = None,
+        check_request_payload: bool | None = None,
+        expected_status_codes: list[int] | None = None,
+        **kwargs,
+    ) -> RequestPayload:
+        req = RequestPayload(
+            expected_status_codes=expected_status_codes,
+            request_kwargs=kwargs,
+        )
+
+        if check_request_payload is None:
+            check_request_payload = self.check_request_payload
+
+        if not check_request_payload:
+            req.payload = bulk_request
+
+        else:
+            req.payload = (
+                bulk_request.model_dump(
+                    scim_ctx=Context.RESOURCE_CREATION_REQUEST,
+                    polymorphic_serialization=True,
+                )
+                if bulk_request
+                else None
+            )
+
+        req.url = req.request_kwargs.pop("url", "/Bulk")
+        req.expected_types = [BulkResponse]  # noqa: UP007
+        return req
+
     def _prepare_delete_request(
         self,
         resource_model: type[Resource],
@@ -856,6 +909,74 @@ class BaseSyncSCIMClient(SCIMClient):
         """
         raise NotImplementedError()
 
+    def bulk(
+        self,
+        bulk_request: BulkRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = SCIMClient.BULK_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
+        **kwargs,
+    ) -> BulkResponse | Error | dict:
+        """Perform a POST bulk request to execute bulk operations, as defined in :rfc:`RFC7644 §3.7 <7644#section-3.7>`.
+
+        :param bulk_request: An object detailing the bulk request.
+        :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
+        :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
+        :param expected_status_codes: The list of expected status codes form the response.
+            If :data:`None` any status code is accepted.
+        :param raise_scim_errors: If set, overwrites :paramref:`scim2_client.SCIMClient.raise_scim_errors`.
+        :param kwargs: Additional parameters passed to the underlying
+            HTTP request library.
+
+        :return:
+            - A :class:`~scim2_models.Error` object in case of error.
+            - A :class:`~scim2_models.BulkResponse` object in case of success.
+
+        :usage:
+
+        .. code-block:: python
+            :caption: Simultaneously creating a `User` resource and a `Group` resource containing the user
+
+            from scim2_models import (
+                BulkRequest,
+                BulkOperation,
+                Group,
+                GroupMember,
+                User,
+            )
+
+            req = BulkRequest(
+                operations=[
+                    BulkOperation(
+                        method="POST",
+                        path="/Users",
+                        bulk_id="qwerty",
+                        data=User(user_name="Alice"),
+                    ),
+                    BulkOperation(
+                        method="POST",
+                        path="/Groups",
+                        bulk_id="ytrewq",
+                        data=Group(
+                            display_name="Tour Guides",
+                            members=[GroupMember(type="User", value="bulkId:qwerty")],
+                        ),
+                    ),
+                ]
+            )
+            response = scim.bulk(req)
+            # 'response' may be a BulkResponse or an Error object
+
+        .. tip::
+
+            Check the :attr:`~scim2_models.Context.RESOURCE_CREATION_REQUEST`
+            and :attr:`~scim2_models.Context.RESOURCE_CREATION_RESPONSE` contexts to understand
+            which values will be excluded from the request payload, and which values are expected in
+            the response payload.
+        """
+        raise NotImplementedError()
+
     def delete(
         self,
         resource_model: type,
@@ -1187,6 +1308,74 @@ class BaseAsyncSCIMClient(SCIMClient):
             Check the :attr:`~scim2_models.Context.SEARCH_REQUEST`
             and :attr:`~scim2_models.Context.SEARCH_RESPONSE` contexts to understand
             which value will excluded from the request payload, and which values are expected in
+            the response payload.
+        """
+        raise NotImplementedError()
+
+    async def bulk(
+        self,
+        bulk_request: BulkRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = SCIMClient.BULK_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
+        **kwargs,
+    ) -> BulkResponse | Error | dict:
+        """Perform a POST bulk request to execute bulk operations, as defined in :rfc:`RFC7644 §3.7 <7644#section-3.7>`.
+
+        :param bulk_request: An object detailing the bulk request.
+        :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
+        :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
+        :param expected_status_codes: The list of expected status codes form the response.
+            If :data:`None` any status code is accepted.
+        :param raise_scim_errors: If set, overwrites :paramref:`scim2_client.SCIMClient.raise_scim_errors`.
+        :param kwargs: Additional parameters passed to the underlying
+            HTTP request library.
+
+        :return:
+            - A :class:`~scim2_models.Error` object in case of error.
+            - A :class:`~scim2_models.BulkResponse` object in case of success.
+
+        :usage:
+
+        .. code-block:: python
+            :caption: Simultaneously creating a `User` resource and a `Group` resource containing the user
+
+            from scim2_models import (
+                BulkRequest,
+                BulkOperation,
+                Group,
+                GroupMember,
+                User,
+            )
+
+            req = BulkRequest(
+                operations=[
+                    BulkOperation(
+                        method="POST",
+                        path="/Users",
+                        bulk_id="qwerty",
+                        data=User(user_name="Alice"),
+                    ),
+                    BulkOperation(
+                        method="POST",
+                        path="/Groups",
+                        bulk_id="ytrewq",
+                        data=Group(
+                            display_name="Tour Guides",
+                            members=[GroupMember(type="User", value="bulkId:qwerty")],
+                        ),
+                    ),
+                ]
+            )
+            response = scim.bulk(req)
+            # 'response' may be a BulkResponse or an Error object
+
+        .. tip::
+
+            Check the :attr:`~scim2_models.Context.RESOURCE_CREATION_REQUEST`
+            and :attr:`~scim2_models.Context.RESOURCE_CREATION_RESPONSE` contexts to understand
+            which values will be excluded from the request payload, and which values are expected in
             the response payload.
         """
         raise NotImplementedError()
