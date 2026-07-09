@@ -451,10 +451,6 @@ class SCIMClient:
             payload = query_parameters
 
         elif isinstance(query_parameters, SearchRequest):
-            if query_parameters.cursor and query_parameters.start_index:
-                raise InvalidCursorError(
-                    message="cursor and startIndex are mutually exclusive"
-                )
             payload = query_parameters.model_dump(
                 exclude_unset=True,
                 exclude={"schemas"},

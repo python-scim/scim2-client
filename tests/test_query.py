@@ -664,14 +664,6 @@ def test_invalid_resource_model(sync_client):
         sync_client.query(Group)
 
 
-def test_cursor_and_start_index_mutually_exclusive(sync_client):
-    """cursor and startIndex MUST NOT be used together per RFC 9865."""
-
-    req = SearchRequest(cursor="abc123", start_index=1)
-    with pytest.raises(InvalidCursorError, match="mutually exclusive"):
-        sync_client.query(User, query_parameters=req)
-
-
 def test_response_invalid_cursor_chars(sync_client):
     """Server returning a nextCursor with reserved characters raises InvalidCursorError."""
     from scim2_models import Context
