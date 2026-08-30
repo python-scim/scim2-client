@@ -8,6 +8,8 @@ from httpx import Client
 from httpx import RequestError
 from httpx import Response
 from scim2_models import AnyResource
+from scim2_models import BulkRequest
+from scim2_models import BulkResponse
 from scim2_models import Context
 from scim2_models import Error
 from scim2_models import ListResponse
@@ -174,6 +176,38 @@ class SyncSCIMClient(BaseSyncSCIMClient):
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
                 scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+            )
+
+    def bulk(
+        self,
+        bulk_request: BulkRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.BULK_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
+        **kwargs,
+    ) -> BulkResponse | Error | dict:
+        req = self._prepare_bulk_request(
+            bulk_request=bulk_request,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+
+        with handle_request_error(req.payload):
+            response = self.client.post(req.url, json=req.payload, **req.request_kwargs)
+
+        with handle_response_error(response):
+            return self.check_response(
+                payload=response.json() if response.text else None,
+                status_code=response.status_code,
+                headers=response.headers,
+                expected_status_codes=req.expected_status_codes,
+                expected_types=req.expected_types,
+                check_response_payload=check_response_payload,
+                raise_scim_errors=raise_scim_errors,
+                scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
             )
 
     def delete(
@@ -406,6 +440,40 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
                 scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+            )
+
+    async def bulk(
+        self,
+        bulk_request: BulkRequest | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int]
+        | None = BaseSyncSCIMClient.BULK_RESPONSE_STATUS_CODES,
+        raise_scim_errors: bool | None = None,
+        **kwargs,
+    ) -> BulkResponse | Error | dict:
+        req = self._prepare_bulk_request(
+            bulk_request=bulk_request,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+
+        with handle_request_error(req.payload):
+            response = await self.client.post(
+                req.url, json=req.payload, **req.request_kwargs
+            )
+
+        with handle_response_error(response):
+            return self.check_response(
+                payload=response.json() if response.text else None,
+                status_code=response.status_code,
+                headers=response.headers,
+                expected_status_codes=req.expected_status_codes,
+                expected_types=req.expected_types,
+                check_response_payload=check_response_payload,
+                raise_scim_errors=raise_scim_errors,
+                scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
             )
 
     async def delete(

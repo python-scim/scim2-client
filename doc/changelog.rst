@@ -1,6 +1,13 @@
 Changelog
 =========
 
+[0.7.6] - Next release
+--------------------
+
+Added
+^^^^^
+- Support for bulk operations with :meth:`~scim2_client.SCIMClient.bulk`.
+
 [0.7.5] - 2026-04-02
 --------------------
 
