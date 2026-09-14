@@ -1,6 +1,7 @@
 import datetime
 
 import pytest
+from scim2_models import Context
 from scim2_models import Error
 from scim2_models import Group
 from scim2_models import ListResponse
@@ -322,6 +323,29 @@ def test_user_with_invalid_id(sync_client):
     """Test that querying an user with an invalid id instantiate an Error object."""
     response = sync_client.query(User, "unknown", raise_scim_errors=False)
     assert response == Error(detail="Resource unknown not found", status=404)
+
+def test_cursor_errors(sync_client):
+    """Test that a nextCursor with reserved characters raises InvalidCursorError."""
+    payload = {
+        "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+        "totalResults": 1,
+        "nextCursor": "invalid%cursor",
+        "Resources": [
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                "id": "2819c223-7f76-453a-919d-413861904646",
+                "userName": "bjensen@example.com",
+            }
+        ],
+    }
+    with pytest.raises(InvalidCursorError, match="Cursor value is invalid."):
+        sync_client.check_response(
+            payload=payload,
+            status_code=200,
+            headers={"content-type": "application/scim+json"},
+            expected_types=[ListResponse[User]],
+            scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+        )
 
 
 def test_raise_scim_errors(sync_client):
@@ -662,32 +686,6 @@ def test_invalid_resource_model(sync_client):
 
     with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
         sync_client.query(Group)
-
-
-def test_response_invalid_cursor_chars(sync_client):
-    """Server returning a nextCursor with reserved characters raises InvalidCursorError."""
-    from scim2_models import Context
-
-    payload = {
-        "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-        "totalResults": 1,
-        "nextCursor": "invalid%cursor",
-        "Resources": [
-            {
-                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-                "id": "2819c223-7f76-453a-919d-413861904646",
-                "userName": "bjensen@example.com",
-            }
-        ],
-    }
-    with pytest.raises(InvalidCursorError):
-        sync_client.check_response(
-            payload=payload,
-            status_code=200,
-            headers={"content-type": "application/scim+json"},
-            expected_types=[ListResponse[User]],
-            scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
-        )
 
 
 def test_service_provider_config_endpoint(sync_client):
