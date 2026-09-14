@@ -75,12 +75,14 @@ class InvalidCursorError(SCIMRequestError):
         )
         super().__init__(message, *args, **kwargs)
 
+
 class InvalidCountError(SCIMRequestError):
-    """Cursor has expired."""
+    """Count value is invalid."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Invalid count")
         super().__init__(message, *args, **kwargs)
+
 
 class ExpiredCursorError(SCIMRequestError):
     """Cursor has expired."""
@@ -88,6 +90,7 @@ class ExpiredCursorError(SCIMRequestError):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Expired cursor")
         super().__init__(message, *args, **kwargs)
+
 
 class SCIMResponseError(SCIMClientError):
     """Base exception for errors happening during response payload validation."""

@@ -347,7 +347,9 @@ class SCIMClient:
         try:
             return actual_type.model_validate(response_payload, scim_ctx=scim_ctx)
         except ValidationError as exc:
-            cursor_errors = [e for e in exc.errors() if e["type"] == "scim_invalidCursor"]
+            cursor_errors = [
+                e for e in exc.errors() if e["type"] == "scim_invalidCursor"
+            ]
             if cursor_errors:
                 scim_exc = InvalidCursorError()
                 if sys.version_info >= (3, 11):  # pragma: no cover
