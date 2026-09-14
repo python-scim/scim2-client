@@ -19,6 +19,7 @@ from scim2_models import ResponseParameters
 from scim2_models import Schema
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
+from scim2_models import get_model_by_payload
 
 from scim2_client.errors import InvalidCursorError
 from scim2_client.errors import RequestPayloadValidationError
@@ -327,7 +328,7 @@ class SCIMClient:
         if response_payload is None:
             return None
 
-        actual_type = Resource.get_by_payload(
+        actual_type = get_model_by_payload(
             expected_types, response_payload, with_extensions=False
         )
 
@@ -380,7 +381,7 @@ class SCIMClient:
                 resource_model = resource.__class__
 
             else:
-                resource_model = Resource.get_by_payload(self.resource_models, resource)
+                resource_model = get_model_by_payload(self.resource_models, resource)
                 if not resource_model:
                     raise SCIMRequestError(
                         "Cannot guess resource type from the payload"
@@ -561,7 +562,7 @@ class SCIMClient:
                 resource_model = resource.__class__
 
             else:
-                resource_model = Resource.get_by_payload(self.resource_models, resource)
+                resource_model = get_model_by_payload(self.resource_models, resource)
                 if not resource_model:
                     raise SCIMRequestError(
                         "Cannot guess resource type from the payload",
