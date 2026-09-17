@@ -401,7 +401,7 @@ def test_all_users(sync_client):
 
 
 def test_custom_url(sync_client):
-    """Test that querying by passing the 'url' parameter directly to httpx is accepted."""
+    """Test that querying by passing the 'url' parameter directly to httpx2 is accepted."""
     response = sync_client.query(url="/Users/2819c223-7f76-453a-919d-413861904646")
     assert response == User(
         id="2819c223-7f76-453a-919d-413861904646",
@@ -678,7 +678,7 @@ def test_service_provider_config_endpoint_with_an_id(sync_client):
 
 
 def test_request_network_error(sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkError."""
     with pytest.raises(
         RequestNetworkError, match="Network error happened during request"
     ):

@@ -1,7 +1,6 @@
 import datetime
 
 import pytest
-from httpx import Client
 from scim2_models import Error
 from scim2_models import Group
 from scim2_models import ListResponse
@@ -10,7 +9,8 @@ from scim2_models import SearchRequest
 from scim2_models import User
 
 from scim2_client import RequestNetworkError
-from scim2_client.engines.httpx import SyncSCIMClient
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
 def test_all_objects(httpserver):
@@ -244,7 +244,7 @@ def test_errors(httpserver, code):
 
 
 def test_request_network_error(httpserver):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkError."""
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(client, resource_models=(User,))
     with pytest.raises(

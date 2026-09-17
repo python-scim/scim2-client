@@ -86,7 +86,7 @@ def test_dont_check_response_payload(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkError."""
     with pytest.raises(
         RequestNetworkError, match="Network error happened during request"
     ):

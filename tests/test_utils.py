@@ -8,7 +8,7 @@ from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
 from scim2_client import SCIMRequestError
-from scim2_client.engines.httpx import SyncSCIMClient
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
 def test_guess_resource_endpoint():

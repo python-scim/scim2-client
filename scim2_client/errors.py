@@ -31,8 +31,8 @@ class SCIMRequestError(SCIMClientError):
 class RequestNetworkError(SCIMRequestError):
     """Error raised when a network error happened during request.
 
-    This error is raised when a :class:`httpx.RequestError` has been caught while performing a request.
-    The original :class:`~httpx.RequestError` is available with :attr:`~BaseException.__cause__`.
+    This error is raised when a :class:`httpx2.RequestError` has been caught while performing a request.
+    The original :class:`~httpx2.RequestError` is available with :attr:`~BaseException.__cause__`.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

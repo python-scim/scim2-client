@@ -278,7 +278,7 @@ def test_request_validation_error(sync_client):
 
 
 def test_request_network_error(sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkError."""
     user_request = User(user_name="bjensen@example.com")
     with pytest.raises(
         RequestNetworkError, match="Network error happened during request"
