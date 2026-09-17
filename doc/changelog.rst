@@ -1,6 +1,24 @@
 Changelog
 =========
 
+[Unreleased]
+------------
+
+Added
+^^^^^
+- The network request engines are built upon `httpx2 <https://github.com/pydantic/httpx2>`_,
+  which is maintained, and live in ``scim2_client.engines.httpx2``.
+  They are shipped in the ``httpx2`` packaging extra.
+  `httpx <https://github.com/encode/httpx>`_ is still used when httpx2 is not installed.
+
+Deprecated
+^^^^^^^^^^
+- The ``httpx`` packaging extra, in favor of the ``httpx2`` extra. Will be removed in 0.9.
+- The ``scim2_client.engines.httpx`` module, in favor of ``scim2_client.engines.httpx2``.
+  Will be removed in 0.9.
+- Passing a :code:`httpx.Client` or a :code:`httpx.AsyncClient` to the request engines,
+  in favor of their httpx2 counterparts. Will be removed in 0.9.
+
 [0.7.5] - 2026-04-02
 --------------------
 

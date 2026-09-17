@@ -4,11 +4,18 @@ Tutorial
 Initialization
 ==============
 
-scim2-client depends on request engines such as `httpx <https://github.com/encode/httpx>`_ to perform network requests.
-This tutorial demonstrate how to use scim2-client with httpx, and suppose you have installed the `httpx` extra for example with ``pip install scim2-client[httpx]``.
+scim2-client depends on request engines such as `httpx2 <https://github.com/pydantic/httpx2>`_ to perform network requests.
+This tutorial demonstrate how to use scim2-client with httpx2, and suppose you have installed the `httpx2` extra for example with ``pip install scim2-client[httpx2]``.
 
-As a start you will need to instantiate a httpx :code:`Client` (or :code:`AsyncClient`) object that you can parameter as your will, and then pass it to a :class:`~scim2_client.SCIMClient` object.
-In addition to your SCIM server root endpoint, you will probably want to provide some authorization headers through the httpx :code:`Client` :code:`headers` parameter:
+.. note::
+
+   The engines still work with `httpx <https://github.com/encode/httpx>`_, shipped in the deprecated `httpx` extra.
+   It is used when httpx2 is not installed, and both its extra and its support will be removed in 0.9.
+   Applications that cannot migrate all their dependencies at once can call :code:`httpx2.alias_httpx()`
+   at the very top of their entrypoint, so that :code:`import httpx` resolves to httpx2 process-wide.
+
+As a start you will need to instantiate a httpx2 :code:`Client` (or :code:`AsyncClient`) object that you can parameter as your will, and then pass it to a :class:`~scim2_client.SCIMClient` object.
+In addition to your SCIM server root endpoint, you will probably want to provide some authorization headers through the httpx2 :code:`Client` :code:`headers` parameter:
 
 .. tab-set::
    :class: outline
@@ -18,8 +25,8 @@ In addition to your SCIM server root endpoint, you will probably want to provide
 
       .. code-block:: python
 
-          from httpx import Client
-          from scim2_client.engines.httpx import SyncSCIMClient
+          from httpx2 import Client
+          from scim2_client.engines.httpx2 import SyncSCIMClient
 
           client = Client(
               base_url="https://auth.example/scim/v2",
@@ -32,8 +39,8 @@ In addition to your SCIM server root endpoint, you will probably want to provide
 
       .. code-block:: python
 
-          from httpx import AsyncClient
-          from scim2_client.engines.httpx import AsyncSCIMClient
+          from httpx2 import AsyncClient
+          from scim2_client.engines.httpx2 import AsyncSCIMClient
 
           client = AsyncClient(
               base_url="https://auth.example/scim/v2",
@@ -392,8 +399,8 @@ Engines
 scim2-client comes with a light abstraction layers that allows for different requests engines.
 Currently those engines are shipped:
 
-- :class:`~scim2_client.engines.httpx.SyncSCIMClient`: A synchronous engine using `httpx <https://github.com/encode/httpx>`_ to perform the HTTP requests.
-- :class:`~scim2_client.engines.httpx.AsyncSCIMClient`: An asynchronous engine using `httpx <https://github.com/encode/httpx>`_ to perform the HTTP requests. It has the very same API than its synchronous version, except it is asynchronous.
+- :class:`~scim2_client.engines.httpx2.SyncSCIMClient`: A synchronous engine using `httpx2 <https://github.com/pydantic/httpx2>`_ to perform the HTTP requests.
+- :class:`~scim2_client.engines.httpx2.AsyncSCIMClient`: An asynchronous engine using `httpx2 <https://github.com/pydantic/httpx2>`_ to perform the HTTP requests. It has the very same API than its synchronous version, except it is asynchronous.
 - :class:`~scim2_client.engines.werkzeug.TestSCIMClient`: A test engine for development purposes.
   It takes a WSGI app and directly execute the server code instead of performing real HTTP requests.
   This is faster in unit test suites, and helpful to catch the server exceptions.

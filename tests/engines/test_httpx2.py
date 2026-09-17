@@ -3,15 +3,15 @@ import wsgiref.simple_server
 
 import portpicker
 import pytest
-from httpx import AsyncClient
-from httpx import Client
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 
-from scim2_client.engines.httpx import AsyncSCIMClient
-from scim2_client.engines.httpx import SyncSCIMClient
+from scim2_client.engines.httpx2 import AsyncClient
+from scim2_client.engines.httpx2 import AsyncSCIMClient
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 from scim2_client.errors import SCIMResponseErrorObject
 
 scim2_server = pytest.importorskip("scim2_server")
