@@ -28,12 +28,6 @@ def user():
 
 
 @pytest.fixture
-def group():
-    """Return a registered group, as the server would send it."""
-    return Group(id="e9e30dba-f08f-4109-8486-d5c6a331660a", display_name="Tour Guides")
-
-
-@pytest.fixture
 def patch_op():
     """Return a patch operation setting the display name of a user."""
     return PatchOp[User](
