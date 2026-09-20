@@ -44,7 +44,9 @@ from httpx2 import Client
 from scim2_client import SCIMResponseErrorObject
 from scim2_client.engines.httpx2 import SyncSCIMClient
 
-client = Client(base_url="https://auth.example/scim/v2", headers={"Authorization": "Bearer foobar"})
+client = Client(
+    base_url="https://auth.example/scim/v2", headers={"Authorization": "Bearer foobar"}
+)
 scim = SyncSCIMClient(client)
 scim.discover()
 User = scim.get_resource_model("User")
@@ -70,7 +72,10 @@ try:
     scim.create(user)
 except SCIMResponseErrorObject as exc:
     error = exc.to_error()
-    assert error.detail == "One or more of the attribute values are already in use or are reserved."
+    assert (
+        error.detail
+        == "One or more of the attribute values are already in use or are reserved."
+    )
 ```
 
 scim2-client belongs in a collection of SCIM tools developed by [Yaal Coop](https://yaal.coop),
