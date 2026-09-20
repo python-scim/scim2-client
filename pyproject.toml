@@ -175,8 +175,8 @@ uv_resolution = "lowest-direct"
 [tool.tox.env.doc]
 dependency_groups = ["doc"]
 commands = [
-    ["sphinx-build", "--builder", "html", "doc", "build/sphinx/html"],
-    ["sphinx-build", "--builder", "man", "doc", "build/sphinx/html"],
+    ["sphinx-build", "-W", "--keep-going", "--builder", "html", "doc", "build/sphinx/html"],
+    ["sphinx-build", "-W", "--keep-going", "--builder", "man", "doc", "build/sphinx/html"],
 ]
 
 [tool.tox.env.coverage]

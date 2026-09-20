@@ -73,9 +73,9 @@ class UnexpectedContentFormatException(SCIMResponseException):
 class ResponsePayloadValidationException(SCIMResponseException):
     """Exception raised when the server returned a payload that cannot be validated.
 
-    This exception is raised when a :class:`pydantic.ValidationError` has been caught
+    This exception is raised when a :class:`ValidationError <pydantic_core.ValidationError>` has been caught
     while validating the server response payload.
-    The original :class:`~pydantic.ValidationError` is available with
+    The original :class:`ValidationError <pydantic_core.ValidationError>` is available with
     :attr:`~BaseException.__cause__`.
 
     .. code-block:: python
@@ -118,7 +118,7 @@ def request_validation_exception(
 ) -> SCIMException:
     """Build the exception matching an invalid request payload.
 
-    The original :class:`~pydantic.ValidationError` is available with
+    The original :class:`ValidationError <pydantic_core.ValidationError>` is available with
     :attr:`~BaseException.__cause__`, and describes every invalid attribute.
     """
     errors = Error.from_validation_errors(exc)

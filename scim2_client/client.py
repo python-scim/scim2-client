@@ -841,7 +841,7 @@ class BaseSyncSCIMClient(SCIMClient):
         """Perform a POST request to create, as defined in :rfc:`RFC7644 §3.3 <7644#section-3.3>`.
 
         :param resource: The resource to create
-            If is a :data:`dict`, the resource type will be guessed from the schema.
+            If is a :class:`dict`, the resource type will be guessed from the schema.
         :param check_request_payload: If set, overwrites :paramref:`~scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`~scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -925,7 +925,7 @@ class BaseSyncSCIMClient(SCIMClient):
             - A :class:`~scim2_models.Error` object in case of error.
             - A `target` type object in case of success when a single resource is designated,
               which is the ``target`` object itself when the server answers ``304 Not Modified``.
-            - A :class:`~scim2_models.ListResponse[target]` object in case of success otherwise.
+            - A ``ListResponse[target]`` object in case of success otherwise.
 
         .. note::
 
@@ -994,7 +994,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
         :return:
             - A :class:`~scim2_models.Error` object in case of error.
-            - A :class:`~scim2_models.ListResponse[resource_model]` object in case of success.
+            - A ``ListResponse[resource_model]`` object in case of success.
 
         :usage:
 
@@ -1074,7 +1074,7 @@ class BaseSyncSCIMClient(SCIMClient):
         """Perform a PUT request to replace a resource, as defined in :rfc:`RFC7644 §3.5.1 <7644#section-3.5.1>`.
 
         :param resource: The new resource to replace.
-            If is a :data:`dict`, the resource type will be guessed from the schema.
+            If is a :class:`dict`, the resource type will be guessed from the schema.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -1207,7 +1207,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         """Perform a POST request to create, as defined in :rfc:`RFC7644 §3.3 <7644#section-3.3>`.
 
         :param resource: The resource to create
-            If is a :data:`dict`, the resource type will be guessed from the schema.
+            If is a :class:`dict`, the resource type will be guessed from the schema.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -1291,7 +1291,7 @@ class BaseAsyncSCIMClient(SCIMClient):
             - A :class:`~scim2_models.Error` object in case of error.
             - A `target` type object in case of success when a single resource is designated,
               which is the ``target`` object itself when the server answers ``304 Not Modified``.
-            - A :class:`~scim2_models.ListResponse[target]` object in case of success otherwise.
+            - A ``ListResponse[target]`` object in case of success otherwise.
 
         .. note::
 
@@ -1360,7 +1360,7 @@ class BaseAsyncSCIMClient(SCIMClient):
 
         :return:
             - A :class:`~scim2_models.Error` object in case of error.
-            - A :class:`~scim2_models.ListResponse[resource_model]` object in case of success.
+            - A ``ListResponse[resource_model]`` object in case of success.
 
         :usage:
 
@@ -1440,7 +1440,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         """Perform a PUT request to replace a resource, as defined in :rfc:`RFC7644 §3.5.1 <7644#section-3.5.1>`.
 
         :param resource: The new resource to replace.
-            If is a :data:`dict`, the resource type will be guessed from the schema.
+            If is a :class:`dict`, the resource type will be guessed from the schema.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.

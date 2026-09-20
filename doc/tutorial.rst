@@ -381,7 +381,7 @@ The :meth:`~scim2_models.SCIMException.to_error` method gives access to the :cla
               print(f"SCIM error [{error.status}] {error.scim_type}: {error.detail}")
 
 Exceptions raised while validating the request payload happen before anything is
-sent. They keep the original :class:`~pydantic.ValidationError`, which lists every
+sent. They keep the original :class:`ValidationError <pydantic_core.ValidationError>`, which lists every
 invalid attribute, in :attr:`~BaseException.__cause__`.
 
 Request and response validation
@@ -393,7 +393,7 @@ To achieve this, all the methods provide the following parameters, all are :data
 
 - :paramref:`~scim2_client.SCIMClient.check_request_payload`:
   If :data:`True` (the default) a :class:`~scim2_models.SCIMException` will be raised if the input does not respect the SCIM standard.
-  If :data:`False`, input is expected to be a :data:`dict` that will be passed as-is in the request.
+  If :data:`False`, input is expected to be a :class:`dict` that will be passed as-is in the request.
 - :paramref:`~scim2_client.SCIMClient.check_response_payload`:
   If :data:`True` (the default) a :class:`~scim2_client.ResponsePayloadValidationException` will be raised if the server response does not respect the SCIM standard.
   If :data:`False` the server response is returned as-is.

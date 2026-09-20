@@ -121,7 +121,7 @@ Fixed
 
 Fixed
 ^^^^^
-- Add support for PATCH operations with :meth:`~scim2_client.SCIMClient.modify`.
+- Add support for PATCH operations with :meth:`~scim2_client.BaseSyncSCIMClient.modify`.
 
 [0.5.2] - 2025-07-17
 --------------------
@@ -164,7 +164,7 @@ Added
 
 Added
 ^^^^^
-- :class:`~scim2_client.client.BaseSyncSCIMClient.discover` has parameters to select which objects to discover.
+- :meth:`~scim2_client.BaseSyncSCIMClient.discover` has parameters to select which objects to discover.
 
 [0.4.1] - 2024-12-02
 --------------------
@@ -231,7 +231,7 @@ Added
 ^^^^^
 - The `Unknown resource type` request error keeps a reference to the faulty payload.
 - New :class:`~scim2_client.engines.werkzeug.TestSCIMClient` request engine for application development purpose.
-- New :class:`~scim2_client.engines.httpx.AsyncSCIMClient` request engine. :issue:`1`
+- New ``scim2_client.engines.httpx.AsyncSCIMClient`` request engine. :issue:`1`
 
 Changed
 ^^^^^^^
@@ -314,11 +314,11 @@ Added
 
 Changed
 ^^^^^^^
-- Merge :meth:`~scim2_client.SCIMClient.query` and :meth:`~scim2_client.SCIMClient.query_all`.
+- Merge :meth:`~scim2_client.BaseSyncSCIMClient.query` and ``query_all``.
 
 Added
 ^^^^^
-- Implement :meth:`~scim2_client.SCIMClient.delete` `check_response_payload` attribute.
+- Implement :meth:`~scim2_client.BaseSyncSCIMClient.delete` `check_response_payload` attribute.
 - :class:`~scim2_models.ServiceProviderConfig`, :class:`~scim2_models.ResourceType`
   and :class:`~scim2_models.Schema` are added to the default resource types list.
 - Any custom URL can be used with all the :class:`~scim2_client.SCIMClient` methods.
@@ -343,7 +343,7 @@ Fixed
 
 Added
 ^^^^^
-- :meth:`~scim2_client.SCIMClient.create` and :meth:`~scim2_client.SCIMClient.replace` can guess resource types by their payloads.
+- :meth:`~scim2_client.BaseSyncSCIMClient.create` and :meth:`~scim2_client.BaseSyncSCIMClient.replace` can guess resource types by their payloads.
 
 [0.1.2] - 2024-06-02
 --------------------

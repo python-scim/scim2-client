@@ -45,11 +45,30 @@ suppress_warnings = ["autosectionlabel.changelog"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "httpx2": ("https://httpx2.pydantic.dev", None),
+    "pydantic": ("https://docs.pydantic.dev/latest", None),
     "scim2_models": ("https://scim2-models.readthedocs.io/en/latest/", None),
     "scim2_tester": ("https://scim2-tester.readthedocs.io/en/latest/", None),
     "scim2_cli": ("https://scim2-cli.readthedocs.io/en/latest/", None),
     "werkzeug": ("https://werkzeug.palletsprojects.com", None),
 }
+
+nitpicky = True
+
+# Autodoc renders an annotation with the module the object is defined in, or
+# with no module at all for the parameters of a generic. Sibling documentations
+# only publish the public names, so unresolved references are retried with them.
+REFERENCE_ALIASES = {
+    "Resource": "scim2_models.Resource",
+    "scim2_models.resources.resource.AnyResource": "scim2_models.AnyResource",
+}
+
+# The type variables of scim2-client itself have no documentation page.
+nitpick_ignore = [
+    ("py:class", "scim2_client.client.ResourceT"),
+    ("py:class", "scim2_client.engines.httpx2.ResourceT"),
+    ("py:class", "scim2_client.engines.werkzeug.ResourceT"),
+]
 
 # -- Sibling projects ------------------------------------------------------
 
@@ -142,3 +161,21 @@ html_context = {
 # -- Options for sphinx-issues -------------------------------------
 
 issues_github_path = "python-scim/scim2-client"
+
+
+def resolve_reference_aliases(app, env, node, contnode):
+    """Point a reference at the public name of its target before it is resolved."""
+    alias = REFERENCE_ALIASES.get(node.get("reftarget"))
+    if not alias:
+        return None
+
+    node["reftarget"] = alias
+    # Sibling documentations publish type variables as data rather than as
+    # classes, so the role autodoc chose cannot be trusted either.
+    node["reftype"] = "obj"
+    return None
+
+
+def setup(app):
+    # 400 runs before the intersphinx handler, which sits at the default 500.
+    app.connect("missing-reference", resolve_reference_aliases, priority=400)
