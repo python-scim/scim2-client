@@ -1,6 +1,13 @@
 Changelog
 =========
 
+[Unreleased]
+------------
+
+Changed
+^^^^^^^
+- scim2-models 0.8.0 is the minimum supported version.
+
 [0.8.0] - 2026-09-20
 --------------------
 
