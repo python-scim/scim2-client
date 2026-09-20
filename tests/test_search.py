@@ -28,7 +28,7 @@ def test_all_objects(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -40,7 +40,7 @@ def test_all_objects(httpserver):
                         "resourceType": "User",
                         "created": "2010-02-23T04:56:22Z",
                         "lastModified": "2011-06-13T04:42:34Z",
-                        "version": 'W\\/"deadbeef0000"',
+                        "version": 'W/"deadbeef0000"',
                         "location": "https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                     },
                 },
@@ -72,7 +72,7 @@ def test_all_objects(httpserver):
                     last_modified=datetime.datetime(
                         2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
                     ),
-                    version='W\\/"3694e05e9dff590"',
+                    version='W/"3694e05e9dff590"',
                     location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                 ),
             ),
@@ -87,7 +87,7 @@ def test_all_objects(httpserver):
                     last_modified=datetime.datetime(
                         2011, 6, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
                     ),
-                    version='W\\/"deadbeef0000"',
+                    version='W/"deadbeef0000"',
                     location="https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                 ),
             ),
@@ -109,7 +109,7 @@ def test_search_request(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -185,7 +185,7 @@ def test_dont_check_request_payload(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
