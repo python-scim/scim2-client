@@ -33,6 +33,8 @@ from scim2_client.errors import server_error_exception
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
+NOT_MODIFIED = 304
+
 BASE_HEADERS = {
     "Accept": "application/scim+json",
     "Content-Type": "application/scim+json",
@@ -47,6 +49,7 @@ class RequestPayload:
     payload: dict | None = None
     expected_types: list[type[Resource]] | None = None
     expected_status_codes: list[int] | None = None
+    target: Resource | None = None
 
 
 class SCIMClient:
@@ -94,11 +97,22 @@ class SCIMClient:
     :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
     """
 
-    QUERY_RESPONSE_STATUS_CODES: list[int] = [200, 400, 307, 308, 401, 403, 404, 500]
+    QUERY_RESPONSE_STATUS_CODES: list[int] = [
+        200,
+        304,
+        307,
+        308,
+        400,
+        401,
+        403,
+        404,
+        500,
+    ]
     """Resource querying HTTP codes.
 
-    As defined at :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>` and
-    :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
+    As defined at :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`,
+    :rfc:`RFC7644 §3.12 <7644#section-3.12>` and
+    :rfc:`RFC7644 §3.14 <7644#section-3.14>`.
     """
 
     SEARCH_RESPONSE_STATUS_CODES: list[int] = [
@@ -266,6 +280,16 @@ class SCIMClient:
         headers = req.request_kwargs.setdefault("headers", {})
         headers.setdefault("If-Match", version)
 
+    def _set_if_none_match(self, req: RequestPayload, resource: Resource):
+        """Make a read request conditional on the resource having changed."""
+        version = self._resource_version(resource)
+        if not version or not self._etag_supported:
+            return
+
+        req.target = resource
+        headers = req.request_kwargs.setdefault("headers", {})
+        headers.setdefault("If-None-Match", version)
+
     @staticmethod
     def _set_version_from_etag(result, headers: dict):
         """Fill an empty resource version with the ETag header of the response.
@@ -389,6 +413,7 @@ class SCIMClient:
         check_response_payload: bool | None = None,
         raise_scim_errors: bool | None = None,
         scim_ctx: Context | None = None,
+        target: Resource | None = None,
     ) -> Error | None | dict | type[Resource]:
         if raise_scim_errors is None:
             raise_scim_errors = self.raise_scim_errors
@@ -397,7 +422,7 @@ class SCIMClient:
         # the errors in the body of the response in a JSON format
         # https://datatracker.ietf.org/doc/html/rfc7644.html#section-3.12
 
-        no_content_status_codes = [204, 205]
+        no_content_status_codes = [204, 205, 304]
         if status_code in no_content_status_codes:
             response_payload = None
 
@@ -419,6 +444,11 @@ class SCIMClient:
             return error
 
         self._check_status_codes(status_code, expected_status_codes)
+
+        # The server states the resource did not change, so the object the
+        # request was made conditional upon is still up to date.
+        if status_code == NOT_MODIFIED and target is not None:
+            return target
 
         if not expected_types:
             return response_payload
@@ -583,6 +613,10 @@ class SCIMClient:
         elif id:
             req.expected_types = [resource_model]
             req.url = f"{req.url}/{id}"
+            # A 304 answer has no payload, so the object can only be returned
+            # back when it is the whole resource that was asked for.
+            if resource is not None and not payload:
+                self._set_if_none_match(req, resource)
 
         else:
             req.expected_types = [ListResponse[resource_model]]
@@ -859,7 +893,10 @@ class BaseSyncSCIMClient(SCIMClient):
         :class:`~scim2_models.Resource` subtype and an id.
 
         - If ``target`` is a :class:`~scim2_models.Resource` object, the resource
-          with the same id will be reached. The object must have an id.
+          with the same id will be reached. The object must have an id. When the
+          server supports ETags and the object carries a version, the read is
+          conditional, and the object itself is returned when the server answers
+          with a ``304 Not Modified``.
         - If ``id`` is not :data:`None`, the resource with the exact id will be reached.
         - If ``target`` is a :class:`~scim2_models.Resource` subtype and ``id`` is
           :data:`None`, all the resources with the given type will be reached.
@@ -886,7 +923,8 @@ class BaseSyncSCIMClient(SCIMClient):
 
         :return:
             - A :class:`~scim2_models.Error` object in case of error.
-            - A `target` type object in case of success when a single resource is designated.
+            - A `target` type object in case of success when a single resource is designated,
+              which is the ``target`` object itself when the server answers ``304 Not Modified``.
             - A :class:`~scim2_models.ListResponse[target]` object in case of success otherwise.
 
         .. note::
@@ -1221,7 +1259,10 @@ class BaseAsyncSCIMClient(SCIMClient):
         :class:`~scim2_models.Resource` subtype and an id.
 
         - If ``target`` is a :class:`~scim2_models.Resource` object, the resource
-          with the same id will be reached. The object must have an id.
+          with the same id will be reached. The object must have an id. When the
+          server supports ETags and the object carries a version, the read is
+          conditional, and the object itself is returned when the server answers
+          with a ``304 Not Modified``.
         - If ``id`` is not :data:`None`, the resource with the exact id will be reached.
         - If ``target`` is a :class:`~scim2_models.Resource` subtype and ``id`` is
           :data:`None`, all the resources with the given type will be reached.
@@ -1248,7 +1289,8 @@ class BaseAsyncSCIMClient(SCIMClient):
 
         :return:
             - A :class:`~scim2_models.Error` object in case of error.
-            - A `target` type object in case of success when a single resource is designated.
+            - A `target` type object in case of success when a single resource is designated,
+              which is the ``target`` object itself when the server answers ``304 Not Modified``.
             - A :class:`~scim2_models.ListResponse[target]` object in case of success otherwise.
 
         .. note::

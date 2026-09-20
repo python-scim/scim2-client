@@ -495,6 +495,44 @@ fills it.
           # If-Match is sent automatically here too
           await scim.delete(user)
 
+Reads are conditional too: :meth:`~scim2_client.BaseSyncSCIMClient.query` sends
+an ``If-None-Match`` header when it is given a versioned resource object. When
+the server answers with a ``304 Not Modified``, nothing is downloaded and the
+object that was passed is returned back:
+
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          user = scim.query(User, "my-user-id")
+
+          # If-None-Match is sent; 'fresh' is 'user' itself on a 304
+          fresh = scim.query(user)
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          user = await scim.query(User, "my-user-id")
+
+          # If-None-Match is sent; 'fresh' is 'user' itself on a 304
+          fresh = await scim.query(user)
+
+.. warning::
+
+   On a ``304 Not Modified`` the very object that was passed is returned, not a
+   copy. Local modifications made to it are therefore given back as if they came
+   from the server.
+
+No ``If-None-Match`` is sent when ``query_parameters`` are used, since the server
+would then answer with a partial representation that the cached object cannot
+stand for.
+
 No additional configuration is needed. When the server does not advertise ETag
 support, or when the resource carries no version, no conditional header is sent.
 

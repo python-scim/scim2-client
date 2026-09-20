@@ -18,6 +18,9 @@ Added
   :issue:`47`
 - Resource versions are read from the ``ETag`` response header when the server does
   not fill the ``meta.version`` attribute. :issue:`47`
+- ``query`` sends an ``If-None-Match`` header when it is given a versioned resource
+  object and the server supports ETags. On a ``304 Not Modified`` answer, the object
+  that was passed is returned back. :issue:`47`
 - ``409`` is an expected status code for ``delete``, as :rfc:`RFC7644 §3.12 <7644#section-3.12>`
   defines it for every write operation.
 
