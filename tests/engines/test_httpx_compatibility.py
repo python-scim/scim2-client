@@ -19,7 +19,10 @@ requires_httpx2 = pytest.mark.skipif(
 
 def test_legacy_engine_module_is_deprecated():
     """Importing scim2_client.engines.httpx emits a deprecation warning."""
-    legacy = importlib.import_module("scim2_client.engines.httpx")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        legacy = importlib.import_module("scim2_client.engines.httpx")
+
     with pytest.warns(DeprecationWarning, match="scim2_client.engines.httpx"):
         importlib.reload(legacy)
 

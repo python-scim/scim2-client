@@ -11,6 +11,10 @@ Added
   They are shipped in the ``httpx2`` packaging extra.
   `httpx <https://github.com/encode/httpx>`_ is still used when httpx2 is not installed.
 
+Changed
+^^^^^^^
+- scim2-models 0.8 is not supported yet, and 0.7.0 is now the minimum supported version.
+
 Deprecated
 ^^^^^^^^^^
 - The ``httpx`` packaging extra, in favor of the ``httpx2`` extra. Will be removed in 0.9.
