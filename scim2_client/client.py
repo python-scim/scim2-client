@@ -11,6 +11,7 @@ from scim2_models import AnyResource
 from scim2_models import Context
 from scim2_models import Error
 from scim2_models import Extension
+from scim2_models import InvalidValueException
 from scim2_models import ListResponse
 from scim2_models import PatchOp
 from scim2_models import Resource
@@ -21,14 +22,12 @@ from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 from scim2_models import get_model_by_payload
 
-from scim2_client.errors import RequestPayloadValidationError
-from scim2_client.errors import ResponsePayloadValidationError
-from scim2_client.errors import SCIMClientError
-from scim2_client.errors import SCIMRequestError
-from scim2_client.errors import SCIMResponseError
-from scim2_client.errors import SCIMResponseErrorObject
-from scim2_client.errors import UnexpectedContentType
-from scim2_client.errors import UnexpectedStatusCode
+from scim2_client.errors import ResponsePayloadValidationException
+from scim2_client.errors import SCIMResponseException
+from scim2_client.errors import UnexpectedContentTypeException
+from scim2_client.errors import UnexpectedStatusCodeException
+from scim2_client.errors import request_validation_exception
+from scim2_client.errors import server_error_exception
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
@@ -68,7 +67,7 @@ class SCIMClient:
     :param check_response_content_type: Whether to validate that the response content types are valid.
     :param check_response_status_codes: Whether to validate that the response status codes are valid.
     :param raise_scim_errors: If :data:`True` and the server returned an
-        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_client.SCIMResponseErrorObject`
+        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_models.SCIMException`
         exception will be raised. If :data:`False` the error object is returned. This value can be overwritten in methods.
 
     .. note::
@@ -204,9 +203,7 @@ class SCIMClient:
                 return resource_model
         return None
 
-    def _check_resource_model(
-        self, resource_model: type[Resource], payload=None
-    ) -> None:
+    def _check_resource_model(self, resource_model: type[Resource]) -> None:
         schema_to_check = resource_model.__schema__
         for element in self.resource_models:
             schema = element.__schema__
@@ -214,8 +211,8 @@ class SCIMClient:
                 return
 
         if resource_model not in CONFIG_RESOURCES:
-            raise SCIMRequestError(
-                f"Unknown resource type: '{resource_model}'", source=payload
+            raise InvalidValueException(
+                detail=f"Unknown resource type: '{resource_model}'"
             )
 
     def resource_endpoint(self, resource_model: type[Resource] | None) -> str:
@@ -239,7 +236,9 @@ class SCIMClient:
             if schema == resource_type.schema_:
                 return resource_type.endpoint
 
-        raise SCIMRequestError(f"No ResourceType is matching the schema: {schema}")
+        raise InvalidValueException(
+            detail=f"No ResourceType is matching the schema: {schema}"
+        )
 
     def register_naive_resource_types(self):
         """Register a *naive* :class:`~scim2_models.ResourceType` for each :paramref:`resource_model <scim2_client.SCIMClient.resource_models>`.
@@ -262,7 +261,7 @@ class SCIMClient:
             and expected_status_codes
             and status_code not in expected_status_codes
         ):
-            raise UnexpectedStatusCode(status_code)
+            raise UnexpectedStatusCodeException(status_code)
 
     def _check_content_types(self, headers: dict):
         # Interoperability considerations:  The "application/scim+json" media
@@ -277,7 +276,7 @@ class SCIMClient:
             self.check_response_content_type
             and actual_content_type not in expected_response_content_types
         ):
-            raise UnexpectedContentType(content_type=actual_content_type)
+            raise UnexpectedContentTypeException(content_type=actual_content_type)
 
     def check_response(
         self,
@@ -315,7 +314,7 @@ class SCIMClient:
         if response_payload and response_payload.get("schemas") == [Error.__schema__]:
             error = Error.model_validate(response_payload)
             if raise_scim_errors:
-                raise SCIMResponseErrorObject(error)
+                raise server_error_exception(error, scim_ctx=scim_ctx)
             return error
 
         self._check_status_codes(status_code, expected_status_codes)
@@ -341,12 +340,12 @@ class SCIMClient:
                     f"Expected type {expected} but got undefined object with no schema"
                 )
 
-            raise SCIMResponseError(message)
+            raise SCIMResponseException(message)
 
         try:
             return actual_type.model_validate(response_payload, scim_ctx=scim_ctx)
         except ValidationError as exc:
-            scim_exc = ResponsePayloadValidationError()
+            scim_exc = ResponsePayloadValidationException()
             if sys.version_info >= (3, 11):  # pragma: no cover
                 scim_exc.add_note(str(exc))
             raise scim_exc from exc
@@ -376,19 +375,18 @@ class SCIMClient:
             else:
                 resource_model = get_model_by_payload(self.resource_models, resource)
                 if not resource_model:
-                    raise SCIMRequestError(
-                        "Cannot guess resource type from the payload"
+                    raise InvalidValueException(
+                        detail="Cannot guess resource type from the payload"
                     )
 
                 try:
                     resource = resource_model.model_validate(resource)
                 except ValidationError as exc:
-                    scim_validation_exc = RequestPayloadValidationError(source=resource)
-                    if sys.version_info >= (3, 11):  # pragma: no cover
-                        scim_validation_exc.add_note(str(exc))
-                    raise scim_validation_exc from exc
+                    raise request_validation_exception(
+                        exc, Context.RESOURCE_CREATION_REQUEST
+                    ) from exc
 
-            self._check_resource_model(resource_model, resource)
+            self._check_resource_model(resource_model)
             req.expected_types = [resource.__class__]
             req.url = req.request_kwargs.pop(
                 "url", self.resource_endpoint(resource_model)
@@ -472,7 +470,9 @@ class SCIMClient:
         elif resource_model == ServiceProviderConfig:
             req.expected_types = [resource_model]
             if id:
-                raise SCIMClientError("ServiceProviderConfig cannot have an id")
+                raise InvalidValueException(
+                    detail="ServiceProviderConfig cannot have an id"
+                )
 
         elif id:
             req.expected_types = [resource_model]
@@ -557,23 +557,21 @@ class SCIMClient:
             else:
                 resource_model = get_model_by_payload(self.resource_models, resource)
                 if not resource_model:
-                    raise SCIMRequestError(
-                        "Cannot guess resource type from the payload",
-                        source=resource,
+                    raise InvalidValueException(
+                        detail="Cannot guess resource type from the payload"
                     )
 
                 try:
                     resource = resource_model.model_validate(resource)
                 except ValidationError as exc:
-                    scim_validation_exc = RequestPayloadValidationError(source=resource)
-                    if sys.version_info >= (3, 11):  # pragma: no cover
-                        scim_validation_exc.add_note(str(exc))
-                    raise scim_validation_exc from exc
+                    raise request_validation_exception(
+                        exc, Context.RESOURCE_REPLACEMENT_REQUEST
+                    ) from exc
 
-            self._check_resource_model(resource_model, resource)
+            self._check_resource_model(resource_model)
 
             if not resource.id:
-                raise SCIMRequestError("Resource must have an id", source=resource)
+                raise InvalidValueException(detail="Resource must have an id")
 
             req.expected_types = [resource.__class__]
             req.payload = resource.model_dump(
@@ -606,7 +604,7 @@ class SCIMClient:
         :param expected_status_codes: List of HTTP status codes expected for this request.
         :param raise_scim_errors: If :data:`True` and the server returned an
                                  :class:`~scim2_models.Error` object during a request, a
-                                 :class:`~scim2_client.SCIMResponseErrorObject` exception will be raised.
+                                 :class:`~scim2_models.SCIMException` exception will be raised.
         :param kwargs: Additional request parameters.
         :return: The prepared request payload.
         """
@@ -635,10 +633,9 @@ class SCIMClient:
                         scim_ctx=Context.RESOURCE_PATCH_REQUEST
                     )
                 except ValidationError as exc:
-                    scim_validation_exc = RequestPayloadValidationError(source=patch_op)
-                    if sys.version_info >= (3, 11):  # pragma: no cover
-                        scim_validation_exc.add_note(str(exc))
-                    raise scim_validation_exc from exc
+                    raise request_validation_exception(
+                        exc, Context.RESOURCE_PATCH_REQUEST
+                    ) from exc
 
             req.url = req.request_kwargs.pop(
                 "url", f"{self.resource_endpoint(resource_model)}/{id}"

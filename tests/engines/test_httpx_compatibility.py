@@ -10,7 +10,7 @@ from scim2_client.engines import httpx2 as engine
 from scim2_client.engines.httpx2 import AsyncSCIMClient
 from scim2_client.engines.httpx2 import SyncSCIMClient
 from scim2_client.engines.httpx2 import _request_error_classes
-from scim2_client.errors import RequestNetworkError
+from scim2_client.errors import RequestNetworkException
 
 requires_httpx2 = pytest.mark.skipif(
     engine.Client is httpx.Client, reason="httpx2 is not installed"
@@ -68,13 +68,13 @@ async def test_httpx_async_client_is_deprecated(httpserver):
 
 @requires_httpx2
 def test_network_errors_of_httpx_clients_are_converted(httpserver):
-    """Network errors raised by a httpx client become RequestNetworkError."""
+    """Network errors raised by a httpx client become RequestNetworkException."""
     with httpx.Client(base_url=f"http://localhost:{httpserver.port}") as client:
         with pytest.warns(DeprecationWarning):
             scim_client = SyncSCIMClient(client, resource_models=[User])
 
         with pytest.raises(
-            RequestNetworkError, match="Network error happened during request"
+            RequestNetworkException, match="Network error happened during request"
         ):
             scim_client.query(url="http://invalid.test")
 

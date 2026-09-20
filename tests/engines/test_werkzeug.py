@@ -2,6 +2,7 @@ import pytest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResponseParameters
+from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from scim2_models import User
 from werkzeug.test import Client
@@ -9,8 +10,7 @@ from werkzeug.wrappers import Request
 from werkzeug.wrappers import Response
 
 from scim2_client.engines.werkzeug import TestSCIMClient
-from scim2_client.errors import SCIMResponseErrorObject
-from scim2_client.errors import UnexpectedContentFormat
+from scim2_client.errors import UnexpectedContentFormatException
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.backend import InMemoryBackend  # noqa: E402
@@ -74,7 +74,7 @@ def test_werkzeug_engine(scim_client):
     assert queried_user.display_name == "werkzeug patched"
 
     scim_client.delete(User, response_user.id)
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
 
 
@@ -91,7 +91,7 @@ def test_werkzeug_query_with_attributes(scim_client):
 
 
 def test_no_json():
-    """Test that pages that do not return JSON raise an UnexpectedContentFormat error."""
+    """Test that pages that do not return JSON raise an UnexpectedContentFormatException error."""
 
     @Request.application
     def application(request):
@@ -100,8 +100,27 @@ def test_no_json():
     werkzeug_client = Client(application)
     scim_client = TestSCIMClient(client=werkzeug_client, resource_models=(User,))
     scim_client.register_naive_resource_types()
-    with pytest.raises(UnexpectedContentFormat):
+    with pytest.raises(UnexpectedContentFormatException):
         scim_client.query(url="/")
+
+
+def test_invalid_payload():
+    """Test that a response with invalid SCIM payload raises a ResponsePayloadValidationException."""
+    from scim2_client.errors import ResponsePayloadValidationException
+
+    @Request.application
+    def application(request):
+        # Return valid JSON but with invalid SCIM data (missing required fields)
+        return Response(
+            '{"schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "active": "not-a-bool"}',
+            content_type="application/scim+json",
+        )
+
+    werkzeug_client = Client(application)
+    scim_client = TestSCIMClient(client=werkzeug_client, resource_models=(User,))
+    scim_client.register_naive_resource_types()
+    with pytest.raises(ResponsePayloadValidationException):
+        scim_client.query(url="/Users/1234")
 
 
 def test_environ(scim_client):
