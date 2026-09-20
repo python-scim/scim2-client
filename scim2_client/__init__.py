@@ -1,3 +1,4 @@
+from . import errors
 from .client import BaseSyncSCIMClient
 from .client import SCIMClient
 from .errors import RequestNetworkException
@@ -19,3 +20,10 @@ __all__ = [
     "UnexpectedContentFormatException",
     "ResponsePayloadValidationException",
 ]
+
+
+def __getattr__(name: str) -> type[SCIMClientException]:
+    if name not in errors._DEPRECATED_ALIASES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    return errors.deprecated_alias(name)
