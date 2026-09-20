@@ -15,3 +15,17 @@ def sync_client(httpserver):
         )
         scim_client.register_naive_resource_types()
         yield scim_client
+
+
+@pytest.fixture
+def user():
+    """Return a registered user, as the server would send it."""
+    return User(
+        id="2819c223-7f76-453a-919d-413861904646", user_name="bjensen@example.com"
+    )
+
+
+@pytest.fixture
+def group():
+    """Return a registered group, as the server would send it."""
+    return Group(id="e9e30dba-f08f-4109-8486-d5c6a331660a", display_name="Tour Guides")

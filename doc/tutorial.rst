@@ -188,7 +188,10 @@ Create
 Query
 ~~~~~
 
-:meth:`~scim2_client.BaseSyncSCIMClient.query` issues a ``GET`` to read a single resource by its id, or list resources of a given type:
+:meth:`~scim2_client.BaseSyncSCIMClient.query` issues a ``GET`` to read a single resource by its id, or list resources of a given type.
+
+The resource to read is designated either by a resource type and an id, or by a
+resource object carrying that id:
 
 .. tab-set::
    :class: outline
@@ -201,6 +204,7 @@ Query
           from scim2_models import SearchRequest
 
           user = scim.query(User, "my-user-id")
+          user = scim.query(User(id="my-user-id"))
 
           response = scim.query(User, query_parameters=SearchRequest(filter='userName sw "john"'))
           for user in response.resources:
@@ -214,6 +218,7 @@ Query
           from scim2_models import SearchRequest
 
           user = await scim.query(User, "my-user-id")
+          user = await scim.query(User(id="my-user-id"))
 
           response = await scim.query(User, query_parameters=SearchRequest(filter='userName sw "john"'))
           for user in response.resources:
@@ -282,12 +287,18 @@ Delete
 
           scim.delete(User, "my-user-id")
 
+          user = scim.query(User, "my-user-id")
+          scim.delete(user)
+
    .. tab-item:: Async
       :sync: async
 
       .. code-block:: python
 
           await scim.delete(User, "my-user-id")
+
+          user = await scim.query(User, "my-user-id")
+          await scim.delete(user)
 
 Modify
 ~~~~~~
@@ -308,7 +319,8 @@ Modify
               PatchOperation(op=PatchOperation.Op.replace_, path="displayName", value="New Name"),
               PatchOperation(op=PatchOperation.Op.add, path="emails", value=[{"value": "new@example.com"}]),
           ])
-          response = scim.modify(User, "my-user-id", patch)
+          user = scim.query(User, "my-user-id")
+          response = scim.modify(user, patch)
 
    .. tab-item:: Async
       :sync: async
@@ -321,7 +333,8 @@ Modify
               PatchOperation(op=PatchOperation.Op.replace_, path="displayName", value="New Name"),
               PatchOperation(op=PatchOperation.Op.add, path="emails", value=[{"value": "new@example.com"}]),
           ])
-          response = await scim.modify(User, "my-user-id", patch)
+          user = await scim.query(User, "my-user-id")
+          response = await scim.modify(user, patch)
 
 Bulk
 ~~~~

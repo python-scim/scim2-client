@@ -10,6 +10,9 @@ Added
   which is maintained, and live in ``scim2_client.engines.httpx2``.
   They are shipped in the ``httpx2`` packaging extra.
   `httpx <https://github.com/encode/httpx>`_ is still used when httpx2 is not installed.
+- ``query``, ``delete`` and ``modify`` also accept a :class:`~scim2_models.Resource`
+  object in place of a resource type and an id. Objects without an id are rejected.
+  :issue:`13`
 
 Changed
 ^^^^^^^
@@ -20,6 +23,9 @@ Changed
 
 Deprecated
 ^^^^^^^^^^
+- The ``resource_model`` parameter of ``query``, ``delete`` and ``modify``, renamed
+  ``target`` for ``query`` and ``resource`` for the two others, since it also accepts
+  resource objects. Will be removed in 0.9.
 - The ``httpx`` packaging extra, in favor of the ``httpx2`` extra. Will be removed in 0.9.
 - The ``scim2_client.engines.httpx`` module, in favor of ``scim2_client.engines.httpx2``.
   Will be removed in 0.9.

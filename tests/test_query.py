@@ -690,3 +690,54 @@ def test_request_network_error(sync_client):
         RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.query(url="http://invalid.test")
+
+
+def test_query_resource_object(httpserver, sync_client, user):
+    """A resource object designates the resource with the same id."""
+    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    response = sync_client.query(user)
+    assert response.id == user.id
+
+
+def test_query_resource_object_without_id(sync_client):
+    """A resource object without an id cannot designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.query(User(user_name="bjensen@example.com"))
+
+
+def test_query_resource_object_and_id(sync_client, user):
+    """A resource object already carries an id, so passing both is ambiguous."""
+    with pytest.raises(
+        InvalidValueException, match="Cannot pass both a resource object and an id"
+    ):
+        sync_client.query(user, "another-id")
+
+
+def test_query_deprecated_resource_model_parameter(httpserver, sync_client, user):
+    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
+    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
+        response = sync_client.query(resource_model=User, id=user.id)
+    assert response.id == user.id
+
+
+def test_query_deprecated_resource_model_parameter_and_target(sync_client, user):
+    """The deprecated 'resource_model' parameter and the target are exclusive."""
+    with pytest.raises(TypeError, match="Cannot pass both a resource"):
+        sync_client.query(User, resource_model=User, id=user.id)
