@@ -334,8 +334,9 @@ Bulk
 Error handling
 ==============
 
-By default, if the server returns an error, a :class:`~scim2_client.SCIMResponseErrorObject` exception is raised.
-The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object:
+By default, if the request payload is invalid or if the server returns an error,
+a :class:`~scim2_models.SCIMException` exception is raised.
+The :meth:`~scim2_models.SCIMException.to_error` method gives access to the :class:`~scim2_models.Error` object:
 
 .. tab-set::
    :class: outline
@@ -345,11 +346,11 @@ The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access t
 
       .. code-block:: python
 
-          from scim2_client import SCIMResponseErrorObject
+          from scim2_models import SCIMException
 
           try:
               response = scim.create(request)
-          except SCIMResponseErrorObject as exc:
+          except SCIMException as exc:
               error = exc.to_error()
               print(f"SCIM error [{error.status}] {error.scim_type}: {error.detail}")
 
@@ -358,13 +359,17 @@ The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access t
 
       .. code-block:: python
 
-          from scim2_client import SCIMResponseErrorObject
+          from scim2_models import SCIMException
 
           try:
               response = await scim.create(request)
-          except SCIMResponseErrorObject as exc:
+          except SCIMException as exc:
               error = exc.to_error()
               print(f"SCIM error [{error.status}] {error.scim_type}: {error.detail}")
+
+Exceptions raised while validating the request payload happen before anything is
+sent. They keep the original :class:`~pydantic.ValidationError`, which lists every
+invalid attribute, in :attr:`~BaseException.__cause__`.
 
 Request and response validation
 ===============================
@@ -374,16 +379,16 @@ However sometimes you want to accept invalid inputs and outputs.
 To achieve this, all the methods provide the following parameters, all are :data:`True` by default:
 
 - :paramref:`~scim2_client.SCIMClient.check_request_payload`:
-  If :data:`True` (the default) a :class:`~pydantic.ValidationError` will be raised if the input does not respect the SCIM standard.
+  If :data:`True` (the default) a :class:`~scim2_models.SCIMException` will be raised if the input does not respect the SCIM standard.
   If :data:`False`, input is expected to be a :data:`dict` that will be passed as-is in the request.
 - :paramref:`~scim2_client.SCIMClient.check_response_payload`:
-  If :data:`True` (the default) a :class:`~pydantic.ValidationError` will be raised if the server response does not respect the SCIM standard.
+  If :data:`True` (the default) a :class:`~scim2_client.ResponsePayloadValidationException` will be raised if the server response does not respect the SCIM standard.
   If :data:`False` the server response is returned as-is.
 - :code:`expected_status_codes`: The list of expected status codes in the response.
   If :data:`None` any status code is accepted.
-  If an unexpected status code is returned, a :class:`~scim2_client.errors.UnexpectedStatusCode` exception is raised.
-- :paramref:`~scim2_client.SCIMClient.raise_scim_errors`: If :data:`True` (the default) and the server returned an :class:`~scim2_models.Error` object, a :class:`~scim2_client.SCIMResponseErrorObject` exception will be raised.
-  The :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method gives access to the :class:`~scim2_models.Error` object.
+  If an unexpected status code is returned, a :class:`~scim2_client.errors.UnexpectedStatusCodeException` exception is raised.
+- :paramref:`~scim2_client.SCIMClient.raise_scim_errors`: If :data:`True` (the default) and the server returned an :class:`~scim2_models.Error` object, a :class:`~scim2_models.SCIMException` exception will be raised.
+  The :meth:`~scim2_models.SCIMException.to_error` method gives access to the :class:`~scim2_models.Error` object.
   If :data:`False` the error object is returned directly.
 
 

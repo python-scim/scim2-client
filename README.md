@@ -41,8 +41,8 @@ Here is an example of usage:
 ```python
 import datetime
 from httpx2 import Client
-from scim2_client import SCIMResponseErrorObject
 from scim2_client.engines.httpx2 import SyncSCIMClient
+from scim2_models import SCIMException
 
 client = Client(
     base_url="https://auth.example/scim/v2", headers={"Authorization": "Bearer foobar"}
@@ -70,7 +70,7 @@ assert user.meta.last_modified == datetime.datetime(
 user = User(user_name="bjensen@example.com")
 try:
     scim.create(user)
-except SCIMResponseErrorObject as exc:
+except SCIMException as exc:
     error = exc.to_error()
     assert (
         error.detail
