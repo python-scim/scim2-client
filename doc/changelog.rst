@@ -14,6 +14,9 @@ Added
 Changed
 ^^^^^^^
 - scim2-models 0.8 is not supported yet, and 0.7.0 is now the minimum supported version.
+- **Breaking:** invalid requests and server :class:`~scim2_models.Error` objects now raise
+  :class:`~scim2_models.SCIMException` subclasses from scim2-models instead of scim2-client
+  custom exceptions. :issue:`39`
 
 Deprecated
 ^^^^^^^^^^
@@ -22,6 +25,16 @@ Deprecated
   Will be removed in 0.9.
 - Passing a :code:`httpx.Client` or a :code:`httpx.AsyncClient` to the request engines,
   in favor of their httpx2 counterparts. Will be removed in 0.9.
+- The exceptions with a ``*Error`` suffix, in favor of their ``*Exception`` counterparts.
+  The old names still point at the renamed classes, so ``except`` blocks written against
+  them keep working. Will be removed in 0.9.
+
+Removed
+^^^^^^^
+- **Breaking:** ``SCIMRequestError``, ``RequestPayloadValidationError`` and
+  ``SCIMResponseErrorObject``, which have no counterpart among the scim2-models exceptions.
+  Code catching them must catch :class:`~scim2_models.SCIMException` instead, which is also
+  what invalid request payloads and server errors now raise.
 
 Fixed
 ^^^^^
@@ -50,7 +63,7 @@ Changed
 
 Changed
 ^^^^^^^
-- :class:`~scim2_client.SCIMResponseErrorObject` now exposes a :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method
+- ``SCIMResponseErrorObject`` now exposes a ``to_error()`` method
   returning the :class:`~scim2_models.Error` object from the server. :issue:`37`
 
 [0.7.2] - 2026-02-03
@@ -60,14 +73,14 @@ Fixed
 ^^^^^
 - Skip ``Content-Type`` header validation for 204 responses. :issue:`34`
 
-[0.7.1] - 2025-01-25
+[0.7.1] - 2026-01-25
 --------------------
 
 Fixed
 ^^^^^
 - ``schemas`` is no longer included in GET query parameters per RFC 7644 §3.4.2.
 
-[0.7.0] - 2025-01-25
+[0.7.0] - 2026-01-25
 --------------------
 
 Added
@@ -168,7 +181,7 @@ Added
 Added
 ^^^^^
 - :class:`~scim2_client.engines.werkzeug.TestSCIMClient` raise a
-  :class:`~scim2_client.UnexpectedContentFormat` exception when response is not JSON.
+  ``UnexpectedContentFormat`` exception when response is not JSON.
 
 [0.3.2] - 2024-11-29
 --------------------
@@ -224,7 +237,7 @@ Added
 
 Fixed
 ^^^^^
-- :class:`~scim2_client.RequestPayloadValidationError` error message.
+- ``RequestPayloadValidationError`` error message.
 - Don't crash when servers don't return content type headers. :pr:`22,24`
 
 [0.2.0] - 2024-09-01
@@ -278,7 +291,7 @@ Fixed
 
 Added
 ^^^^^
-- :class:`~scim2_client.SCIMResponseErrorObject` implementation.
+- ``SCIMResponseErrorObject`` implementation.
 
 [0.1.5] - 2024-06-05
 --------------------
@@ -293,9 +306,9 @@ Added
 - :class:`~scim2_models.ServiceProviderConfig`, :class:`~scim2_models.ResourceType`
   and :class:`~scim2_models.Schema` are added to the default resource types list.
 - Any custom URL can be used with all the :class:`~scim2_client.SCIMClient` methods.
-- :class:`~scim2_client.ResponsePayloadValidationError` implementation.
-- :class:`~scim2_client.RequestPayloadValidationError` implementation.
-- :class:`~scim2_client.RequestNetworkError` implementation.
+- ``ResponsePayloadValidationError`` implementation.
+- ``RequestPayloadValidationError`` implementation.
+- ``RequestNetworkError`` implementation.
 
 Fixed
 ^^^^^
