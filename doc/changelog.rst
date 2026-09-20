@@ -10,6 +10,19 @@ Added
   which is maintained, and live in ``scim2_client.engines.httpx2``.
   They are shipped in the ``httpx2`` packaging extra.
   `httpx <https://github.com/encode/httpx>`_ is still used when httpx2 is not installed.
+- ``query``, ``delete`` and ``modify`` also accept a :class:`~scim2_models.Resource`
+  object in place of a resource type and an id. Objects without an id are rejected.
+  :issue:`13`
+- ``replace``, ``modify`` and ``delete`` send an ``If-Match`` header when the server
+  advertises ETag support and the resource they are given carries a version.
+  :issue:`47`
+- Resource versions are read from the ``ETag`` response header when the server does
+  not fill the ``meta.version`` attribute. :issue:`47`
+- ``query`` sends an ``If-None-Match`` header when it is given a versioned resource
+  object and the server supports ETags. On a ``304 Not Modified`` answer, the object
+  that was passed is returned back. :issue:`47`
+- ``409`` is an expected status code for ``delete``, as :rfc:`RFC7644 §3.12 <7644#section-3.12>`
+  defines it for every write operation.
 
 Changed
 ^^^^^^^
@@ -20,6 +33,9 @@ Changed
 
 Deprecated
 ^^^^^^^^^^
+- The ``resource_model`` parameter of ``query``, ``delete`` and ``modify``, renamed
+  ``target`` for ``query`` and ``resource`` for the two others, since it also accepts
+  resource objects. Will be removed in 0.9.
 - The ``httpx`` packaging extra, in favor of the ``httpx2`` extra. Will be removed in 0.9.
 - The ``scim2_client.engines.httpx`` module, in favor of ``scim2_client.engines.httpx2``.
   Will be removed in 0.9.

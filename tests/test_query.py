@@ -36,7 +36,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -88,7 +88,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -112,7 +112,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -129,7 +129,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -153,7 +153,7 @@ def httpserver(httpserver):
                 "resourceType": "Group",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff592"',
+                "version": 'W/"3694e05e9dff592"',
                 "location": "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
             },
         },
@@ -173,7 +173,7 @@ def httpserver(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -185,7 +185,7 @@ def httpserver(httpserver):
                         "resourceType": "User",
                         "created": "2010-02-23T04:56:22Z",
                         "lastModified": "2011-06-13T04:42:34Z",
-                        "version": 'W\\/"deadbeef0000"',
+                        "version": 'W/"deadbeef0000"',
                         "location": "https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                     },
                 },
@@ -224,7 +224,7 @@ def httpserver(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -243,7 +243,7 @@ def httpserver(httpserver):
                         "resourceType": "Group",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff592"',
+                        "version": 'W/"3694e05e9dff592"',
                         "location": "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
                     },
                 },
@@ -288,7 +288,7 @@ def httpserver(httpserver):
                 "resourceType": "ServiceProviderConfig",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff594"',
+                "version": 'W/"3694e05e9dff594"',
             },
         }
     )
@@ -311,7 +311,7 @@ def test_user_with_valid_id(sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -383,7 +383,7 @@ def test_all_users(sync_client):
                     last_modified=datetime.datetime(
                         2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
                     ),
-                    version='W\\/"3694e05e9dff590"',
+                    version='W/"3694e05e9dff590"',
                     location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                 ),
             ),
@@ -398,7 +398,7 @@ def test_all_users(sync_client):
                     last_modified=datetime.datetime(
                         2011, 6, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
                     ),
-                    version='W\\/"deadbeef0000"',
+                    version='W/"deadbeef0000"',
                     location="https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                 ),
             ),
@@ -420,7 +420,7 @@ def test_custom_url(sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -543,7 +543,7 @@ def test_search_request(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-qs",
             },
         },
@@ -578,7 +578,7 @@ def test_query_parameters(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-rp",
             },
         },
@@ -605,7 +605,7 @@ def test_query_dont_check_request_payload(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-qs",
             },
         },
@@ -641,7 +641,7 @@ def test_deprecated_search_request_keyword(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-dep",
             },
         },
@@ -690,3 +690,54 @@ def test_request_network_error(sync_client):
         RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.query(url="http://invalid.test")
+
+
+def test_query_resource_object(httpserver, sync_client, user):
+    """A resource object designates the resource with the same id."""
+    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    response = sync_client.query(user)
+    assert response.id == user.id
+
+
+def test_query_resource_object_without_id(sync_client):
+    """A resource object without an id cannot designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.query(User(user_name="bjensen@example.com"))
+
+
+def test_query_resource_object_and_id(sync_client, user):
+    """A resource object already carries an id, so passing both is ambiguous."""
+    with pytest.raises(
+        InvalidValueException, match="Cannot pass both a resource object and an id"
+    ):
+        sync_client.query(user, "another-id")
+
+
+def test_query_deprecated_resource_model_parameter(httpserver, sync_client, user):
+    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
+    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
+        response = sync_client.query(resource_model=User, id=user.id)
+    assert response.id == user.id
+
+
+def test_query_deprecated_resource_model_parameter_and_target(sync_client, user):
+    """The deprecated 'resource_model' parameter and the target are exclusive."""
+    with pytest.raises(TypeError, match="Cannot pass both a resource"):
+        sync_client.query(User, resource_model=User, id=user.id)

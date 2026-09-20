@@ -25,7 +25,7 @@ def test_modify_user_200(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -105,7 +105,7 @@ def test_modify_user_multiple_operations(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff591"',
+                "version": 'W/"3694e05e9dff591"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -144,7 +144,7 @@ def test_modify_user_add_operation(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff591"',
+                "version": 'W/"3694e05e9dff591"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -181,7 +181,7 @@ def test_modify_user_remove_operation(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff591"',
+                "version": 'W/"3694e05e9dff591"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -213,7 +213,7 @@ def test_modify_group(httpserver, sync_client):
                 "resourceType": "Group",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff592"',
+                "version": 'W/"3694e05e9dff592"',
                 "location": "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
             },
         },
@@ -424,3 +424,68 @@ def test_modify_validation_error(httpserver, sync_client):
 
     with pytest.raises(SCIMException):
         sync_client.modify(User, "some-id", invalid_patch_op)
+
+
+def test_modify_resource_object(httpserver, sync_client, user, patch_op):
+    """A resource object designates the resource with the same id."""
+    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    assert sync_client.modify(user, patch_op) is None
+
+
+def test_modify_resource_type_and_id(httpserver, sync_client, user, patch_op):
+    """A resource type and an id designate the same resource."""
+    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    assert sync_client.modify(User, patch_op, id=user.id) is None
+
+
+def test_modify_resource_object_without_id(sync_client, patch_op):
+    """A resource object without an id cannot designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.modify(User(user_name="bjensen@example.com"), patch_op)
+
+
+def test_modify_resource_object_and_id(sync_client, user, patch_op):
+    """A resource object already carries an id, so passing both is ambiguous."""
+    with pytest.raises(
+        InvalidValueException, match="Cannot pass both a resource object and an id"
+    ):
+        sync_client.modify(user, patch_op, id="another-id")
+
+
+def test_modify_resource_type_without_id(sync_client, patch_op):
+    """A resource type alone does not designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.modify(User, patch_op)
+
+
+def test_modify_without_target(sync_client, patch_op):
+    """Nothing to modify when neither a resource nor a type is given."""
+    with pytest.raises(InvalidValueException, match="No resource type to modify"):
+        sync_client.modify(patch_op=patch_op)
+
+
+def test_modify_without_patch_operation(sync_client, user):
+    """A patch operation is required to modify a resource."""
+    with pytest.raises(InvalidValueException, match="Missing patch operation"):
+        sync_client.modify(user)
+
+
+def test_modify_deprecated_resource_model_parameter(
+    httpserver, sync_client, user, patch_op
+):
+    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
+    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
+        response = sync_client.modify(
+            resource_model=User, id=user.id, patch_op=patch_op
+        )
+    assert response is None

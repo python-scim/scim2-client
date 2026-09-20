@@ -188,7 +188,10 @@ Create
 Query
 ~~~~~
 
-:meth:`~scim2_client.BaseSyncSCIMClient.query` issues a ``GET`` to read a single resource by its id, or list resources of a given type:
+:meth:`~scim2_client.BaseSyncSCIMClient.query` issues a ``GET`` to read a single resource by its id, or list resources of a given type.
+
+The resource to read is designated either by a resource type and an id, or by a
+resource object carrying that id:
 
 .. tab-set::
    :class: outline
@@ -201,6 +204,7 @@ Query
           from scim2_models import SearchRequest
 
           user = scim.query(User, "my-user-id")
+          user = scim.query(User(id="my-user-id"))
 
           response = scim.query(User, query_parameters=SearchRequest(filter='userName sw "john"'))
           for user in response.resources:
@@ -214,6 +218,7 @@ Query
           from scim2_models import SearchRequest
 
           user = await scim.query(User, "my-user-id")
+          user = await scim.query(User(id="my-user-id"))
 
           response = await scim.query(User, query_parameters=SearchRequest(filter='userName sw "john"'))
           for user in response.resources:
@@ -282,12 +287,18 @@ Delete
 
           scim.delete(User, "my-user-id")
 
+          user = scim.query(User, "my-user-id")
+          scim.delete(user)
+
    .. tab-item:: Async
       :sync: async
 
       .. code-block:: python
 
           await scim.delete(User, "my-user-id")
+
+          user = await scim.query(User, "my-user-id")
+          await scim.delete(user)
 
 Modify
 ~~~~~~
@@ -308,7 +319,8 @@ Modify
               PatchOperation(op=PatchOperation.Op.replace_, path="displayName", value="New Name"),
               PatchOperation(op=PatchOperation.Op.add, path="emails", value=[{"value": "new@example.com"}]),
           ])
-          response = scim.modify(User, "my-user-id", patch)
+          user = scim.query(User, "my-user-id")
+          response = scim.modify(user, patch)
 
    .. tab-item:: Async
       :sync: async
@@ -321,7 +333,8 @@ Modify
               PatchOperation(op=PatchOperation.Op.replace_, path="displayName", value="New Name"),
               PatchOperation(op=PatchOperation.Op.add, path="emails", value=[{"value": "new@example.com"}]),
           ])
-          response = await scim.modify(User, "my-user-id", patch)
+          user = await scim.query(User, "my-user-id")
+          response = await scim.modify(user, patch)
 
 Bulk
 ~~~~
@@ -397,6 +410,131 @@ To achieve this, all the methods provide the following parameters, all are :data
    Check the request :class:`Contexts <scim2_models.Context>` to understand
    which value will excluded from the request payload, and which values are
    expected in the response payload.
+
+Resource versioning (ETags)
+===========================
+
+SCIM supports resource versioning through HTTP ETags
+(:rfc:`RFC7644 §3.14 <7644#section-3.14>`).
+When the server advertises ETag support in its
+:class:`~scim2_models.ServiceProviderConfig`, scim2-client automatically makes
+write operations conditional: :meth:`~scim2_client.BaseSyncSCIMClient.replace`,
+:meth:`~scim2_client.BaseSyncSCIMClient.modify` and
+:meth:`~scim2_client.BaseSyncSCIMClient.delete` send an ``If-Match`` header
+built from the :attr:`meta.version <scim2_models.Meta.version>` of the resource
+they are given.
+
+This implements optimistic concurrency control: the server rejects the request
+with a ``412 Precondition Failed`` error if the resource has been modified since
+it was read.
+
+.. note::
+
+   The client only knows about ETag support once it has read the
+   :class:`~scim2_models.ServiceProviderConfig`, either with
+   :meth:`~scim2_client.BaseSyncSCIMClient.discover` or by passing it to the
+   client :paramref:`~scim2_client.SCIMClient.service_provider_config`
+   parameter.
+
+Conditional headers are only sent for resources the client has actually read,
+since it is the server that fills the version. They are read from the
+``ETag`` response header, or from the
+:attr:`meta.version <scim2_models.Meta.version>` attribute when the server
+fills it.
+
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          from scim2_models import SCIMException
+
+          scim.discover()
+
+          # The version is read from the server response
+          user = scim.query(User, "my-user-id")
+
+          # If-Match is sent automatically
+          user.display_name = "Updated Name"
+          try:
+              user = scim.replace(user)
+          except SCIMException as exc:
+              if exc.status == 412:
+                  print("The resource has changed, read it again")
+              else:
+                  raise
+
+          # If-Match is sent automatically here too
+          scim.delete(user)
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          from scim2_models import SCIMException
+
+          await scim.discover()
+
+          # The version is read from the server response
+          user = await scim.query(User, "my-user-id")
+
+          # If-Match is sent automatically
+          user.display_name = "Updated Name"
+          try:
+              user = await scim.replace(user)
+          except SCIMException as exc:
+              if exc.status == 412:
+                  print("The resource has changed, read it again")
+              else:
+                  raise
+
+          # If-Match is sent automatically here too
+          await scim.delete(user)
+
+Reads are conditional too: :meth:`~scim2_client.BaseSyncSCIMClient.query` sends
+an ``If-None-Match`` header when it is given a versioned resource object. When
+the server answers with a ``304 Not Modified``, nothing is downloaded and the
+object that was passed is returned back:
+
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          user = scim.query(User, "my-user-id")
+
+          # If-None-Match is sent; 'fresh' is 'user' itself on a 304
+          fresh = scim.query(user)
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          user = await scim.query(User, "my-user-id")
+
+          # If-None-Match is sent; 'fresh' is 'user' itself on a 304
+          fresh = await scim.query(user)
+
+.. warning::
+
+   On a ``304 Not Modified`` the very object that was passed is returned, not a
+   copy. Local modifications made to it are therefore given back as if they came
+   from the server.
+
+No ``If-None-Match`` is sent when ``query_parameters`` are used, since the server
+would then answer with a partial representation that the cached object cannot
+stand for.
+
+No additional configuration is needed. When the server does not advertise ETag
+support, or when the resource carries no version, no conditional header is sent.
 
 Engines
 =======

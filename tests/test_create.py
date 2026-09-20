@@ -23,7 +23,7 @@ def test_create_user(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -44,7 +44,7 @@ def test_create_user(httpserver, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -62,7 +62,7 @@ def test_create_dict_user(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -87,7 +87,7 @@ def test_create_dict_user(httpserver, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -105,7 +105,7 @@ def test_create_dict_user_bad_schema(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -149,7 +149,7 @@ def test_dont_check_request_payload(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -173,7 +173,7 @@ def test_dont_check_request_payload(httpserver, sync_client):
             "resourceType": "User",
             "created": "2010-01-23T04:56:22Z",
             "lastModified": "2011-05-13T04:42:34Z",
-            "version": 'W\\/"3694e05e9dff590"',
+            "version": 'W/"3694e05e9dff590"',
             "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         },
     }
@@ -232,7 +232,7 @@ def test_no_200(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
