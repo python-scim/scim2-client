@@ -14,6 +14,7 @@ from scim2_models import Error
 from scim2_models import Extension
 from scim2_models import InvalidValueException
 from scim2_models import ListResponse
+from scim2_models import Meta
 from scim2_models import PatchOp
 from scim2_models import Resource
 from scim2_models import ResourceType
@@ -127,6 +128,7 @@ class SCIMClient:
         401,
         403,
         404,
+        409,
         412,
         500,
         501,
@@ -238,6 +240,48 @@ class SCIMClient:
             stacklevel=4,
         )
         return resource_model
+
+    @property
+    def _etag_supported(self) -> bool:
+        spc = self.service_provider_config
+        return bool(spc and spc.etag and spc.etag.supported)
+
+    @staticmethod
+    def _resource_version(resource: Resource | dict | None) -> str | None:
+        """Read the ETag a resource was read with."""
+        if isinstance(resource, Resource):
+            return resource.meta.version if resource.meta else None
+
+        if isinstance(resource, dict):
+            return (resource.get("meta") or {}).get("version")
+
+        return None
+
+    def _set_if_match(self, req: RequestPayload, resource: Resource | dict | None):
+        """Make a write request conditional on the resource not having changed."""
+        version = self._resource_version(resource)
+        if not version or not self._etag_supported:
+            return
+
+        headers = req.request_kwargs.setdefault("headers", {})
+        headers.setdefault("If-Match", version)
+
+    @staticmethod
+    def _set_version_from_etag(result, headers: dict):
+        """Fill an empty resource version with the ETag header of the response.
+
+        RFC7644 3.14 makes the ETag header mandatory when versioning is
+        supported, but only recommends filling the meta.version attribute.
+        """
+        etag = headers.get("etag")
+        if not etag or not isinstance(result, Resource):
+            return
+
+        if result.meta is None:
+            result.meta = Meta()
+
+        if not result.meta.version:
+            result.meta.version = etag
 
     @staticmethod
     def _resolve_patch_arguments(
@@ -400,12 +444,15 @@ class SCIMClient:
             raise SCIMResponseException(message)
 
         try:
-            return actual_type.model_validate(response_payload, scim_ctx=scim_ctx)
+            result = actual_type.model_validate(response_payload, scim_ctx=scim_ctx)
         except ValidationError as exc:
             scim_exc = ResponsePayloadValidationException()
             if sys.version_info >= (3, 11):  # pragma: no cover
                 scim_exc.add_note(str(exc))
             raise scim_exc from exc
+
+        self._set_version_from_etag(result, headers)
+        return result
 
     def _prepare_create_request(
         self,
@@ -596,6 +643,7 @@ class SCIMClient:
 
         delete_url = self.resource_endpoint(resource_model) + f"/{id}"
         req.url = req.request_kwargs.pop("url", delete_url)
+        self._set_if_match(req, _instance)
         return req
 
     def _prepare_replace_request(
@@ -648,6 +696,7 @@ class SCIMClient:
                 "url", self.resource_endpoint(resource.__class__) + f"/{resource.id}"
             )
 
+        self._set_if_match(req, resource)
         return req
 
     def _prepare_patch_request(
@@ -705,6 +754,7 @@ class SCIMClient:
             )
 
         req.expected_types = [resource_model]
+        self._set_if_match(req, _instance)
         return req
 
     def modify(

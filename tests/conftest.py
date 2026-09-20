@@ -1,5 +1,7 @@
 import pytest
 from scim2_models import Group
+from scim2_models import PatchOp
+from scim2_models import PatchOperation
 from scim2_models import User
 
 from scim2_client.engines.httpx2 import Client
@@ -29,3 +31,17 @@ def user():
 def group():
     """Return a registered group, as the server would send it."""
     return Group(id="e9e30dba-f08f-4109-8486-d5c6a331660a", display_name="Tour Guides")
+
+
+@pytest.fixture
+def patch_op():
+    """Return a patch operation setting the display name of a user."""
+    return PatchOp[User](
+        operations=[
+            PatchOperation(
+                op=PatchOperation.Op.replace_,
+                path="displayName",
+                value="Updated Display Name",
+            )
+        ]
+    )

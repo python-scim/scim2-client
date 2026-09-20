@@ -426,19 +426,6 @@ def test_modify_validation_error(httpserver, sync_client):
         sync_client.modify(User, "some-id", invalid_patch_op)
 
 
-@pytest.fixture
-def patch_op():
-    return PatchOp[User](
-        operations=[
-            PatchOperation(
-                op=PatchOperation.Op.replace_,
-                path="displayName",
-                value="Updated Display Name",
-            )
-        ]
-    )
-
-
 def test_modify_resource_object(httpserver, sync_client, user, patch_op):
     """A resource object designates the resource with the same id."""
     httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(

@@ -411,6 +411,93 @@ To achieve this, all the methods provide the following parameters, all are :data
    which value will excluded from the request payload, and which values are
    expected in the response payload.
 
+Resource versioning (ETags)
+===========================
+
+SCIM supports resource versioning through HTTP ETags
+(:rfc:`RFC7644 §3.14 <7644#section-3.14>`).
+When the server advertises ETag support in its
+:class:`~scim2_models.ServiceProviderConfig`, scim2-client automatically makes
+write operations conditional: :meth:`~scim2_client.BaseSyncSCIMClient.replace`,
+:meth:`~scim2_client.BaseSyncSCIMClient.modify` and
+:meth:`~scim2_client.BaseSyncSCIMClient.delete` send an ``If-Match`` header
+built from the :attr:`meta.version <scim2_models.Meta.version>` of the resource
+they are given.
+
+This implements optimistic concurrency control: the server rejects the request
+with a ``412 Precondition Failed`` error if the resource has been modified since
+it was read.
+
+.. note::
+
+   The client only knows about ETag support once it has read the
+   :class:`~scim2_models.ServiceProviderConfig`, either with
+   :meth:`~scim2_client.BaseSyncSCIMClient.discover` or by passing it to the
+   client :paramref:`~scim2_client.SCIMClient.service_provider_config`
+   parameter.
+
+Conditional headers are only sent for resources the client has actually read,
+since it is the server that fills the version. They are read from the
+``ETag`` response header, or from the
+:attr:`meta.version <scim2_models.Meta.version>` attribute when the server
+fills it.
+
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          from scim2_models import SCIMException
+
+          scim.discover()
+
+          # The version is read from the server response
+          user = scim.query(User, "my-user-id")
+
+          # If-Match is sent automatically
+          user.display_name = "Updated Name"
+          try:
+              user = scim.replace(user)
+          except SCIMException as exc:
+              if exc.status == 412:
+                  print("The resource has changed, read it again")
+              else:
+                  raise
+
+          # If-Match is sent automatically here too
+          scim.delete(user)
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          from scim2_models import SCIMException
+
+          await scim.discover()
+
+          # The version is read from the server response
+          user = await scim.query(User, "my-user-id")
+
+          # If-Match is sent automatically
+          user.display_name = "Updated Name"
+          try:
+              user = await scim.replace(user)
+          except SCIMException as exc:
+              if exc.status == 412:
+                  print("The resource has changed, read it again")
+              else:
+                  raise
+
+          # If-Match is sent automatically here too
+          await scim.delete(user)
+
+No additional configuration is needed. When the server does not advertise ETag
+support, or when the resource carries no version, no conditional header is sent.
+
 Engines
 =======
 

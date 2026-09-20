@@ -13,6 +13,13 @@ Added
 - ``query``, ``delete`` and ``modify`` also accept a :class:`~scim2_models.Resource`
   object in place of a resource type and an id. Objects without an id are rejected.
   :issue:`13`
+- ``replace``, ``modify`` and ``delete`` send an ``If-Match`` header when the server
+  advertises ETag support and the resource they are given carries a version.
+  :issue:`47`
+- Resource versions are read from the ``ETag`` response header when the server does
+  not fill the ``meta.version`` attribute. :issue:`47`
+- ``409`` is an expected status code for ``delete``, as :rfc:`RFC7644 §3.12 <7644#section-3.12>`
+  defines it for every write operation.
 
 Changed
 ^^^^^^^
