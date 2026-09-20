@@ -23,6 +23,11 @@ Deprecated
 - Passing a :code:`httpx.Client` or a :code:`httpx.AsyncClient` to the request engines,
   in favor of their httpx2 counterparts. Will be removed in 0.9.
 
+Fixed
+^^^^^
+- The ``create`` and ``query`` methods attach the server response to the exceptions they
+  raise, as the other methods do, instead of the request payload.
+
 [0.7.5] - 2026-04-02
 --------------------
 

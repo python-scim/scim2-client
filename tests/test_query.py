@@ -336,6 +336,14 @@ def test_raise_scim_errors(sync_client):
     )
 
 
+def test_query_error_exception_carries_the_response(sync_client):
+    """Test that a query exception gives access to the response that carried the error."""
+    with pytest.raises(SCIMResponseErrorObject) as exc_info:
+        sync_client.query(User, "unknown", raise_scim_errors=True)
+
+    assert exc_info.value.source.status_code == 404
+
+
 def test_raise_scim_errors_with_scim_type(sync_client):
     """Test that the exception message includes scim_type when present."""
     with pytest.raises(

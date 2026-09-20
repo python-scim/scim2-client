@@ -10,6 +10,7 @@ from scim2_client import RequestNetworkError
 from scim2_client import RequestPayloadValidationError
 from scim2_client import SCIMClientError
 from scim2_client import SCIMRequestError
+from scim2_client import SCIMResponseErrorObject
 from scim2_client import UnexpectedStatusCode
 
 
@@ -202,6 +203,24 @@ def test_conflict(httpserver, sync_client):
         scim_type="uniqueness",
         detail="One or more of the attribute values are already in use or are reserved.",
     )
+
+
+def test_create_error_exception_carries_the_response(httpserver, sync_client):
+    """Test that a creation exception gives access to the response that carried the error."""
+    httpserver.expect_request("/Users", method="POST").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+            "status": "409",
+            "scimType": "uniqueness",
+            "detail": "One or more of the attribute values are already in use or are reserved.",
+        },
+        status=409,
+    )
+
+    with pytest.raises(SCIMResponseErrorObject) as exc_info:
+        sync_client.create(User(user_name="bjensen@example.com"))
+
+    assert exc_info.value.source.status_code == 409
 
 
 def test_no_200(httpserver, sync_client):

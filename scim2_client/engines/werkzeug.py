@@ -124,7 +124,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
             self._make_url(req.url), json=req.payload, **environ
         )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json if response.text else None,
                 status_code=response.status_code,
@@ -167,7 +167,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
             self._make_url(req.url), query_string=query_string, **environ
         )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json if response.text else None,
                 status_code=response.status_code,

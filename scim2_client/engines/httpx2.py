@@ -128,7 +128,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         with handle_request_error(req.payload):
             response = self.client.post(req.url, json=req.payload, **req.request_kwargs)
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json() if response.text else None,
                 status_code=response.status_code,
@@ -170,7 +170,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
                 req.url, params=req.payload, **req.request_kwargs
             )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json() if response.text else None,
                 status_code=response.status_code,
@@ -359,7 +359,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
                 req.url, json=req.payload, **req.request_kwargs
             )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json() if response.text else None,
                 status_code=response.status_code,
@@ -401,7 +401,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
                 req.url, params=req.payload, **req.request_kwargs
             )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json() if response.text else None,
                 status_code=response.status_code,
