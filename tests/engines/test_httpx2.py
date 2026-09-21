@@ -5,6 +5,7 @@ import portpicker
 import pytest
 from scim2_models import BulkOperation
 from scim2_models import BulkRequest
+from scim2_models import InvalidValueException
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import SCIMException
@@ -98,8 +99,8 @@ def test_sync_engine(server):
     with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
 
-    # Bulk operations are not implemented yet in scim2-server
-    with pytest.raises(SCIMException):
+    # scim2-server advertises that it does not serve bulk requests
+    with pytest.raises(InvalidValueException, match=r"does not support bulk requests"):
         scim_client.bulk(
             BulkRequest[User](
                 operations=[
@@ -172,8 +173,8 @@ async def test_async_engine(server):
     with pytest.raises(SCIMException):
         await scim_client.query(User, response_user.id)
 
-    # Bulk operations are not implemented yet in scim2-server
-    with pytest.raises(SCIMException):
+    # scim2-server advertises that it does not serve bulk requests
+    with pytest.raises(InvalidValueException, match=r"does not support bulk requests"):
         await scim_client.bulk(
             BulkRequest[User](
                 operations=[

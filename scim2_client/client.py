@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 import warnings
 from collections.abc import Collection
@@ -9,6 +10,7 @@ from typing import cast
 
 from pydantic import ValidationError
 from scim2_models import AnyResource
+from scim2_models import Bulk
 from scim2_models import BulkRequest
 from scim2_models import BulkResponse
 from scim2_models import Context
@@ -675,6 +677,43 @@ class SCIMClient:
         req.expected_types = [ListResponse[Union[self.resource_models]]]  # noqa: UP007
         return req
 
+    @property
+    def _bulk_config(self) -> Bulk | None:
+        """Read the bulk capabilities the server advertises, if they are known."""
+        spc = self.service_provider_config
+        return spc.bulk if spc else None
+
+    def _check_bulk_support(self) -> None:
+        """Refuse a bulk request the server advertised it does not serve."""
+        bulk = self._bulk_config
+        if bulk and bulk.supported is False:
+            raise InvalidValueException(
+                detail="The server does not support bulk requests"
+            )
+
+    def _check_bulk_limits(self, bulk_request: BulkRequest, payload: dict) -> None:
+        """Refuse a bulk request exceeding the limits the server advertises.
+
+        Those limits are defined at :rfc:`RFC7644 §3.7.4 <7644#section-3.7.4>`.
+        """
+        bulk = self._bulk_config
+        if not bulk:
+            return
+
+        operations = bulk_request.operations or []
+        if bulk.max_operations is not None and len(operations) > bulk.max_operations:
+            raise InvalidValueException(
+                detail=f"Bulk requests are limited to {bulk.max_operations} operations by the server"
+            )
+
+        if bulk.max_payload_size is None:
+            return
+
+        if len(json.dumps(payload).encode()) > bulk.max_payload_size:
+            raise InvalidValueException(
+                detail=f"Bulk request payloads are limited to {bulk.max_payload_size} bytes by the server"
+            )
+
     def _prepare_bulk_request(
         self,
         bulk_request: BulkRequest | None = None,
@@ -690,15 +729,17 @@ class SCIMClient:
         if check_request_payload is None:
             check_request_payload = self.check_request_payload
 
+        if bulk_request is None:
+            raise InvalidValueException(detail="Missing bulk operations")
+
+        self._check_bulk_support()
+
         if not check_request_payload:
             req.payload = bulk_request
 
         else:
-            req.payload = (
-                bulk_request.model_dump(scim_ctx=Context.BULK_REQUEST)
-                if bulk_request
-                else None
-            )
+            req.payload = bulk_request.model_dump(scim_ctx=Context.BULK_REQUEST)
+            self._check_bulk_limits(bulk_request, req.payload)
 
         req.url = req.request_kwargs.pop("url", "/Bulk")
         req.expected_types = [BulkResponse[Union[self.resource_models]]]  # noqa: UP007
@@ -1131,6 +1172,12 @@ class BaseSyncSCIMClient(SCIMClient):
             and :attr:`~scim2_models.Context.BULK_RESPONSE` contexts to understand
             which values will be excluded from the request payload, and which values are expected in
             the response payload.
+
+        .. tip::
+
+            When the :class:`~scim2_models.ServiceProviderConfig` is known, the request is
+            checked against the bulk capabilities the server advertises, and a request the
+            server would answer with a ``413`` is not sent.
         """
         raise NotImplementedError()
 
@@ -1565,6 +1612,12 @@ class BaseAsyncSCIMClient(SCIMClient):
             and :attr:`~scim2_models.Context.BULK_RESPONSE` contexts to understand
             which values will be excluded from the request payload, and which values are expected in
             the response payload.
+
+        .. tip::
+
+            When the :class:`~scim2_models.ServiceProviderConfig` is known, the request is
+            checked against the bulk capabilities the server advertises, and a request the
+            server would answer with a ``413`` is not sent.
         """
         raise NotImplementedError()
 

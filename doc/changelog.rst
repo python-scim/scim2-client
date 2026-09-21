@@ -6,7 +6,10 @@ Changelog
 
 Added
 ^^^^^
-- Support for bulk operations with :meth:`~scim2_client.BaseSyncSCIMClient.bulk`.
+- Support for bulk operations with :meth:`~scim2_client.BaseSyncSCIMClient.bulk`. :issue:`4`
+  When the :class:`~scim2_models.ServiceProviderConfig` is known, requests are checked
+  against the bulk capabilities the server advertises, and a request the server would
+  answer with a ``413`` is not sent.
 
 Changed
 ^^^^^^^

@@ -400,6 +400,12 @@ Bulk
           )
           response = await scim.bulk(request)
 
+When the :class:`~scim2_models.ServiceProviderConfig` is known — after a call to
+:meth:`~scim2_client.BaseSyncSCIMClient.discover` for instance — bulk requests are
+checked against the capabilities the server advertises. Requests aimed at a server
+that does not support bulk operations, and requests exceeding its ``maxOperations``
+or ``maxPayloadSize`` limits, are not sent.
+
 Error handling
 ==============
 
