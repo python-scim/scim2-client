@@ -220,7 +220,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def bulk(
         self,
-        bulk_request: BulkRequest | None = None,
+        bulk_request: BulkRequest | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
@@ -486,7 +486,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     async def bulk(
         self,
-        bulk_request: BulkRequest | None = None,
+        bulk_request: BulkRequest | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]

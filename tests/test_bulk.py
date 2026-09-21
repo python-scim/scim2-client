@@ -12,6 +12,8 @@ from scim2_models import Error
 from scim2_models import Group
 from scim2_models import GroupMember
 from scim2_models import InvalidValueException
+from scim2_models import Resource
+from scim2_models import SCIMException
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 from werkzeug.test import Client
@@ -122,6 +124,20 @@ def test_bulk_request_payload(bulk_response, sync_client):
     assert isinstance(sync_client.bulk(req), BulkResponse)
 
 
+def test_operation_without_data(bulk_response, sync_client):
+    """Test that operations carrying no resource are accepted."""
+    bulk_response()
+    req = BulkRequest[User](
+        operations=[
+            BulkOperation[User](
+                method="DELETE", path="/Users/2819c223-7f76-453a-919d-413861904646"
+            )
+        ]
+    )
+
+    assert isinstance(sync_client.bulk(req), BulkResponse)
+
+
 def test_no_operation(httpserver, sync_client):
     """Test a bulk response carrying no operation."""
     httpserver.expect_request("/Bulk", method="POST").respond_with_json(
@@ -142,6 +158,66 @@ def test_missing_bulk_request(sync_client):
     """Test that a bulk request without operations is refused."""
     with pytest.raises(InvalidValueException, match=r"Missing bulk operations"):
         sync_client.bulk()
+
+
+def test_unknown_resource_model(sync_client):
+    """Test that operations must carry resources the client handles."""
+
+    class MyResource(Resource):
+        __schema__ = "urn:ietf:params:scim:schemas:core:2.0:MyResource"
+        display_name: str | None = None
+
+    req = BulkRequest[MyResource](
+        operations=[
+            BulkOperation[MyResource](
+                method="POST", path="/MyResources", data=MyResource(display_name="foo")
+            )
+        ]
+    )
+
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
+        sync_client.bulk(req)
+
+
+def test_dict_request_payload(bulk_response, sync_client):
+    """Test that a dict request payload is validated before being sent."""
+    bulk_response(
+        json={
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+            "Operations": [
+                {
+                    "method": "POST",
+                    "bulkId": "qwerty",
+                    "path": "/Users",
+                    "data": {
+                        "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                        "userName": "Alice",
+                    },
+                }
+            ],
+        }
+    )
+    req = {
+        "operations": [
+            {
+                "method": "POST",
+                "bulkId": "qwerty",
+                "path": "/Users",
+                "data": {
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                    "userName": "Alice",
+                },
+            },
+        ],
+    }
+
+    assert isinstance(sync_client.bulk(req), BulkResponse)
+
+
+def test_invalid_dict_request_payload(sync_client):
+    """Test that an invalid dict request payload raises an exception."""
+    with pytest.raises(SCIMException):
+        sync_client.bulk({"operations": [{"method": "INVALID", "path": "/Users"}]})
 
 
 def test_dont_check_request_payload(bulk_response, sync_client):

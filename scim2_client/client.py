@@ -714,9 +714,27 @@ class SCIMClient:
                 detail=f"Bulk request payloads are limited to {bulk.max_payload_size} bytes by the server"
             )
 
+    def _check_bulk_resource_models(self, bulk_request: BulkRequest) -> None:
+        """Check that every operation carries a resource the client handles."""
+        for operation in bulk_request.operations or []:
+            if isinstance(operation.data, Resource):
+                self._check_resource_model(operation.data.__class__)
+
+    def _validate_bulk_request(self, bulk_request: BulkRequest | dict) -> BulkRequest:
+        """Build the bulk request message a raw payload describes."""
+        if not isinstance(bulk_request, dict):
+            return bulk_request
+
+        try:
+            return BulkRequest[
+                Union[self.resource_models]  # noqa: UP007
+            ].model_validate(bulk_request)
+        except ValidationError as exc:
+            raise request_validation_exception(exc, Context.BULK_REQUEST) from exc
+
     def _prepare_bulk_request(
         self,
-        bulk_request: BulkRequest | None = None,
+        bulk_request: BulkRequest | dict | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
         **kwargs,
@@ -738,8 +756,10 @@ class SCIMClient:
             req.payload = bulk_request
 
         else:
-            req.payload = bulk_request.model_dump(scim_ctx=Context.BULK_REQUEST)
-            self._check_bulk_limits(bulk_request, req.payload)
+            message = self._validate_bulk_request(bulk_request)
+            self._check_bulk_resource_models(message)
+            req.payload = message.model_dump(scim_ctx=Context.BULK_REQUEST)
+            self._check_bulk_limits(message, req.payload)
 
         req.url = req.request_kwargs.pop("url", "/Bulk")
         req.expected_types = [BulkResponse[Union[self.resource_models]]]  # noqa: UP007
@@ -1109,7 +1129,7 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def bulk(
         self,
-        bulk_request: BulkRequest | None = None,
+        bulk_request: BulkRequest | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int] | None = SCIMClient.BULK_RESPONSE_STATUS_CODES,
@@ -1120,6 +1140,8 @@ class BaseSyncSCIMClient(SCIMClient):
 
         :param bulk_request: An object detailing the bulk request.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
+            When it is :data:`False`, :paramref:`bulk_request` is expected to be a dict
+            that will be passed as-is in the request.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
             If :data:`None` any status code is accepted.
@@ -1549,7 +1571,7 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def bulk(
         self,
-        bulk_request: BulkRequest | None = None,
+        bulk_request: BulkRequest | dict | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int] | None = SCIMClient.BULK_RESPONSE_STATUS_CODES,
@@ -1560,6 +1582,8 @@ class BaseAsyncSCIMClient(SCIMClient):
 
         :param bulk_request: An object detailing the bulk request.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
+            When it is :data:`False`, :paramref:`bulk_request` is expected to be a dict
+            that will be passed as-is in the request.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
             If :data:`None` any status code is accepted.
