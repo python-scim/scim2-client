@@ -49,6 +49,8 @@ class TestSCIMClient(BaseSyncSCIMClient):
     :param environ: Additional parameters that will be passed to every request.
     :param provider: The :class:`~scim2_models.ScimProvider` describing the server.
         If a request payload describe a resource it does not know, an exception will be raised.
+        The :class:`~scim2_models.ScimPolicy` it carries rules how much the payloads
+        exchanged with the server may depart from the specification.
     :param resource_models: Deprecated, pass a :paramref:`provider` instead.
     :param check_request_payload: If :data:`False`,
         :code:`resource` is expected to be a dict that will be passed as-is in the request.

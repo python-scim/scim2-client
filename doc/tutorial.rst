@@ -491,6 +491,31 @@ To achieve this, all the methods provide the following parameters, all are :data
    which value will excluded from the request payload, and which values are
    expected in the response payload.
 
+Tolerating a nonconformant peer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Those parameters are all-or-nothing: they turn the reading of a whole payload on or off.
+When a peer only departs from the specification on one point, the :class:`~scim2_models.ScimPolicy`
+the :class:`~scim2_models.ScimProvider` carries states how far it may go, and the client applies
+it to every payload it reads and writes:
+
+.. code-block:: python
+
+    from scim2_models import ScimPolicy
+    from scim2_models import ScimProvider
+    from scim2_models import User
+
+    scim = SyncSCIMClient(
+        client,
+        provider=ScimProvider(
+            models=[User],
+            policy=ScimPolicy(unknown=ScimPolicy.Unknown.keep),
+        ),
+    )
+
+Here the attributes no schema declares are read, and carried back to the server they came from,
+where they would have been refused by default.
+
 Resource versioning (ETags)
 ===========================
 

@@ -15,6 +15,9 @@ Added
   :meth:`~scim2_client.SCIMClient.get_resource_model` and
   :meth:`~scim2_client.SCIMClient.resource_endpoint` answer the model and the endpoint each
   one serves.
+- The :class:`~scim2_models.ScimPolicy` the ``provider`` carries rules the payloads the
+  client reads and writes, so that a peer departing from the specification on one point can
+  still be talked to.
 - :exc:`~scim2_client.InvalidServiceDescriptionException` is raised when the objects a
   server publishes do not describe a coherent service, where the incoherence used to pass
   unnoticed.

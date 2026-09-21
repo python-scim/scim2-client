@@ -2,8 +2,12 @@ import asyncio
 import json
 import sys
 import warnings
+from collections.abc import Callable
 from collections.abc import Collection
 from dataclasses import dataclass
+from functools import wraps
+from typing import Concatenate
+from typing import ParamSpec
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -40,6 +44,8 @@ from scim2_client.errors import request_validation_exception
 from scim2_client.errors import server_error_exception
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
+ReturnT = TypeVar("ReturnT")
+P = ParamSpec("P")
 
 NOT_MODIFIED = 304
 
@@ -76,6 +82,23 @@ def describe_resource_models(
         resource_types.append(ResourceType.from_resource(resource_model))
 
     return tuple(models.values()), tuple(resource_types)
+
+
+def _under_provider(
+    method: "Callable[Concatenate[SCIMClient, P], ReturnT]",
+) -> "Callable[Concatenate[SCIMClient, P], ReturnT]":
+    """Lend the description of the server to the payloads a method reads and writes.
+
+    The policy the description carries then rules how much a payload may depart
+    from the specification, down to the passes scim2-models makes on its own.
+    """
+
+    @wraps(method)
+    def wrapper(self: "SCIMClient", *args: P.args, **kwargs: P.kwargs) -> ReturnT:
+        with self.provider:
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 @dataclass
@@ -621,6 +644,7 @@ class SCIMClient:
         ):
             raise UnexpectedContentTypeException(content_type=actual_content_type)
 
+    @_under_provider
     def check_response(
         self,
         payload: dict | None,
@@ -702,6 +726,7 @@ class SCIMClient:
         self._set_version_from_etag(result, headers)
         return result
 
+    @_under_provider
     def _prepare_create_request(
         self,
         resource: Resource | dict,
@@ -770,6 +795,7 @@ class SCIMClient:
             return search_request
         return query_parameters
 
+    @_under_provider
     def _prepare_query_request(
         self,
         target: type[Resource] | Resource | None = None,
@@ -841,6 +867,7 @@ class SCIMClient:
 
         return req
 
+    @_under_provider
     def _prepare_search_request(
         self,
         search_request: SearchRequest | None = None,
@@ -927,6 +954,7 @@ class SCIMClient:
         except ValidationError as exc:
             raise request_validation_exception(exc, Context.BULK_REQUEST) from exc
 
+    @_under_provider
     def _prepare_bulk_request(
         self,
         bulk_request: BulkRequest | dict | None = None,
@@ -960,6 +988,7 @@ class SCIMClient:
         req.expected_types = [BulkResponse[Union[self._composed_models]]]  # noqa: UP007
         return req
 
+    @_under_provider
     def _prepare_delete_request(
         self,
         resource: Resource | type[Resource] | None = None,
@@ -986,6 +1015,7 @@ class SCIMClient:
         self._set_if_match(req, _instance)
         return req
 
+    @_under_provider
     def _prepare_replace_request(
         self,
         resource: Resource | dict,
@@ -1039,6 +1069,7 @@ class SCIMClient:
         self._set_if_match(req, resource)
         return req
 
+    @_under_provider
     def _prepare_patch_request(
         self,
         resource: ResourceT | type[ResourceT] | None = None,
