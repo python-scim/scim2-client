@@ -1,4 +1,6 @@
 import pytest
+from scim2_models import BulkOperation
+from scim2_models import BulkRequest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResponseParameters
@@ -76,6 +78,21 @@ def test_werkzeug_engine(scim_client):
     scim_client.delete(User, response_user.id)
     with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
+
+    # Bulk operations are not implemented yet in scim2-server
+    with pytest.raises(SCIMException):
+        scim_client.bulk(
+            BulkRequest[User](
+                operations=[
+                    BulkOperation[User](
+                        method="POST",
+                        path="/Users",
+                        bulk_id="qwerty",
+                        data=User(user_name="Alice"),
+                    )
+                ]
+            )
+        )
 
 
 def test_werkzeug_query_with_attributes(scim_client):

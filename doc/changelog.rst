@@ -4,6 +4,10 @@ Changelog
 [Unreleased]
 ------------
 
+Added
+^^^^^
+- Support for bulk operations with :meth:`~scim2_client.BaseSyncSCIMClient.bulk`.
+
 Changed
 ^^^^^^^
 - scim2-models 0.8.0 is the minimum supported version.

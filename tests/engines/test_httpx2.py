@@ -3,6 +3,8 @@ import wsgiref.simple_server
 
 import portpicker
 import pytest
+from scim2_models import BulkOperation
+from scim2_models import BulkRequest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import SCIMException
@@ -96,6 +98,21 @@ def test_sync_engine(server):
     with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
 
+    # Bulk operations are not implemented yet in scim2-server
+    with pytest.raises(SCIMException):
+        scim_client.bulk(
+            BulkRequest[User](
+                operations=[
+                    BulkOperation[User](
+                        method="POST",
+                        path="/Users",
+                        bulk_id="qwerty",
+                        data=User(user_name="Alice"),
+                    )
+                ]
+            )
+        )
+
 
 async def test_async_engine(server):
     host, port = server
@@ -154,3 +171,18 @@ async def test_async_engine(server):
     await scim_client.delete(User, response_user.id)
     with pytest.raises(SCIMException):
         await scim_client.query(User, response_user.id)
+
+    # Bulk operations are not implemented yet in scim2-server
+    with pytest.raises(SCIMException):
+        await scim_client.bulk(
+            BulkRequest[User](
+                operations=[
+                    BulkOperation[User](
+                        method="POST",
+                        path="/Users",
+                        bulk_id="qwerty",
+                        data=User(user_name="Alice"),
+                    )
+                ]
+            )
+        )
