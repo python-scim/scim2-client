@@ -14,6 +14,7 @@ from scim2_models import GroupMember
 from scim2_models import InvalidValueException
 from scim2_models import Resource
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 from werkzeug.test import Client
@@ -45,8 +46,11 @@ GROUP_OPERATION = BulkOperation[Group](
 @pytest.fixture
 def bulk_client(sync_client):
     """Return a client bound to a server advertising its bulk capabilities."""
-    sync_client.service_provider_config = ServiceProviderConfig(
-        bulk=Bulk(supported=True, max_operations=1000, max_payload_size=1048576)
+    sync_client.provider = ScimProvider(
+        models=sync_client.provider.models,
+        config=ServiceProviderConfig(
+            bulk=Bulk(supported=True, max_operations=1000, max_payload_size=1048576)
+        ),
     )
     return sync_client
 
@@ -382,8 +386,9 @@ def test_async_engine(httpserver):
         async with AsyncClient(
             base_url=f"http://localhost:{httpserver.port}"
         ) as http_client:
-            client = AsyncSCIMClient(http_client, resource_models=(User, Group))
-            client.register_naive_resource_types()
+            client = AsyncSCIMClient(
+                http_client, provider=ScimProvider(models=[User, Group])
+            )
             return await client.bulk(BulkRequest[User](operations=[USER_OPERATION]))
 
     assert isinstance(asyncio.run(bulk()), BulkResponse)
@@ -402,8 +407,7 @@ def test_werkzeug_engine():
             content_type="application/scim+json",
         )
 
-    client = TestSCIMClient(Client(app), resource_models=(User, Group))
-    client.register_naive_resource_types()
+    client = TestSCIMClient(Client(app), provider=ScimProvider(models=[User, Group]))
 
     assert isinstance(
         client.bulk(BulkRequest[User](operations=[USER_OPERATION])), BulkResponse

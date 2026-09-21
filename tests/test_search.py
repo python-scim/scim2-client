@@ -5,6 +5,7 @@ from scim2_models import Error
 from scim2_models import Group
 from scim2_models import ListResponse
 from scim2_models import Meta
+from scim2_models import ScimProvider
 from scim2_models import SearchRequest
 from scim2_models import User
 
@@ -52,10 +53,7 @@ def test_all_objects(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search()
     assert response == ListResponse[User](
@@ -129,10 +127,7 @@ def test_search_request(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(req)
     user = response.resources[0]
@@ -158,10 +153,7 @@ def test_dont_check_response(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(req, check_response_payload=False)
     assert response == {"foo": "bar"}
@@ -205,10 +197,7 @@ def test_dont_check_request_payload(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(req, check_request_payload=False)
     assert isinstance(response, ListResponse)
@@ -229,10 +218,7 @@ def test_errors(httpserver, code):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(raise_scim_errors=False)
 
@@ -246,7 +232,7 @@ def test_errors(httpserver, code):
 def test_request_network_error(httpserver):
     """Test that httpx2 exceptions are transformed in RequestNetworkException."""
     client = Client(base_url=f"http://localhost:{httpserver.port}")
-    scim_client = SyncSCIMClient(client, resource_models=(User,))
+    scim_client = SyncSCIMClient(client, provider=ScimProvider(models=[User]))
     with pytest.raises(
         RequestNetworkException, match="Network error happened during request"
     ):

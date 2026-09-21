@@ -48,9 +48,10 @@ In addition to your SCIM server root endpoint, you will probably want to provide
           )
           scim = AsyncSCIMClient(client)
 
-You need to give to indicate to :class:`~scim2_client.SCIMClient` all the different :class:`~scim2_models.Resource` models that you will need to manipulate, and the matching :class:`~scim2_models.ResourceType` objects to let the client know where to look for resources on the server.
+You need to indicate to :class:`~scim2_client.SCIMClient` which service it talks to: the :class:`~scim2_models.Resource` models that you will need to manipulate, the matching :class:`~scim2_models.ResourceType` objects that tell the client where to look for resources on the server, and the capabilities the server declares.
+Those are gathered in a :class:`~scim2_models.ScimProvider`.
 
-You can either provision those objects manually or automatically.
+You can either provision it manually or automatically.
 
 Automatic provisioning
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +60,7 @@ The easiest way is to let the client discover the server's configuration and ava
 The :meth:`~scim2_client.BaseSyncSCIMClient.discover` method looks for the server :class:`~scim2_models.ServiceProviderConfig`, :class:`~scim2_models.Schema` and :class:`~scim2_models.ResourceType` endpoints,
 and dynamically generate local Python models based on those schemas.
 They are then available to use with :meth:`~scim2_client.SCIMClient.get_resource_model`.
+Only what the :attr:`~scim2_client.SCIMClient.provider` does not describe yet is queried, so anything you pass by hand takes precedence over what the server publishes.
 
 .. tab-set::
    :class: outline
@@ -85,7 +87,8 @@ They are then available to use with :meth:`~scim2_client.SCIMClient.get_resource
 
 Manual provisioning
 ~~~~~~~~~~~~~~~~~~~
-To manually register models and resource types, you can simply use the :paramref:`~scim2_client.SCIMClient.resource_models` and :paramref:`~scim2_client.SCIMClient.resource_types` arguments.
+To describe the server by hand, pass a :class:`~scim2_models.ScimProvider` with the :paramref:`~scim2_client.SCIMClient.provider` argument.
+It lists the resources and the extensions apart, and binds them with the :class:`~scim2_models.ResourceType` objects the server serves them under.
 
 
 .. tab-set::
@@ -95,34 +98,45 @@ To manually register models and resource types, you can simply use the :paramref
       :sync: sync
 
       .. code-block:: python
-          :caption: Manually registering models and resource types
+          :caption: Manually describing the server
 
-          from scim2_models import User, EnterpriseUserUser, Group, ResourceType
+          from scim2_models import EnterpriseUser, Group, ResourceType, ScimProvider, User
+
           scim = SyncSCIMClient(
               client,
-              resource_models=[User[EnterpriseUser], Group],
-              resource_types=[ResourceType(id="User", ...), ResourceType(id="Group", ...)],
+              provider=ScimProvider(
+                  models=[User, EnterpriseUser, Group],
+                  resource_types=[
+                      ResourceType.from_resource(User[EnterpriseUser]),
+                      ResourceType.from_resource(Group),
+                  ],
+              ),
           )
 
    .. tab-item:: Async
       :sync: async
 
       .. code-block:: python
-          :caption: Manually registering models and resource types
+          :caption: Manually describing the server
 
-          from scim2_models import User, EnterpriseUserUser, Group, ResourceType
+          from scim2_models import EnterpriseUser, Group, ResourceType, ScimProvider, User
+
           scim = AsyncSCIMClient(
               client,
-              resource_models=[User[EnterpriseUser], Group],
-              resource_types=[ResourceType(id="User", ...), ResourceType(id="Group", ...)],
+              provider=ScimProvider(
+                  models=[User, EnterpriseUser, Group],
+                  resource_types=[
+                      ResourceType.from_resource(User[EnterpriseUser]),
+                      ResourceType.from_resource(Group),
+                  ],
+              ),
           )
 
 .. tip::
 
-   If you know that all the resources are hosted at regular server endpoints
-   (for instance `/Users` for :class:`~scim2_models.User` etc.),
-   you can skip passing the :class:`~scim2_models.ResourceType` objects by hand,
-   and simply call :meth:`~scim2_client.SCIMClient.register_naive_resource_types`.
+   Resources that carry no extension and are hosted at regular server endpoints
+   (for instance `/Users` for :class:`~scim2_models.User` etc.) need no
+   :class:`~scim2_models.ResourceType`: the provider builds naive ones itself.
 
     .. tab-set::
        :class: outline
@@ -131,27 +145,21 @@ To manually register models and resource types, you can simply use the :paramref
           :sync: sync
 
           .. code-block:: python
-              :caption: Manually registering models and resource types
+              :caption: Describing a server serving bare resources
 
-              from scim2_models import User, EnterpriseUserUser, Group, ResourceType
-              scim = SyncSCIMClient(
-                  client,
-                  resource_models=[User[EnterpriseUser], Group],
-              )
-              scim.register_naive_resource_types()
+              from scim2_models import Group, ScimProvider, User
+
+              scim = SyncSCIMClient(client, provider=ScimProvider(models=[User, Group]))
 
        .. tab-item:: Async
           :sync: async
 
           .. code-block:: python
-              :caption: Manually registering models and resource types
+              :caption: Describing a server serving bare resources
 
-              from scim2_models import User, EnterpriseUserUser, Group, ResourceType
-              scim = AsyncSCIMClient(
-                  client,
-                  resource_models=[User[EnterpriseUser], Group],
-              )
-              scim.register_naive_resource_types()
+              from scim2_models import Group, ScimProvider, User
+
+              scim = AsyncSCIMClient(client, provider=ScimProvider(models=[User, Group]))
 
 Performing actions
 ==================

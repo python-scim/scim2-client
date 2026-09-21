@@ -7,9 +7,9 @@ from scim2_models import InvalidValueException
 from scim2_models import ListResponse
 from scim2_models import Meta
 from scim2_models import Resource
-from scim2_models import ResourceType
 from scim2_models import ResponseParameters
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 from scim2_models import UniquenessException
@@ -444,19 +444,14 @@ def test_resource_unknown_by_server(sync_client):
     class Foobar(Resource):
         __schema__ = "urn:ietf:params:scim:schemas:core:2.0:Foobar"
 
-    sync_client.resource_models = (*sync_client.resource_models, Foobar)
-    sync_client.resource_types = [
-        *sync_client.resource_types,
-        ResourceType.from_resource(Foobar),
-    ]
+    sync_client.provider = ScimProvider(models=[*sync_client.provider.models, Foobar])
     response = sync_client.query(Foobar, raise_scim_errors=False)
     assert response == Error(status=404, detail="Invalid Resource")
 
 
 def test_bad_resource_model(sync_client):
     """Test querying a resource unknown from the client raise a SCIMResponseException."""
-    sync_client.resource_models = (User,)
-    sync_client.resource_types = [ResourceType.from_resource(User)]
+    sync_client.provider = ScimProvider(models=[User])
 
     with pytest.raises(
         SCIMResponseException,
@@ -477,8 +472,7 @@ def test_all(sync_client):
 
 def test_all_unexpected_type(sync_client):
     """Test retrieving a payload for an object which type has not been passed in parameters raise a ResponsePayloadValidationException."""
-    sync_client.resource_models = (User,)
-    sync_client.resource_types = [ResourceType.from_resource(User)]
+    sync_client.provider = ScimProvider(models=[User])
 
     with pytest.raises(
         ResponsePayloadValidationException,
@@ -663,8 +657,7 @@ def test_both_search_request_and_query_parameters_raises(sync_client):
 
 def test_invalid_resource_model(sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
-    sync_client.resource_models = (User,)
-    sync_client.resource_types = [ResourceType.from_resource(User)]
+    sync_client.provider = ScimProvider(models=[User])
 
     with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.query(Group)

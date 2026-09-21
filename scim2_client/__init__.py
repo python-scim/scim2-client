@@ -1,6 +1,7 @@
 from . import errors
 from .client import BaseSyncSCIMClient
 from .client import SCIMClient
+from .errors import InvalidServiceDescriptionException
 from .errors import RequestNetworkException
 from .errors import ResponsePayloadValidationException
 from .errors import SCIMClientException
@@ -19,6 +20,7 @@ __all__ = [
     "UnexpectedContentTypeException",
     "UnexpectedContentFormatException",
     "ResponsePayloadValidationException",
+    "InvalidServiceDescriptionException",
 ]
 
 

@@ -10,10 +10,31 @@ Added
   When the :class:`~scim2_models.ServiceProviderConfig` is known, requests are checked
   against the bulk capabilities the server advertises, and a request the server would
   answer with a ``413`` is not sent.
+- The service a client talks to is described by a :class:`~scim2_models.ScimProvider`,
+  passed as ``provider``. Two resource types built upon a same schema are told apart, so
+  :meth:`~scim2_client.SCIMClient.get_resource_model` and
+  :meth:`~scim2_client.SCIMClient.resource_endpoint` answer the model and the endpoint each
+  one serves.
+- :exc:`~scim2_client.InvalidServiceDescriptionException` is raised when the objects a
+  server publishes do not describe a coherent service, where the incoherence used to pass
+  unnoticed.
 
 Changed
 ^^^^^^^
 - scim2-models 0.8.0 is the minimum supported version.
+- :meth:`~scim2_client.BaseSyncSCIMClient.discover` only queries what the ``provider`` does
+  not describe yet, where it used to replace everything it was given.
+- A client given no :class:`~scim2_models.ResourceType` builds naive ones itself, where the
+  endpoints used to be unknown until
+  :meth:`~scim2_client.SCIMClient.register_naive_resource_types` was called.
+
+Deprecated
+^^^^^^^^^^
+- The ``resource_models``, ``resource_types`` and ``service_provider_config`` parameters and
+  attributes, in favor of ``provider``. Will be removed in 1.0.
+- :meth:`~scim2_client.SCIMClient.register_naive_resource_types` and
+  :meth:`~scim2_client.SCIMClient.build_resource_models`, which a
+  :class:`~scim2_models.ScimProvider` does by itself. Will be removed in 1.0.
 
 [0.8.0] - 2026-09-20
 --------------------

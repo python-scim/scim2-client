@@ -70,6 +70,20 @@ class UnexpectedContentFormatException(SCIMResponseException):
         super().__init__(message, *args, **kwargs)
 
 
+class InvalidServiceDescriptionException(SCIMResponseException):
+    """Exception raised when a server describes a service that cannot be composed.
+
+    This exception is raised when a :class:`~scim2_models.ScimProviderError` has been
+    caught while building the :class:`~scim2_models.ScimProvider` describing the server.
+    The original :class:`~scim2_models.ScimProviderError` is available with
+    :attr:`~BaseException.__cause__`.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        message = kwargs.pop("message", "Invalid service description")
+        super().__init__(message, *args, **kwargs)
+
+
 class ResponsePayloadValidationException(SCIMResponseException):
     """Exception raised when the server returned a payload that cannot be validated.
 

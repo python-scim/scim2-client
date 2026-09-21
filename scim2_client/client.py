@@ -14,6 +14,7 @@ from scim2_models import Bulk
 from scim2_models import BulkRequest
 from scim2_models import BulkResponse
 from scim2_models import Context
+from scim2_models import DescribedModel
 from scim2_models import Error
 from scim2_models import Extension
 from scim2_models import InvalidValueException
@@ -24,10 +25,13 @@ from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import ResponseParameters
 from scim2_models import Schema
+from scim2_models import ScimProvider
+from scim2_models import ScimProviderError
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 from scim2_models import get_model_by_payload
 
+from scim2_client.errors import InvalidServiceDescriptionException
 from scim2_client.errors import ResponsePayloadValidationException
 from scim2_client.errors import SCIMResponseException
 from scim2_client.errors import UnexpectedContentTypeException
@@ -44,6 +48,34 @@ BASE_HEADERS = {
     "Content-Type": "application/scim+json",
 }
 CONFIG_RESOURCES = (ResourceType, Schema, ServiceProviderConfig)
+
+
+def describe_resource_models(
+    resource_models: Collection[type[Resource]],
+) -> tuple[tuple[DescribedModel, ...], tuple[ResourceType, ...]]:
+    """Split composed models into the bare models and the resource types binding them.
+
+    A :class:`~scim2_models.ScimProvider` lists the resources and the extensions
+    apart, and binds them with a :class:`~scim2_models.ResourceType`, where the
+    client is handed models such as ``User[EnterpriseUser]``.
+    """
+    models: dict[str, DescribedModel] = {}
+    resource_types = []
+    for resource_model in resource_models:
+        # 'User[EnterpriseUser]' is a subclass scim2-models builds to carry the
+        # extension fields, and the resource it describes is its base.
+        extensions = getattr(resource_model, "__scim_extension_metadata__", ())
+        described = (
+            cast("DescribedModel", resource_model.__bases__[0])
+            if extensions
+            else resource_model
+        )
+        models[str(described.__schema__)] = described
+        for extension in extensions:
+            models[str(extension.__schema__)] = extension
+        resource_types.append(ResourceType.from_resource(resource_model))
+
+    return tuple(models.values()), tuple(resource_types)
 
 
 @dataclass
@@ -63,11 +95,18 @@ class SCIMClient:
 
     This class can be inherited and used as a basis for request engine integration.
 
-    :param resource_models: A collection of :class:`~scim2_models.Resource` models expected to be handled by the SCIM client.
+    :param provider: The :class:`~scim2_models.ScimProvider` describing the server:
+        the models it serves, the endpoints it serves them under, and the capabilities
+        it declares. :meth:`~scim2_client.BaseSyncSCIMClient.discover` fills what it
+        does not tell.
+    :param resource_models: Deprecated, pass a :paramref:`provider` instead.
+        A collection of :class:`~scim2_models.Resource` models expected to be handled by the SCIM client.
         If a request payload describe a resource that is not in this list, an exception will be raised.
-    :param resource_types: A collection of :class:`~scim2_models.ResourceType` that will be used to guess the
+    :param resource_types: Deprecated, pass a :paramref:`provider` instead.
+        A collection of :class:`~scim2_models.ResourceType` that will be used to guess the
         server endpoints associated with the resources.
-    :param service_provider_config: An instance of :class:`~scim2_models.ServiceProviderConfig`.
+    :param service_provider_config: Deprecated, pass a :paramref:`provider` instead.
+        An instance of :class:`~scim2_models.ServiceProviderConfig`.
     :param check_request_payload: If :data:`False`,
         :code:`resource` is expected to be a dict that will be passed as-is in the request.
         This value can be overwritten in methods.
@@ -83,6 +122,9 @@ class SCIMClient:
 
         :class:`~scim2_models.ResourceType`, :class:`~scim2_models.Schema` and :class:`scim2_models.ServiceProviderConfig` are pre-loaded by default.
     """
+
+    _provider: ScimProvider | None
+    """The description of the server, rebuilt when one of its parts changes."""
 
     CREATION_RESPONSE_STATUS_CODES: list[int] = [
         201,
@@ -222,6 +264,8 @@ class SCIMClient:
 
     def __init__(
         self,
+        *,
+        provider: ScimProvider | None = None,
         resource_models: Collection[type[Resource]] | None = None,
         resource_types: Collection[ResourceType] | None = None,
         service_provider_config: ServiceProviderConfig | None = None,
@@ -231,31 +275,156 @@ class SCIMClient:
         check_response_status_codes: bool = True,
         raise_scim_errors: bool = True,
     ):
-        self.resource_models = tuple(resource_models or [])
-        self.resource_types = resource_types
-        self.service_provider_config = service_provider_config
+        described = (resource_models, resource_types, service_provider_config)
+        if any(parameter is not None for parameter in described):
+            if provider is not None:
+                raise TypeError(
+                    "Cannot pass both 'provider' and 'resource_models', "
+                    "'resource_types' or 'service_provider_config'"
+                )
+
+            warnings.warn(
+                "The 'resource_models', 'resource_types' and "
+                "'service_provider_config' parameters are deprecated, "
+                "pass a 'provider' instead. "
+                "Will be removed in 1.0.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+
+        derived_resource_types = provider is None and resource_types is None
+        if provider is None:
+            models, derived = describe_resource_models(resource_models or ())
+            provider = ScimProvider(
+                models=models,
+                resource_types=derived if resource_types is None else resource_types,
+                config=service_provider_config,
+            )
+
+        self.provider = provider
+        self._derived_resource_types = derived_resource_types
         self.check_request_payload = check_request_payload
         self.check_response_payload = check_response_payload
         self.check_response_content_type = check_response_content_type
         self.check_response_status_codes = check_response_status_codes
         self.raise_scim_errors = raise_scim_errors
 
+    @property
+    def provider(self) -> ScimProvider:
+        """The :class:`~scim2_models.ScimProvider` describing the server."""
+        provider = self._provider
+        if provider is None:
+            provider = ScimProvider(
+                models=self._models,
+                resource_types=self._described_resource_types(),
+                config=self._config,
+                policy=self._policy,
+            )
+            self._provider = provider
+
+        return provider
+
+    @provider.setter
+    def provider(self, provider: ScimProvider) -> None:
+        self._models = provider.models
+        self._resource_types = provider.resource_types
+        self._config = provider.config
+        self._policy = provider.policy
+        self._derived_resource_types = False
+        self._provider = provider
+
+    def _described_resource_types(self) -> tuple[ResourceType, ...]:
+        """Keep the resource types the known models describe.
+
+        A description assembled attribute by attribute, as the deprecated
+        attributes do, goes through states no provider could be built upon.
+        """
+        schemas = {str(model.__schema__).casefold() for model in self._models}
+        return tuple(
+            resource_type
+            for resource_type in self._resource_types
+            if str(resource_type.schema_).casefold() in schemas
+        )
+
+    @property
+    def _composed_models(self) -> tuple[type[Resource], ...]:
+        """The models the server endpoints serve, extensions included."""
+        provider = self.provider
+        return tuple(
+            cast("type[Resource]", provider.model_for(resource_type.name))
+            for resource_type in provider.resource_types
+        )
+
+    @staticmethod
+    def _warn_description_deprecation(name: str) -> None:
+        warnings.warn(
+            f"'{name}' is deprecated, use 'provider' instead. Will be removed in 1.0.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+    @property
+    def resource_models(self) -> tuple[type[Resource], ...]:
+        """Deprecated, read :attr:`provider` instead."""
+        self._warn_description_deprecation("resource_models")
+        return self._composed_models
+
+    @resource_models.setter
+    def resource_models(self, resource_models: Collection[type[Resource]]) -> None:
+        self._warn_description_deprecation("resource_models")
+        models, derived = describe_resource_models(resource_models or ())
+        self._models = models
+        if self._derived_resource_types:
+            self._resource_types = derived
+        self._provider = None
+
+    @property
+    def resource_types(self) -> tuple[ResourceType, ...] | None:
+        """Deprecated, read :attr:`provider` instead."""
+        self._warn_description_deprecation("resource_types")
+        return self._resource_types or None
+
+    @resource_types.setter
+    def resource_types(self, resource_types: Collection[ResourceType] | None) -> None:
+        self._warn_description_deprecation("resource_types")
+        self._derived_resource_types = resource_types is None
+        self._resource_types = tuple(resource_types or ())
+        self._provider = None
+
+    @property
+    def service_provider_config(self) -> ServiceProviderConfig | None:
+        """Deprecated, read :attr:`provider` instead."""
+        self._warn_description_deprecation("service_provider_config")
+        return self._config
+
+    @service_provider_config.setter
+    def service_provider_config(
+        self, service_provider_config: ServiceProviderConfig | None
+    ) -> None:
+        self._warn_description_deprecation("service_provider_config")
+        self._config = service_provider_config
+        self._provider = None
+
     def get_resource_model(self, name: str) -> type[Resource] | None:
         """Get a registered model by its name or its schema."""
-        for resource_model in self.resource_models:
-            schema = resource_model.__schema__
-            if schema == name or schema.split(":")[-1] == name:
-                return resource_model
-        return None
+        model = self.provider.model_for(name)
+        if model is None or issubclass(model, Extension):
+            return None
+
+        composed_models = self._composed_models
+        if model in composed_models:
+            return cast("type[Resource]", model)
+
+        # 'model_for' answers the bare resource for a schema URI, where the client
+        # hands out the model an endpoint serves, extensions included.
+        for composed in composed_models:
+            if composed.__schema__ == model.__schema__:
+                return composed
+
+        return cast("type[Resource]", model)
 
     def _check_resource_model(self, resource_model: type[Resource]) -> None:
-        schema_to_check = resource_model.__schema__
-        for element in self.resource_models:
-            schema = element.__schema__
-            if schema_to_check == schema:
-                return
-
-        if resource_model not in CONFIG_RESOURCES:
+        if self.provider.model_for(str(resource_model.__schema__)) is None:
             raise InvalidValueException(
                 detail=f"Unknown resource type: '{resource_model}'"
             )
@@ -285,7 +454,7 @@ class SCIMClient:
 
     @property
     def _etag_supported(self) -> bool:
-        spc = self.service_provider_config
+        spc = self.provider.config
         return bool(spc and spc.etag and spc.etag.supported)
 
     @staticmethod
@@ -371,8 +540,9 @@ class SCIMClient:
     def resource_endpoint(self, resource_model: type[Resource] | None) -> str:
         """Find the :attr:`~scim2_models.ResourceType.endpoint` associated with a given :class:`~scim2_models.Resource`.
 
-        Internally, it looks if any :paramref:`resource_type <scim2_client.SCIMClient.resource_models>`
-        of the client matches the resource_model by comparing schemas.
+        The endpoint serving the model is looked up first, then any endpoint
+        serving its schema, so that two resource types built upon a same schema
+        are told apart.
         """
         if resource_model is None:
             return "/"
@@ -384,8 +554,13 @@ class SCIMClient:
         if resource_model is ServiceProviderConfig:
             return "/ServiceProviderConfig"
 
+        provider = self.provider
+        for resource_type in provider.resource_types:
+            if provider.model_for(resource_type.name) is resource_model:
+                return resource_type.endpoint
+
         schema = resource_model.__schema__
-        for resource_type in self.resource_types or []:
+        for resource_type in provider.resource_types:
             if schema == resource_type.schema_:
                 return resource_type.endpoint
 
@@ -394,17 +569,32 @@ class SCIMClient:
         )
 
     def register_naive_resource_types(self):
-        """Register a *naive* :class:`~scim2_models.ResourceType` for each :paramref:`resource_model <scim2_client.SCIMClient.resource_models>`.
+        """Register a *naive* :class:`~scim2_models.ResourceType` for each model the :attr:`provider` describes.
 
         This fills the :class:`~scim2_models.ResourceType` with generic values.
         The endpoint is the resource name with a *s* suffix.
         For instance, the :class:`~scim2_models.User` will have a `/Users` endpoint.
+
+        .. deprecated:: 0.9
+
+            A :class:`~scim2_models.ScimProvider` given no
+            :class:`~scim2_models.ResourceType` builds those values itself.
+            Will be removed in 1.0.
         """
-        self.resource_types = [
+        warnings.warn(
+            "'register_naive_resource_types' is deprecated, a provider given no "
+            "resource type builds naive ones itself. "
+            "Will be removed in 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._resource_types = tuple(
             ResourceType.from_resource(model)
-            for model in self.resource_models
+            for model in self._composed_models
             if model not in CONFIG_RESOURCES
-        ]
+        )
+        self._derived_resource_types = True
+        self._provider = None
 
     def _check_status_codes(
         self, status_code: int, expected_status_codes: list[int] | None
@@ -535,7 +725,7 @@ class SCIMClient:
                 resource_model = resource.__class__
 
             else:
-                resource_model = get_model_by_payload(self.resource_models, resource)
+                resource_model = get_model_by_payload(self._composed_models, resource)
                 if not resource_model:
                     raise InvalidValueException(
                         detail="Cannot guess resource type from the payload"
@@ -627,8 +817,8 @@ class SCIMClient:
 
         if resource_model is None:
             req.expected_types = [
-                *self.resource_models,
-                ListResponse[Union[self.resource_models]],  # noqa: UP007
+                *self._composed_models,
+                ListResponse[Union[self._composed_models]],  # noqa: UP007
             ]
 
         elif resource_model == ServiceProviderConfig:
@@ -679,13 +869,13 @@ class SCIMClient:
             )
 
         req.url = req.request_kwargs.pop("url", "/.search")
-        req.expected_types = [ListResponse[Union[self.resource_models]]]  # noqa: UP007
+        req.expected_types = [ListResponse[Union[self._composed_models]]]  # noqa: UP007
         return req
 
     @property
     def _bulk_config(self) -> Bulk | None:
         """Read the bulk capabilities the server advertises, if they are known."""
-        spc = self.service_provider_config
+        spc = self.provider.config
         return spc.bulk if spc else None
 
     def _check_bulk_support(self) -> None:
@@ -732,7 +922,7 @@ class SCIMClient:
 
         try:
             return BulkRequest[
-                Union[self.resource_models]  # noqa: UP007
+                Union[self._composed_models]  # noqa: UP007
             ].model_validate(bulk_request)
         except ValidationError as exc:
             raise request_validation_exception(exc, Context.BULK_REQUEST) from exc
@@ -767,7 +957,7 @@ class SCIMClient:
             self._check_bulk_limits(message, req.payload)
 
         req.url = req.request_kwargs.pop("url", "/Bulk")
-        req.expected_types = [BulkResponse[Union[self.resource_models]]]  # noqa: UP007
+        req.expected_types = [BulkResponse[Union[self._composed_models]]]  # noqa: UP007
         return req
 
     def _prepare_delete_request(
@@ -820,7 +1010,7 @@ class SCIMClient:
                 resource_model = resource.__class__
 
             else:
-                resource_model = get_model_by_payload(self.resource_models, resource)
+                resource_model = get_model_by_payload(self._composed_models, resource)
                 if not resource_model:
                     raise InvalidValueException(
                         detail="Cannot guess resource type from the payload"
@@ -918,27 +1108,50 @@ class SCIMClient:
 
     def build_resource_models(
         self, resource_types: Collection[ResourceType], schemas: Collection[Schema]
-    ) -> tuple[type[Resource]]:
-        """Build models from server objects."""
-        resource_types_by_schema = {
-            resource_type.schema_: resource_type for resource_type in resource_types
-        }
-        schema_objs_by_schema = {schema_obj.id: schema_obj for schema_obj in schemas}
+    ) -> tuple[type[Resource], ...]:
+        """Build models from server objects.
 
-        resource_models = []
-        for schema, resource_type in resource_types_by_schema.items():
-            schema_obj = schema_objs_by_schema[schema]
-            model = Resource.from_schema(schema_obj)
-            extensions: tuple[type[Extension], ...] = ()
-            for ext_schema in resource_type.schema_extensions or []:
-                schema_obj = schema_objs_by_schema[ext_schema.schema_]
-                extension = Extension.from_schema(schema_obj)
-                extensions = extensions + (extension,)
-            if extensions:
-                model = model[Union[extensions]]  # noqa: UP007
-            resource_models.append(model)
+        .. deprecated:: 0.9
 
-        return tuple(resource_models)
+            Use :meth:`ScimProvider.from_discovery
+            <scim2_models.ScimProvider.from_discovery>` instead.
+            Will be removed in 1.0.
+        """
+        warnings.warn(
+            "'build_resource_models' is deprecated, "
+            "use 'ScimProvider.from_discovery' instead. "
+            "Will be removed in 1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        provider = ScimProvider.from_discovery(schemas, resource_types)
+        return tuple(
+            cast("type[Resource]", provider.model_for(resource_type.name))
+            for resource_type in provider.resource_types
+        )
+
+    def _describe_service(
+        self,
+        schemas: Collection[Schema] | None,
+        resource_types: Collection[ResourceType],
+        config: ServiceProviderConfig | None,
+    ) -> ScimProvider:
+        """Build the description of the server, and tell its faults from ours."""
+        try:
+            if schemas is not None:
+                return ScimProvider.from_discovery(
+                    schemas, resource_types, config, self._policy
+                )
+
+            return ScimProvider(
+                models=self._models,
+                resource_types=resource_types,
+                config=config,
+                policy=self._policy,
+            )
+
+        except ScimProviderError as exc:
+            raise InvalidServiceDescriptionException(message=str(exc)) from exc
 
 
 class BaseSyncSCIMClient(SCIMClient):
@@ -1376,22 +1589,31 @@ class BaseSyncSCIMClient(SCIMClient):
     def discover(self, schemas=True, resource_types=True, service_provider_config=True):
         """Dynamically discover the server configuration objects.
 
+        Only what the :attr:`~scim2_client.SCIMClient.provider` does not describe
+        yet is queried, so what the client was given takes precedence over what the
+        server publishes.
+
         :param schemas: Whether to discover the :class:`~scim2_models.Schema` endpoint.
         :param resource_types: Whether to discover the :class:`~scim2_models.ResourceType` endpoint.
         :param service_provider_config: Whether to discover the :class:`~scim2_models.ServiceProviderConfig` endpoint.
+        :raises ~scim2_client.InvalidServiceDescriptionException: When the objects
+            the server publishes do not describe a coherent service.
         """
-        if resource_types:
-            resource_types_response = self.query(ResourceType)
-            self.resource_types = resource_types_response.resources
+        discovered_resource_types = self._resource_types
+        if resource_types and not discovered_resource_types:
+            discovered_resource_types = self.query(ResourceType).resources or []
 
-        if schemas:
-            schemas_response = self.query(Schema)
-            self.resource_models = self.build_resource_models(
-                self.resource_types, schemas_response.resources
-            )
+        discovered_schemas = None
+        if schemas and not self._models:
+            discovered_schemas = self.query(Schema).resources or []
 
-        if service_provider_config:
-            self.service_provider_config = self.query(ServiceProviderConfig)
+        config = self._config
+        if service_provider_config and not config:
+            config = self.query(ServiceProviderConfig)
+
+        self.provider = self._describe_service(
+            discovered_schemas, discovered_resource_types, config
+        )
 
 
 class BaseAsyncSCIMClient(SCIMClient):
@@ -1831,28 +2053,41 @@ class BaseAsyncSCIMClient(SCIMClient):
     ):
         """Dynamically discover the server configuration objects.
 
+        Only what the :attr:`~scim2_client.SCIMClient.provider` does not describe
+        yet is queried, so what the client was given takes precedence over what the
+        server publishes.
+
         :param schemas: Whether to discover the :class:`~scim2_models.Schema` endpoint.
         :param resource_types: Whether to discover the :class:`~scim2_models.ResourceType` endpoint.
         :param service_provider_config: Whether to discover the :class:`~scim2_models.ServiceProviderConfig` endpoint.
+        :raises ~scim2_client.InvalidServiceDescriptionException: When the objects
+            the server publishes do not describe a coherent service.
         """
-        if schemas:
+        query_resource_types = resource_types and not self._resource_types
+        query_schemas = schemas and not self._models
+        query_config = service_provider_config and not self._config
+
+        if query_schemas:
             schemas_task = asyncio.create_task(self.query(Schema))
 
-        if resource_types:
+        if query_resource_types:
             resources_types_task = asyncio.create_task(self.query(ResourceType))
 
-        if service_provider_config:
+        if query_config:
             spc_task = asyncio.create_task(self.query(ServiceProviderConfig))
 
-        if resource_types:
-            resource_types_response = await resources_types_task
-            self.resource_types = resource_types_response.resources
+        discovered_resource_types = self._resource_types
+        if query_resource_types:
+            discovered_resource_types = (await resources_types_task).resources or []
 
-        if schemas:
-            schemas_response = await schemas_task
-            self.resource_models = self.build_resource_models(
-                self.resource_types, schemas_response.resources
-            )
+        discovered_schemas = None
+        if query_schemas:
+            discovered_schemas = (await schemas_task).resources or []
 
-        if service_provider_config:
-            self.service_provider_config = await spc_task
+        config = self._config
+        if query_config:
+            config = await spc_task
+
+        self.provider = self._describe_service(
+            discovered_schemas, discovered_resource_types, config
+        )

@@ -5,6 +5,7 @@ from scim2_models import InvalidValueException
 from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import Schema
+from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
@@ -17,11 +18,13 @@ def test_guess_resource_endpoint():
 
     client = SyncSCIMClient(
         None,
-        resource_models=[User[EnterpriseUser], Group],
-        resource_types=[
-            ResourceType.from_resource(User[EnterpriseUser]),
-            ResourceType.from_resource(Group),
-        ],
+        provider=ScimProvider(
+            models=[User, EnterpriseUser, Group],
+            resource_types=[
+                ResourceType.from_resource(User[EnterpriseUser]),
+                ResourceType.from_resource(Group),
+            ],
+        ),
     )
     assert client.resource_endpoint(Group) == "/Groups"
     assert client.resource_endpoint(User) == "/Users"
@@ -39,7 +42,10 @@ def test_guess_resource_endpoint():
 def test_get_resource_model():
     client = SyncSCIMClient(
         None,
-        resource_models=[User[EnterpriseUser]],
+        provider=ScimProvider(
+            models=[User, EnterpriseUser],
+            resource_types=[ResourceType.from_resource(User[EnterpriseUser])],
+        ),
     )
     assert client.get_resource_model("User") == User[EnterpriseUser]
     assert (

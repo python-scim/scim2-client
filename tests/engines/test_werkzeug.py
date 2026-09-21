@@ -6,6 +6,7 @@ from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResponseParameters
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import SearchRequest
 from scim2_models import User
 from werkzeug.test import Client
@@ -116,8 +117,9 @@ def test_no_json():
         return Response("Hello, World!", content_type="application/scim+json")
 
     werkzeug_client = Client(application)
-    scim_client = TestSCIMClient(client=werkzeug_client, resource_models=(User,))
-    scim_client.register_naive_resource_types()
+    scim_client = TestSCIMClient(
+        client=werkzeug_client, provider=ScimProvider(models=[User])
+    )
     with pytest.raises(UnexpectedContentFormatException):
         scim_client.query(url="/")
 
@@ -135,8 +137,9 @@ def test_invalid_payload():
         )
 
     werkzeug_client = Client(application)
-    scim_client = TestSCIMClient(client=werkzeug_client, resource_models=(User,))
-    scim_client.register_naive_resource_types()
+    scim_client = TestSCIMClient(
+        client=werkzeug_client, provider=ScimProvider(models=[User])
+    )
     with pytest.raises(ResponsePayloadValidationException):
         scim_client.query(url="/Users/1234")
 
@@ -152,7 +155,6 @@ def test_environ(scim_client):
     scim_client = TestSCIMClient(
         client=werkzeug_client,
         environ={"headers": {"content-type": "foobar"}},
-        resource_models=(User,),
+        provider=ScimProvider(models=[User]),
     )
-    scim_client.register_naive_resource_types()
     scim_client.query(url="/Users")

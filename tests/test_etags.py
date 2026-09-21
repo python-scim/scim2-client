@@ -7,6 +7,7 @@ from scim2_models import ETag
 from scim2_models import Meta
 from scim2_models import ResponseParameters
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 from werkzeug.test import Client
@@ -24,8 +25,9 @@ VERSION = 'W/"3694e05e9dff590"'
 @pytest.fixture
 def etag_client(sync_client):
     """Return a client bound to a server advertising ETag support."""
-    sync_client.service_provider_config = ServiceProviderConfig(
-        etag=ETag(supported=True)
+    sync_client.provider = ScimProvider(
+        models=sync_client.provider.models,
+        config=ServiceProviderConfig(etag=ETag(supported=True)),
     )
     return sync_client
 
@@ -261,10 +263,10 @@ def test_werkzeug_engine_sends_if_match(versioned_user):
 
     client = TestSCIMClient(
         Client(app),
-        resource_models=(User,),
-        service_provider_config=ServiceProviderConfig(etag=ETag(supported=True)),
+        provider=ScimProvider(
+            models=[User], config=ServiceProviderConfig(etag=ETag(supported=True))
+        ),
     )
-    client.register_naive_resource_types()
 
     assert client.delete(versioned_user) is None
     assert seen["if_match"] == VERSION
@@ -385,10 +387,10 @@ def test_werkzeug_engine_sends_if_none_match(versioned_user):
 
     client = TestSCIMClient(
         Client(app),
-        resource_models=(User,),
-        service_provider_config=ServiceProviderConfig(etag=ETag(supported=True)),
+        provider=ScimProvider(
+            models=[User], config=ServiceProviderConfig(etag=ETag(supported=True))
+        ),
     )
-    client.register_naive_resource_types()
 
     assert client.query(versioned_user) is versioned_user
     assert seen["if_none_match"] == VERSION
@@ -408,12 +410,11 @@ def test_async_engine_sends_if_none_match(httpserver, versioned_user):
         ) as http_client:
             client = AsyncSCIMClient(
                 http_client,
-                resource_models=(User,),
-                service_provider_config=ServiceProviderConfig(
-                    etag=ETag(supported=True)
+                provider=ScimProvider(
+                    models=[User],
+                    config=ServiceProviderConfig(etag=ETag(supported=True)),
                 ),
             )
-            client.register_naive_resource_types()
             return await client.query(versioned_user)
 
     assert asyncio.run(query()) is versioned_user

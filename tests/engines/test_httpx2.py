@@ -53,12 +53,12 @@ def test_sync_engine(server):
     scim_client.discover(
         schemas=False, resource_types=False, service_provider_config=False
     )
-    assert not scim_client.resource_models
-    assert not scim_client.resource_types
-    assert not scim_client.service_provider_config
+    assert not scim_client.provider.models
+    assert not scim_client.provider.resource_types
+    assert not scim_client.provider.config
 
     scim_client.discover()
-    assert isinstance(scim_client.service_provider_config, ServiceProviderConfig)
+    assert isinstance(scim_client.provider.config, ServiceProviderConfig)
     User = scim_client.get_resource_model("User")
 
     request_user = User(user_name="foo", display_name="bar")
@@ -123,12 +123,12 @@ async def test_async_engine(server):
     await scim_client.discover(
         schemas=False, resource_types=False, service_provider_config=False
     )
-    assert not scim_client.resource_models
-    assert not scim_client.resource_types
-    assert not scim_client.service_provider_config
+    assert not scim_client.provider.models
+    assert not scim_client.provider.resource_types
+    assert not scim_client.provider.config
 
     await scim_client.discover()
-    assert isinstance(scim_client.service_provider_config, ServiceProviderConfig)
+    assert isinstance(scim_client.provider.config, ServiceProviderConfig)
     User = scim_client.get_resource_model("User")
 
     request_user = User(user_name="async_foo", display_name="async_bar")

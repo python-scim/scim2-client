@@ -4,8 +4,8 @@ from scim2_models import Group
 from scim2_models import InvalidValueException
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
-from scim2_models import ResourceType
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import User
 
 from scim2_client import RequestNetworkException
@@ -319,8 +319,7 @@ def test_errors(httpserver, code, sync_client):
 
 def test_invalid_resource_model(httpserver, sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
-    sync_client.resource_models = (User,)
-    sync_client.resource_types = [ResourceType.from_resource(User)]
+    sync_client.provider = ScimProvider(models=[User])
 
     operation = PatchOperation(
         op=PatchOperation.Op.replace_, path="displayName", value="Test"

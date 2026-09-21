@@ -47,8 +47,9 @@ class TestSCIMClient(BaseSyncSCIMClient):
         If :data:`None` a default client is initialized.
     :param scim_prefix: The scim root endpoint in the application.
     :param environ: Additional parameters that will be passed to every request.
-    :param resource_models: A tuple of :class:`~scim2_models.Resource` types expected to be handled by the SCIM client.
-        If a request payload describe a resource that is not in this list, an exception will be raised.
+    :param provider: The :class:`~scim2_models.ScimProvider` describing the server.
+        If a request payload describe a resource it does not know, an exception will be raised.
+    :param resource_models: Deprecated, pass a :paramref:`provider` instead.
     :param check_request_payload: If :data:`False`,
         :code:`resource` is expected to be a dict that will be passed as-is in the request.
         This value can be overwritten in methods.

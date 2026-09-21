@@ -4,6 +4,7 @@ import warnings
 
 import httpx
 import pytest
+from scim2_models import ScimProvider
 from scim2_models import User
 
 from scim2_client.engines import httpx2 as engine
@@ -53,7 +54,7 @@ def test_httpx_client_is_deprecated(httpserver):
     """Passing a httpx client to the engine emits a deprecation warning."""
     with httpx.Client(base_url=f"http://localhost:{httpserver.port}") as client:
         with pytest.warns(DeprecationWarning, match="httpx client is deprecated"):
-            SyncSCIMClient(client, resource_models=[User])
+            SyncSCIMClient(client, provider=ScimProvider(models=[User]))
 
 
 @requires_httpx2
@@ -63,7 +64,7 @@ async def test_httpx_async_client_is_deprecated(httpserver):
         base_url=f"http://localhost:{httpserver.port}"
     ) as client:
         with pytest.warns(DeprecationWarning, match="httpx client is deprecated"):
-            AsyncSCIMClient(client, resource_models=[User])
+            AsyncSCIMClient(client, provider=ScimProvider(models=[User]))
 
 
 @requires_httpx2
@@ -71,7 +72,7 @@ def test_network_errors_of_httpx_clients_are_converted(httpserver):
     """Network errors raised by a httpx client become RequestNetworkException."""
     with httpx.Client(base_url=f"http://localhost:{httpserver.port}") as client:
         with pytest.warns(DeprecationWarning):
-            scim_client = SyncSCIMClient(client, resource_models=[User])
+            scim_client = SyncSCIMClient(client, provider=ScimProvider(models=[User]))
 
         with pytest.raises(
             RequestNetworkException, match="Network error happened during request"
@@ -88,7 +89,7 @@ def test_httpx_clients_are_accepted_when_httpx_is_the_flavor_in_use(
     with httpx.Client(base_url=f"http://localhost:{httpserver.port}") as client:
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
-            SyncSCIMClient(client, resource_models=[User])
+            SyncSCIMClient(client, provider=ScimProvider(models=[User]))
 
 
 def test_client_flavor_is_not_checked_when_httpx_is_not_imported(
@@ -99,7 +100,7 @@ def test_client_flavor_is_not_checked_when_httpx_is_not_imported(
     with engine.Client(base_url=f"http://localhost:{httpserver.port}") as client:
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
-            SyncSCIMClient(client, resource_models=[User])
+            SyncSCIMClient(client, provider=ScimProvider(models=[User]))
 
 
 @requires_httpx2
