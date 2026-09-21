@@ -19,8 +19,8 @@ extensions = [
     "sphinx_design",
     "sphinx_issues",
     "sphinx_paramlinks",
+    "sphinx_reredirects",
     "sphinxcontrib.autodoc_pydantic",
-    "myst_parser",
 ]
 
 templates_path = ["_templates"]
@@ -29,11 +29,7 @@ project = "scim2-client"
 year = datetime.datetime.now().strftime("%Y")
 copyright = f"{year}, Yaal Coop"
 author = "Yaal Coop"
-source_suffix = {
-    ".rst": "restructuredtext",
-    ".txt": "markdown",
-    ".md": "markdown",
-}
+source_suffix = {".rst": "restructuredtext"}
 
 version = metadata.version("scim2_client")
 language = "en"
@@ -156,6 +152,14 @@ html_context = {
     "source_repo": "scim2-client",
     "source_version": "main",
     "source_docs_path": "/doc/",
+}
+
+# -- Redirections -------------------------------------------------
+
+# The pages the documentation reorganisation moved, so that published links
+# and bookmarks keep working.
+redirects = {
+    "tutorial": "overview.html",
 }
 
 # -- Options for sphinx-issues -------------------------------------

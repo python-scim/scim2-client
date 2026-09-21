@@ -34,9 +34,6 @@ pip install scim2-client[httpx2]
 
 ## Usage
 
-Check the [tutorial](https://scim2-client.readthedocs.io/en/latest/tutorial.html)
-and the [reference](https://scim2-client.readthedocs.io/en/latest/reference.html) for more details.
-
 Here is an example of usage:
 
 ```python
@@ -78,6 +75,21 @@ except SCIMException as exc:
         == "One or more of the attribute values are already in use or are reserved."
     )
 ```
+
+## Documentation
+
+- [Overview](https://scim2-client.readthedocs.io/en/latest/overview.html) tours the operations a
+  SCIM client performs.
+- [How-to guides](https://scim2-client.readthedocs.io/en/latest/how-to/index.html) cover focused
+  tasks.
+- [Explanation](https://scim2-client.readthedocs.io/en/latest/explanation/index.html) covers what
+  the client checks and what it knows about a server.
+- [Reference](https://scim2-client.readthedocs.io/en/latest/reference.html) lists the public API.
+
+## Contributing
+
+The [contribution page](https://scim2-client.readthedocs.io/en/latest/contributing.html)
+describes how to run the tests, the style checks and the documentation build.
 
 scim2-client belongs in a collection of SCIM tools developed by [Yaal Coop](https://yaal.coop),
 with [scim2-models](https://github.com/python-scim/scim2-models),

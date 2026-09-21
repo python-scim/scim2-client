@@ -657,6 +657,28 @@ class SCIMClient:
         scim_ctx: Context | None = None,
         target: Resource | None = None,
     ) -> Error | None | dict | type[Resource]:
+        """Build the object a server response describes, and check it on the way.
+
+        This is what an engine calls once it has performed a request. The content type,
+        the :class:`~scim2_models.Error` the server may have returned, the status code and
+        the payload are examined in that order.
+
+        :param payload: The decoded body of the response, or :data:`None` when it carried none.
+        :param status_code: The HTTP status code of the response.
+        :param headers: The headers of the response.
+        :param expected_status_codes: The status codes the operation defines,
+            :data:`None` for any.
+        :param expected_types: The resource types the operation may return.
+        :param check_response_payload: Overrides
+            :paramref:`~scim2_client.SCIMClient.check_response_payload` for this response.
+        :param raise_scim_errors: Overrides
+            :paramref:`~scim2_client.SCIMClient.raise_scim_errors` for this response.
+        :param scim_ctx: The :class:`~scim2_models.Context` the payload is validated under.
+        :param target: The resource the request was made conditional upon, returned as it is
+            when the server answers a ``304 Not Modified``.
+        :raises ~scim2_client.SCIMResponseException: When the response cannot be read as the
+            operation expects.
+        """
         if raise_scim_errors is None:
             raise_scim_errors = self.raise_scim_errors
 
