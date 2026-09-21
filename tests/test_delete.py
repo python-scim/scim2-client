@@ -126,13 +126,3 @@ def test_delete_without_target(sync_client):
     """Nothing to delete when neither a resource nor a type is given."""
     with pytest.raises(InvalidValueException, match="No resource type to delete"):
         sync_client.delete()
-
-
-def test_delete_deprecated_resource_model_parameter(httpserver, sync_client, user):
-    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
-    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_data(
-        status=204, content_type="application/scim+json"
-    )
-
-    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
-        assert sync_client.delete(resource_model=User, id=user.id) is None

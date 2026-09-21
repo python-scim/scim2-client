@@ -39,6 +39,21 @@ Deprecated
   :meth:`~scim2_client.SCIMClient.build_resource_models`, which a
   :class:`~scim2_models.ScimProvider` does by itself. Will be removed in 1.0.
 
+Removed
+^^^^^^^
+- **Breaking:** everything deprecated in 0.8.0.
+- The ``httpx`` packaging extra and the ``scim2_client.engines.httpx`` module. The engines
+  require `httpx2 <https://github.com/pydantic/httpx2>`_ and live in
+  ``scim2_client.engines.httpx2``. An application that cannot migrate all its dependencies at
+  once can call :code:`httpx2.alias_httpx()` at the very top of its entrypoint, so that
+  :code:`import httpx` resolves to httpx2 process-wide.
+- Passing a :code:`httpx.Client` or a :code:`httpx.AsyncClient` to the request engines.
+- The ``resource_model`` parameter of ``query``, ``delete`` and ``modify``. Pass the resource
+  type or a resource object as the first parameter instead.
+- The ``search_request`` parameter of ``query``, replaced by ``query_parameters``. ``search``
+  keeps its own ``search_request`` parameter.
+- The exceptions with a ``*Error`` suffix, which pointed at their ``*Exception`` counterparts.
+
 [0.8.0] - 2026-09-20
 --------------------
 

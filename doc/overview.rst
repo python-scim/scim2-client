@@ -66,14 +66,6 @@ The two have the same API, and every example below shows both.
 :doc:`how-to/use-another-engine` covers the engine serving a WSGI application without a network,
 and how to write one for another HTTP library.
 
-.. note::
-
-   The engines still work with `httpx <https://github.com/encode/httpx>`_, shipped in the
-   deprecated ``httpx`` extra. It is used when httpx2 is not installed, and both its extra and
-   its support will be removed in 0.9. An application that cannot migrate all its dependencies
-   at once can call :code:`httpx2.alias_httpx()` at the very top of its entrypoint, so that
-   :code:`import httpx` resolves to httpx2 process-wide.
-
 Describe the server
 -------------------
 

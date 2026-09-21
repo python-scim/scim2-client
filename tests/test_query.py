@@ -620,41 +620,6 @@ def test_query_dont_check_request_payload(httpserver, sync_client):
     assert response.id == "with-qs"
 
 
-def test_deprecated_search_request_keyword(httpserver, sync_client):
-    """Passing search_request as keyword argument emits a DeprecationWarning."""
-    query_string = "attributes=userName"
-
-    httpserver.expect_request(
-        "/Users/with-dep", query_string=query_string
-    ).respond_with_json(
-        {
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-            "id": "with-dep",
-            "userName": "bjensen@example.com",
-            "meta": {
-                "resourceType": "User",
-                "created": "2010-01-23T04:56:22Z",
-                "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W/"3694e05e9dff590"',
-                "location": "https://example.com/v2/Users/with-dep",
-            },
-        },
-        status=200,
-    )
-    params = ResponseParameters(attributes=["userName"])
-    with pytest.warns(DeprecationWarning, match="search_request.*deprecated"):
-        response = sync_client.query(User, "with-dep", search_request=params)
-    assert isinstance(response, User)
-    assert response.id == "with-dep"
-
-
-def test_both_search_request_and_query_parameters_raises(sync_client):
-    """Passing both search_request and query_parameters raises TypeError."""
-    params = ResponseParameters(attributes=["userName"])
-    with pytest.raises(TypeError, match="Cannot pass both"):
-        sync_client.query(User, "some-id", params, search_request=params)
-
-
 def test_invalid_resource_model(sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
     sync_client.provider = ScimProvider(models=[User])
@@ -712,25 +677,3 @@ def test_query_resource_object_and_id(sync_client, user):
         InvalidValueException, match="Cannot pass both a resource object and an id"
     ):
         sync_client.query(user, "another-id")
-
-
-def test_query_deprecated_resource_model_parameter(httpserver, sync_client, user):
-    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
-    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
-        {
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-            "id": user.id,
-            "userName": "bjensen@example.com",
-        },
-        status=200,
-    )
-
-    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
-        response = sync_client.query(resource_model=User, id=user.id)
-    assert response.id == user.id
-
-
-def test_query_deprecated_resource_model_parameter_and_target(sync_client, user):
-    """The deprecated 'resource_model' parameter and the target are exclusive."""
-    with pytest.raises(TypeError, match="Cannot pass both a resource"):
-        sync_client.query(User, resource_model=User, id=user.id)

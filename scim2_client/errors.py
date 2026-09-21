@@ -1,5 +1,4 @@
 import sys
-import warnings
 from typing import Any
 
 from pydantic import ValidationError
@@ -140,33 +139,3 @@ def request_validation_exception(
     if sys.version_info >= (3, 11):  # pragma: no cover
         scim_exc.add_note(str(exc))
     return scim_exc
-
-
-_DEPRECATED_ALIASES: dict[str, type[SCIMClientException]] = {
-    "SCIMClientError": SCIMClientException,
-    "SCIMResponseError": SCIMResponseException,
-    "RequestNetworkError": RequestNetworkException,
-    "UnexpectedStatusCode": UnexpectedStatusCodeException,
-    "UnexpectedContentType": UnexpectedContentTypeException,
-    "UnexpectedContentFormat": UnexpectedContentFormatException,
-    "ResponsePayloadValidationError": ResponsePayloadValidationException,
-}
-
-
-def deprecated_alias(name: str) -> type[SCIMClientException]:
-    """Return the exception a deprecated name points at, and warn about the rename."""
-    replacement = _DEPRECATED_ALIASES[name]
-    warnings.warn(
-        f"{name} is deprecated, use {replacement.__name__} instead. "
-        "It will be removed in version 0.9.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-    return replacement
-
-
-def __getattr__(name: str) -> type[SCIMClientException]:
-    if name not in _DEPRECATED_ALIASES:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-    return deprecated_alias(name)

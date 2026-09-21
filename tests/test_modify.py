@@ -473,18 +473,3 @@ def test_modify_without_patch_operation(sync_client, user):
     """A patch operation is required to modify a resource."""
     with pytest.raises(InvalidValueException, match="Missing patch operation"):
         sync_client.modify(user)
-
-
-def test_modify_deprecated_resource_model_parameter(
-    httpserver, sync_client, user, patch_op
-):
-    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
-    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
-        status=204, content_type="application/scim+json"
-    )
-
-    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
-        response = sync_client.modify(
-            resource_model=User, id=user.id, patch_op=patch_op
-        )
-    assert response is None

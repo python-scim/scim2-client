@@ -152,12 +152,8 @@ class TestSCIMClient(BaseSyncSCIMClient):
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
-        query_parameters = self._resolve_query_parameters(
-            query_parameters, search_request
-        )
         req = self._prepare_query_request(
             target=target,
             id=id,

@@ -452,29 +452,6 @@ class SCIMClient:
                 detail=f"Unknown resource type: '{resource_model}'"
             )
 
-    @staticmethod
-    def _resolve_deprecated_resource_model(
-        target: type[Resource] | Resource | None, kwargs: dict
-    ) -> type[Resource] | Resource | None:
-        """Read the target from the deprecated ``resource_model`` parameter."""
-        resource_model = kwargs.pop("resource_model", None)
-        if resource_model is None:
-            return target
-
-        if target is not None:
-            raise TypeError(
-                "Cannot pass both a resource and the deprecated 'resource_model'"
-            )
-
-        warnings.warn(
-            "The 'resource_model' parameter is deprecated, pass the resource type "
-            "or a resource object as the first parameter instead. "
-            "Will be removed in 0.9.",
-            DeprecationWarning,
-            stacklevel=4,
-        )
-        return resource_model
-
     @property
     def _etag_supported(self) -> bool:
         spc = self.provider.config
@@ -531,7 +508,7 @@ class SCIMClient:
     def _resolve_patch_arguments(
         patch_op: PatchOp | dict | str | None, id: str | None
     ) -> tuple[PatchOp | dict | None, str | None]:
-        """Tell ``modify(resource_model, id, patch_op)`` apart from ``modify(resource, patch_op)``.
+        """Tell ``modify(resource, id, patch_op)`` apart from ``modify(resource, patch_op)``.
 
         An id is never a valid patch operation, so the second parameter is
         enough to know which call style is used.
@@ -796,27 +773,6 @@ class SCIMClient:
 
         return req
 
-    @staticmethod
-    def _resolve_query_parameters(
-        query_parameters: ResponseParameters | dict | None,
-        search_request: ResponseParameters | dict | None,
-    ) -> ResponseParameters | dict | None:
-        if search_request is not None:
-            if query_parameters is not None:
-                raise TypeError(
-                    "Cannot pass both 'query_parameters' and "
-                    "deprecated 'search_request'"
-                )
-            warnings.warn(
-                "The 'search_request' parameter of 'query' is deprecated, "
-                "use 'query_parameters' instead. "
-                "Will be removed in 0.9.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            return search_request
-        return query_parameters
-
     @_under_provider
     def _prepare_query_request(
         self,
@@ -827,7 +783,6 @@ class SCIMClient:
         expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
-        target = self._resolve_deprecated_resource_model(target, kwargs)
         resource_model, id, resource = self._resolve_target(target, id)
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -1018,7 +973,6 @@ class SCIMClient:
         expected_status_codes: list[int] | None = None,
         **kwargs,
     ) -> RequestPayload:
-        resource = self._resolve_deprecated_resource_model(resource, kwargs)
         resource_model, id, _instance = self._resolve_target(resource, id)
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -1102,7 +1056,6 @@ class SCIMClient:
         **kwargs,
     ) -> RequestPayload:
         """Prepare a PATCH request payload."""
-        resource = self._resolve_deprecated_resource_model(resource, kwargs)
         patch_op, id = self._resolve_patch_arguments(patch_op, id)
         resource_model, id, _instance = self._resolve_target(resource, id)
         req = RequestPayload(
@@ -1265,7 +1218,6 @@ class BaseSyncSCIMClient(SCIMClient):
         expected_status_codes: list[int]
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
@@ -1727,7 +1679,6 @@ class BaseAsyncSCIMClient(SCIMClient):
         expected_status_codes: list[int]
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.

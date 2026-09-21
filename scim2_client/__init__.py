@@ -11,6 +11,7 @@ from .errors import UnexpectedContentTypeException
 from .errors import UnexpectedStatusCodeException
 
 __all__ = [
+    "errors",
     "SCIMClient",
     "BaseSyncSCIMClient",
     "SCIMClientException",
@@ -22,10 +23,3 @@ __all__ = [
     "ResponsePayloadValidationException",
     "InvalidServiceDescriptionException",
 ]
-
-
-def __getattr__(name: str) -> type[SCIMClientException]:
-    if name not in errors._DEPRECATED_ALIASES:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-    return errors.deprecated_alias(name)

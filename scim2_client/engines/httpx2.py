@@ -1,26 +1,12 @@
 import json
 import sys
-import warnings
 from contextlib import contextmanager
-from typing import Any
 from typing import TypeVar
 
-try:
-    from httpx2 import AsyncClient
-    from httpx2 import Client
-    from httpx2 import Response
-except ImportError:
-    warnings.warn(
-        "httpx2 is not installed, falling back on httpx. "
-        "The httpx support is deprecated, install 'scim2-client[httpx2]' instead. "
-        "Will be removed in 0.9.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    from httpx import AsyncClient  # type: ignore[assignment]
-    from httpx import Client  # type: ignore[assignment]
-    from httpx import Response  # type: ignore[assignment]
-
+from httpx2 import AsyncClient
+from httpx2 import Client
+from httpx2 import RequestError
+from httpx2 import Response
 from scim2_models import AnyResource
 from scim2_models import BulkRequest
 from scim2_models import BulkResponse
@@ -42,35 +28,12 @@ from scim2_client.errors import UnexpectedContentFormatException
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
 
-def _request_error_classes() -> tuple[type[BaseException], ...]:
-    """Return the ``RequestError`` classes of the httpx flavors that are in use."""
-    modules: tuple[Any, ...] = (sys.modules.get("httpx2"), sys.modules.get("httpx"))
-    return tuple(module.RequestError for module in modules if module is not None)
-
-
-def _warn_legacy_client(client: Any) -> None:
-    """Warn when a httpx client is used while httpx2 is the flavor in use."""
-    httpx: Any = sys.modules.get("httpx")
-    if httpx is None or Client is httpx.Client:
-        return
-
-    if not isinstance(client, (httpx.Client, httpx.AsyncClient)):
-        return
-
-    warnings.warn(
-        "Passing a httpx client is deprecated, pass a httpx2 client instead. "
-        "Will be removed in 0.9.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
 @contextmanager
 def handle_request_error(payload=None):
     try:
         yield
 
-    except _request_error_classes() as exc:
+    except RequestError as exc:
         scim_network_exc = RequestNetworkException(source=payload)
         if sys.version_info >= (3, 11):  # pragma: no cover
             scim_network_exc.add_note(str(exc))
@@ -111,7 +74,6 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def __init__(self, client: Client, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        _warn_legacy_client(client)
         self.client = client
 
     def create(
@@ -156,12 +118,8 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
-        query_parameters = self._resolve_query_parameters(
-            query_parameters, search_request
-        )
         req = self._prepare_query_request(
             target=target,
             id=id,
@@ -376,7 +334,6 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     def __init__(self, client: AsyncClient, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        _warn_legacy_client(client)
         self.client = client
 
     async def create(
@@ -423,12 +380,8 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        search_request: ResponseParameters | dict | None = None,
         **kwargs,
     ) -> Resource | ListResponse[Resource] | Error | dict:
-        query_parameters = self._resolve_query_parameters(
-            query_parameters, search_request
-        )
         req = self._prepare_query_request(
             target=target,
             id=id,
