@@ -12,12 +12,13 @@ from scim2_models import ListResponse
 from scim2_models import PatchOp
 from scim2_models import Resource
 from scim2_models import ResponseParameters
+from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from werkzeug.test import Client
 
 from scim2_client.client import BaseSyncSCIMClient
-from scim2_client.errors import SCIMClientError
-from scim2_client.errors import UnexpectedContentFormat
+from scim2_client.errors import SCIMClientException
+from scim2_client.errors import UnexpectedContentFormatException
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
@@ -28,9 +29,9 @@ def handle_response_error(response):
         yield
 
     except json.decoder.JSONDecodeError as exc:
-        raise UnexpectedContentFormat(source=response) from exc
+        raise UnexpectedContentFormatException(source=response) from exc
 
-    except SCIMClientError as exc:
+    except (SCIMClientException, SCIMException) as exc:
         exc.source = response
         raise exc
 
@@ -54,7 +55,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
     :param check_response_payload: Whether to validate that the response payloads are valid.
         If set, the raw payload will be returned. This value can be overwritten in methods.
     :param raise_scim_errors: If :data:`True` and the server returned an
-        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_client.SCIMResponseErrorObject`
+        :class:`~scim2_models.Error` object during a request, a :class:`~scim2_models.SCIMException`
         exception will be raised. If :data:`False` the error object is returned. This value can be overwritten in methods.
 
     .. code-block:: python
@@ -126,7 +127,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
             self._make_url(req.url), json=req.payload, **environ
         )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json if response.text else None,
                 status_code=response.status_code,
@@ -140,7 +141,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def query(
         self,
-        resource_model: type[Resource] | None = None,
+        target: type[Resource] | Resource | None = None,
         id: str | None = None,
         query_parameters: ResponseParameters | dict | None = None,
         check_request_payload: bool | None = None,
@@ -155,7 +156,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
             query_parameters, search_request
         )
         req = self._prepare_query_request(
-            resource_model=resource_model,
+            target=target,
             id=id,
             query_parameters=query_parameters,
             check_request_payload=check_request_payload,
@@ -169,7 +170,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
             self._make_url(req.url), query_string=query_string, **environ
         )
 
-        with handle_response_error(req.payload):
+        with handle_response_error(response):
             return self.check_response(
                 payload=response.json if response.text else None,
                 status_code=response.status_code,
@@ -179,6 +180,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
                 scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                target=req.target,
             )
 
     def search(
@@ -246,13 +248,13 @@ class TestSCIMClient(BaseSyncSCIMClient):
                 expected_types=req.expected_types,
                 check_response_payload=check_response_payload,
                 raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
+                scim_ctx=Context.BULK_RESPONSE,
             )
 
     def delete(
         self,
-        resource_model: type[Resource],
-        id: str,
+        resource: Resource | type[Resource] | None = None,
+        id: str | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
@@ -260,7 +262,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs,
     ) -> Error | dict | None:
         req = self._prepare_delete_request(
-            resource_model=resource_model,
+            resource=resource,
             id=id,
             expected_status_codes=expected_status_codes,
             **kwargs,
@@ -313,9 +315,9 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def modify(
         self,
-        resource_model: type[ResourceT],
-        id: str,
-        patch_op: PatchOp[ResourceT] | dict,
+        resource: ResourceT | type[ResourceT] | None = None,
+        patch_op: PatchOp[ResourceT] | dict | None = None,
+        id: str | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
@@ -324,9 +326,9 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs,
     ) -> ResourceT | Error | dict | None:
         req = self._prepare_patch_request(
-            resource_model=resource_model,
-            id=id,
+            resource=resource,
             patch_op=patch_op,
+            id=id,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
             **kwargs,

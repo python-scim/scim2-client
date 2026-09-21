@@ -1,7 +1,7 @@
 Reference
 =========
 
-.. automodule:: scim2_client.engines.httpx
+.. automodule:: scim2_client.engines.httpx2
    :members:
    :member-order: bysource
 

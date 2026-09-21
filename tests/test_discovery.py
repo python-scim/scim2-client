@@ -3,7 +3,6 @@ import wsgiref.simple_server
 
 import portpicker
 import pytest
-from httpx import Client
 from scim2_models import EnterpriseUser
 from scim2_models import Extension
 from scim2_models import Group
@@ -11,7 +10,8 @@ from scim2_models import Meta
 from scim2_models import ResourceType
 from scim2_models import User
 
-from scim2_client.engines.httpx import SyncSCIMClient
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.backend import InMemoryBackend  # noqa: E402

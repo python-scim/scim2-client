@@ -3,24 +3,24 @@ import datetime
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import ListResponse
 from scim2_models import Meta
 from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import ResponseParameters
+from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
+from scim2_models import UniquenessException
 from scim2_models import User
 
-from scim2_client import SCIMRequestError
-from scim2_client.errors import RequestNetworkError
-from scim2_client.errors import ResponsePayloadValidationError
-from scim2_client.errors import SCIMClientError
-from scim2_client.errors import SCIMResponseError
-from scim2_client.errors import SCIMResponseErrorObject
-from scim2_client.errors import UnexpectedContentFormat
-from scim2_client.errors import UnexpectedContentType
-from scim2_client.errors import UnexpectedStatusCode
+from scim2_client.errors import RequestNetworkException
+from scim2_client.errors import ResponsePayloadValidationException
+from scim2_client.errors import SCIMResponseException
+from scim2_client.errors import UnexpectedContentFormatException
+from scim2_client.errors import UnexpectedContentTypeException
+from scim2_client.errors import UnexpectedStatusCodeException
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -88,7 +88,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -112,7 +112,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -129,7 +129,7 @@ def httpserver(httpserver):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -153,7 +153,7 @@ def httpserver(httpserver):
                 "resourceType": "Group",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff592"',
+                "version": 'W/"3694e05e9dff592"',
                 "location": "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
             },
         },
@@ -173,7 +173,7 @@ def httpserver(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -185,7 +185,7 @@ def httpserver(httpserver):
                         "resourceType": "User",
                         "created": "2010-02-23T04:56:22Z",
                         "lastModified": "2011-06-13T04:42:34Z",
-                        "version": 'W\\/"deadbeef0000"',
+                        "version": 'W/"deadbeef0000"',
                         "location": "https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                     },
                 },
@@ -224,7 +224,7 @@ def httpserver(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -243,7 +243,7 @@ def httpserver(httpserver):
                         "resourceType": "Group",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff592"',
+                        "version": 'W/"3694e05e9dff592"',
                         "location": "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
                     },
                 },
@@ -288,7 +288,7 @@ def httpserver(httpserver):
                 "resourceType": "ServiceProviderConfig",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff594"',
+                "version": 'W/"3694e05e9dff594"',
             },
         }
     )
@@ -311,7 +311,7 @@ def test_user_with_valid_id(sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -326,21 +326,29 @@ def test_user_with_invalid_id(sync_client):
 def test_raise_scim_errors(sync_client):
     """Test that querying an user with an invalid id raises an exception."""
     with pytest.raises(
-        SCIMResponseErrorObject,
+        SCIMException,
         match="Resource unknown not found",
     ) as exc_info:
         sync_client.query(User, "unknown", raise_scim_errors=True)
 
-    assert exc_info.value.to_error() == Error(
-        detail="Resource unknown not found", status=404
-    )
+    expected = Error(detail="Resource unknown not found", status=404)
+    assert exc_info.value.error == expected
+    assert exc_info.value.to_error() == expected
+
+
+def test_query_error_exception_carries_the_response(sync_client):
+    """Test that a query exception gives access to the response that carried the error."""
+    with pytest.raises(SCIMException) as exc_info:
+        sync_client.query(User, "unknown", raise_scim_errors=True)
+
+    assert exc_info.value.source.status_code == 404
 
 
 def test_raise_scim_errors_with_scim_type(sync_client):
     """Test that the exception message includes scim_type when present."""
     with pytest.raises(
-        SCIMResponseErrorObject,
-        match="uniqueness: User already exists",
+        UniquenessException,
+        match="User already exists",
     ) as exc_info:
         sync_client.query(User, "conflict", raise_scim_errors=True)
 
@@ -351,13 +359,11 @@ def test_raise_scim_errors_with_scim_type(sync_client):
 
 def test_raise_scim_errors_without_detail(sync_client):
     """Test that the exception works when the error has no detail."""
-    with pytest.raises(
-        SCIMResponseErrorObject,
-        match="SCIM Error",
-    ) as exc_info:
+    with pytest.raises(SCIMException) as exc_info:
         sync_client.query(User, "no-detail", raise_scim_errors=True)
 
-    assert exc_info.value.to_error() == Error(status=500)
+    assert exc_info.value.error == Error(status=500)
+    assert exc_info.value.to_error().status == 500
 
 
 def test_all_users(sync_client):
@@ -377,7 +383,7 @@ def test_all_users(sync_client):
                     last_modified=datetime.datetime(
                         2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
                     ),
-                    version='W\\/"3694e05e9dff590"',
+                    version='W/"3694e05e9dff590"',
                     location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                 ),
             ),
@@ -392,7 +398,7 @@ def test_all_users(sync_client):
                     last_modified=datetime.datetime(
                         2011, 6, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
                     ),
-                    version='W\\/"deadbeef0000"',
+                    version='W/"deadbeef0000"',
                     location="https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                 ),
             ),
@@ -401,7 +407,7 @@ def test_all_users(sync_client):
 
 
 def test_custom_url(sync_client):
-    """Test that querying by passing the 'url' parameter directly to httpx is accepted."""
+    """Test that querying by passing the 'url' parameter directly to httpx2 is accepted."""
     response = sync_client.query(url="/Users/2819c223-7f76-453a-919d-413861904646")
     assert response == User(
         id="2819c223-7f76-453a-919d-413861904646",
@@ -414,7 +420,7 @@ def test_custom_url(sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -448,12 +454,12 @@ def test_resource_unknown_by_server(sync_client):
 
 
 def test_bad_resource_model(sync_client):
-    """Test querying a resource unknown from the client raise a SCIMResponseError."""
+    """Test querying a resource unknown from the client raise a SCIMResponseException."""
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
     with pytest.raises(
-        SCIMResponseError,
+        SCIMResponseException,
         match="Expected type User but got unknown resource with schemas: urn:ietf:params:scim:schemas:core:2.0:Group",
     ):
         sync_client.query(User, "its-a-group")
@@ -470,26 +476,27 @@ def test_all(sync_client):
 
 
 def test_all_unexpected_type(sync_client):
-    """Test retrieving a payload for an object which type has not been passed in parameters raise a ResponsePayloadValidationError."""
+    """Test retrieving a payload for an object which type has not been passed in parameters raise a ResponsePayloadValidationException."""
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
     with pytest.raises(
-        ResponsePayloadValidationError, match="Server response payload validation error"
+        ResponsePayloadValidationException,
+        match="Server response payload validation error",
     ):
         sync_client.query()
 
 
 def test_response_is_not_json(sync_client):
     """Test situations where servers return an invalid JSON object."""
-    with pytest.raises(UnexpectedContentFormat):
+    with pytest.raises(UnexpectedContentFormatException):
         sync_client.query(User, "not-json")
 
 
 def test_not_a_scim_object(sync_client):
     """Test retrieving a valid JSON object without a schema."""
     with pytest.raises(
-        SCIMResponseError,
+        SCIMResponseException,
         match="Expected type User but got undefined object with no schema",
     ):
         sync_client.query(User, "not-a-scim-object")
@@ -505,7 +512,7 @@ def test_dont_check_response_payload(sync_client):
 
 def test_response_bad_status_code(sync_client):
     """Test situations where servers return an invalid status code."""
-    with pytest.raises(UnexpectedStatusCode):
+    with pytest.raises(UnexpectedStatusCodeException):
         sync_client.query(User, "status-201")
     sync_client.query(User, "status-201", expected_status_codes=None)
 
@@ -518,7 +525,7 @@ def test_response_content_type_with_charset(sync_client):
 
 def test_response_bad_content_type(sync_client):
     """Test situations where servers return an invalid content-type response."""
-    with pytest.raises(UnexpectedContentType):
+    with pytest.raises(UnexpectedContentTypeException):
         sync_client.query(User, "bad-content-type")
 
 
@@ -536,7 +543,7 @@ def test_search_request(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-qs",
             },
         },
@@ -571,7 +578,7 @@ def test_query_parameters(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-rp",
             },
         },
@@ -598,7 +605,7 @@ def test_query_dont_check_request_payload(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-qs",
             },
         },
@@ -634,7 +641,7 @@ def test_deprecated_search_request_keyword(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/with-dep",
             },
         },
@@ -659,7 +666,7 @@ def test_invalid_resource_model(sync_client):
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.query(Group)
 
 
@@ -672,14 +679,65 @@ def test_service_provider_config_endpoint(sync_client):
 def test_service_provider_config_endpoint_with_an_id(sync_client):
     """Test that querying the /ServiceProviderConfig with an id raise an exception."""
     with pytest.raises(
-        SCIMClientError, match="ServiceProviderConfig cannot have an id"
+        InvalidValueException, match="ServiceProviderConfig cannot have an id"
     ):
         sync_client.query(ServiceProviderConfig, "dummy")
 
 
 def test_request_network_error(sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkException."""
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.query(url="http://invalid.test")
+
+
+def test_query_resource_object(httpserver, sync_client, user):
+    """A resource object designates the resource with the same id."""
+    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    response = sync_client.query(user)
+    assert response.id == user.id
+
+
+def test_query_resource_object_without_id(sync_client):
+    """A resource object without an id cannot designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.query(User(user_name="bjensen@example.com"))
+
+
+def test_query_resource_object_and_id(sync_client, user):
+    """A resource object already carries an id, so passing both is ambiguous."""
+    with pytest.raises(
+        InvalidValueException, match="Cannot pass both a resource object and an id"
+    ):
+        sync_client.query(user, "another-id")
+
+
+def test_query_deprecated_resource_model_parameter(httpserver, sync_client, user):
+    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
+    httpserver.expect_request(f"/Users/{user.id}", method="GET").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": user.id,
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
+        response = sync_client.query(resource_model=User, id=user.id)
+    assert response.id == user.id
+
+
+def test_query_deprecated_resource_model_parameter_and_target(sync_client, user):
+    """The deprecated 'resource_model' parameter and the target are exclusive."""
+    with pytest.raises(TypeError, match="Cannot pass both a resource"):
+        sync_client.query(User, resource_model=User, id=user.id)

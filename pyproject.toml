@@ -1,15 +1,15 @@
 [build-system]
-requires = ["uv_build>=0.8.9,<0.9.0"]
+requires = ["uv_build>=0.12.16,<0.13.0"]
 build-backend = "uv_build"
 
 [project]
 name = "scim2-client"
-version = "0.7.5"
+version = "0.8.0"
 description = "Pythonically build SCIM requests and parse SCIM responses"
 authors = [{name="Yaal Coop", email="contact@yaal.coop"}]
 license = {file = "LICENSE.md"}
 readme = "README.md"
-keywords = ["scim", "scim2", "provisioning", "rfc7643", "rfc7644", "httpx", "api"]
+keywords = ["scim", "scim2", "provisioning", "rfc7643", "rfc7644", "httpx2", "api"]
 classifiers = [
     "Intended Audience :: Developers",
     "Development Status :: 3 - Alpha",
@@ -27,10 +27,15 @@ classifiers = [
 
 requires-python = ">= 3.10"
 dependencies = [
-    "scim2-models>=0.6.12",
+    "scim2-models>=0.8.0",
 ]
 
 [project.optional-dependencies]
+httpx2 = [
+    "httpx2>=2.12",
+]
+
+# Deprecated, will be removed in 0.9.
 httpx = [
     "httpx>=0.28.0",
 ]
@@ -50,6 +55,7 @@ module-root = ""
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.0",
     "mypy>=1.13.0",
     "portpicker>=1.6.0",
     "prek>=0.1.0",
@@ -139,13 +145,14 @@ env_list = [
     "py312",
     "py313",
     "py314",
+    "legacy",
     "minversions",
     "doc",
     "coverage",
 ]
 
 [tool.tox.env_run_base]
-extras = ["httpx", "werkzeug"]
+extras = ["httpx2", "werkzeug"]
 runner = "uv-venv-lock-runner"
 dependency_groups = ["dev"]
 commands = [
@@ -158,6 +165,9 @@ commands = [
     ["prek", "run", "--all-files", "--show-diff-on-failure"],
 ]
 
+[tool.tox.env.legacy]
+extras = ["httpx", "werkzeug"]
+
 [tool.tox.env.minversions]
 runner = "uv-venv-runner"
 uv_resolution = "lowest-direct"
@@ -165,8 +175,8 @@ uv_resolution = "lowest-direct"
 [tool.tox.env.doc]
 dependency_groups = ["doc"]
 commands = [
-    ["sphinx-build", "--builder", "html", "doc", "build/sphinx/html"],
-    ["sphinx-build", "--builder", "man", "doc", "build/sphinx/html"],
+    ["sphinx-build", "-W", "--keep-going", "--builder", "html", "doc", "build/sphinx/html"],
+    ["sphinx-build", "-W", "--keep-going", "--builder", "man", "doc", "build/sphinx/html"],
 ]
 
 [tool.tox.env.coverage]

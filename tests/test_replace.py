@@ -3,14 +3,13 @@ import datetime
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import Meta
 from scim2_models import ResourceType
+from scim2_models import SCIMException
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import RequestPayloadValidationError
-from scim2_client import SCIMClientError
-from scim2_client import SCIMRequestError
+from scim2_client import RequestNetworkException
 
 
 def test_replace_user(httpserver, sync_client):
@@ -26,7 +25,7 @@ def test_replace_user(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -45,7 +44,7 @@ def test_replace_user(httpserver, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -67,7 +66,7 @@ def test_replace_user_dict(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -86,7 +85,7 @@ def test_replace_user_dict(httpserver, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -108,7 +107,7 @@ def test_replace_user_dict_bad_schema(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -122,7 +121,7 @@ def test_replace_user_dict_bad_schema(httpserver, sync_client):
     }
 
     with pytest.raises(
-        SCIMClientError, match="Cannot guess resource type from the payload"
+        InvalidValueException, match="Cannot guess resource type from the payload"
     ):
         sync_client.replace(payload)
 
@@ -144,7 +143,7 @@ def test_dont_check_response_payload(httpserver, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -169,7 +168,7 @@ def test_dont_check_request_payload(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -195,7 +194,7 @@ def test_dont_check_request_payload(httpserver, sync_client):
             "resourceType": "User",
             "created": "2010-01-23T04:56:22Z",
             "lastModified": "2011-05-13T04:42:34Z",
-            "version": 'W\\/"3694e05e9dff590"',
+            "version": 'W/"3694e05e9dff590"',
             "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         },
     }
@@ -227,7 +226,7 @@ def test_errors(httpserver, code, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
@@ -254,7 +253,7 @@ def test_user_with_no_id(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -272,12 +271,12 @@ def test_user_with_no_id(httpserver, sync_client):
             last_modified=datetime.datetime(
                 2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
             ),
-            version='W\\/"3694e05e9dff590"',
+            version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
         ),
     )
 
-    with pytest.raises(SCIMClientError, match="Resource must have an id"):
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
         sync_client.replace(user)
 
 
@@ -286,15 +285,13 @@ def test_invalid_resource_model(httpserver, sync_client):
     sync_client.resource_models = (User,)
     sync_client.resource_types = [ResourceType.from_resource(User)]
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.replace(Group(display_name="foobar"))
 
 
 def test_request_validation_error(httpserver, sync_client):
-    """Test that incorrect input raise a RequestPayloadValidationError."""
-    with pytest.raises(
-        RequestPayloadValidationError, match="Server request payload validation error"
-    ):
+    """Test that incorrect input raise a SCIMException."""
+    with pytest.raises(SCIMException):
         sync_client.replace(
             {
                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
@@ -304,9 +301,9 @@ def test_request_validation_error(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkException."""
     user_request = User(user_name="bjensen@example.com", id="anything")
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.replace(user_request, url="http://invalid.test")

@@ -3,18 +3,18 @@ import wsgiref.simple_server
 
 import portpicker
 import pytest
-from httpx import AsyncClient
-from httpx import Client
 from scim2_models import BulkOperation
 from scim2_models import BulkRequest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
+from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 
-from scim2_client.engines.httpx import AsyncSCIMClient
-from scim2_client.engines.httpx import SyncSCIMClient
-from scim2_client.errors import SCIMResponseErrorObject
+from scim2_client.engines.httpx2 import AsyncClient
+from scim2_client.engines.httpx2 import AsyncSCIMClient
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.backend import InMemoryBackend  # noqa: E402
@@ -95,15 +95,15 @@ def test_sync_engine(server):
     assert queried_user.display_name == "patched name"
 
     scim_client.delete(User, response_user.id)
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
 
     # Bulk operations are not implemented yet in scim2-server
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         scim_client.bulk(
-            BulkRequest(
+            BulkRequest[User](
                 operations=[
-                    BulkOperation(
+                    BulkOperation[User](
                         method="POST",
                         path="/Users",
                         bulk_id="qwerty",
@@ -169,15 +169,15 @@ async def test_async_engine(server):
     assert queried_user.display_name == "async patched name"
 
     await scim_client.delete(User, response_user.id)
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         await scim_client.query(User, response_user.id)
 
     # Bulk operations are not implemented yet in scim2-server
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         await scim_client.bulk(
-            BulkRequest(
+            BulkRequest[User](
                 operations=[
-                    BulkOperation(
+                    BulkOperation[User](
                         method="POST",
                         path="/Users",
                         bulk_id="qwerty",

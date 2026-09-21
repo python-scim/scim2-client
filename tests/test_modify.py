@@ -1,14 +1,14 @@
 import pytest
 from scim2_models import Error
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResourceType
+from scim2_models import SCIMException
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import RequestPayloadValidationError
-from scim2_client import SCIMRequestError
+from scim2_client import RequestNetworkException
 
 
 def test_modify_user_200(httpserver, sync_client):
@@ -25,7 +25,7 @@ def test_modify_user_200(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff590"',
+                "version": 'W/"3694e05e9dff590"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -105,7 +105,7 @@ def test_modify_user_multiple_operations(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff591"',
+                "version": 'W/"3694e05e9dff591"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -144,7 +144,7 @@ def test_modify_user_add_operation(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff591"',
+                "version": 'W/"3694e05e9dff591"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -181,7 +181,7 @@ def test_modify_user_remove_operation(httpserver, sync_client):
                 "resourceType": "User",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff591"',
+                "version": 'W/"3694e05e9dff591"',
                 "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
             },
         },
@@ -213,7 +213,7 @@ def test_modify_group(httpserver, sync_client):
                 "resourceType": "Group",
                 "created": "2010-01-23T04:56:22Z",
                 "lastModified": "2011-05-13T04:42:34Z",
-                "version": 'W\\/"3694e05e9dff592"',
+                "version": 'W/"3694e05e9dff592"',
                 "location": "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
             },
         },
@@ -327,7 +327,7 @@ def test_invalid_resource_model(httpserver, sync_client):
     )
     patch_op = PatchOp[Group](operations=[operation])
 
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.modify(Group, "some-id", patch_op)
 
 
@@ -335,7 +335,7 @@ def test_request_validation_error(httpserver, sync_client):
     """Test that incorrect PatchOp creation raises a validation error."""
     # Test with a PatchOp that has invalid data - this should fail during model_dump in prepare_patch_request
     with pytest.raises(
-        (RequestPayloadValidationError, ValueError, TypeError),
+        (SCIMException, ValueError, TypeError),
         match=r"(?i)(validation|invalid|error)",
     ):
         # Create a PatchOp with invalid enum value by bypassing normal validation
@@ -348,14 +348,14 @@ def test_request_validation_error(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkException."""
     operation = PatchOperation(
         op=PatchOperation.Op.replace_, path="displayName", value="Test"
     )
     patch_op = PatchOp[User](operations=[operation])
 
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.modify(User, "some-id", patch_op, url="http://invalid.test")
 
@@ -422,8 +422,70 @@ def test_modify_validation_error(httpserver, sync_client):
 
     invalid_patch_op.model_dump.side_effect = exc_info.value
 
-    with pytest.raises(
-        RequestPayloadValidationError,
-        match="Server request payload validation error",
-    ):
+    with pytest.raises(SCIMException):
         sync_client.modify(User, "some-id", invalid_patch_op)
+
+
+def test_modify_resource_object(httpserver, sync_client, user, patch_op):
+    """A resource object designates the resource with the same id."""
+    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    assert sync_client.modify(user, patch_op) is None
+
+
+def test_modify_resource_type_and_id(httpserver, sync_client, user, patch_op):
+    """A resource type and an id designate the same resource."""
+    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    assert sync_client.modify(User, patch_op, id=user.id) is None
+
+
+def test_modify_resource_object_without_id(sync_client, patch_op):
+    """A resource object without an id cannot designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.modify(User(user_name="bjensen@example.com"), patch_op)
+
+
+def test_modify_resource_object_and_id(sync_client, user, patch_op):
+    """A resource object already carries an id, so passing both is ambiguous."""
+    with pytest.raises(
+        InvalidValueException, match="Cannot pass both a resource object and an id"
+    ):
+        sync_client.modify(user, patch_op, id="another-id")
+
+
+def test_modify_resource_type_without_id(sync_client, patch_op):
+    """A resource type alone does not designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.modify(User, patch_op)
+
+
+def test_modify_without_target(sync_client, patch_op):
+    """Nothing to modify when neither a resource nor a type is given."""
+    with pytest.raises(InvalidValueException, match="No resource type to modify"):
+        sync_client.modify(patch_op=patch_op)
+
+
+def test_modify_without_patch_operation(sync_client, user):
+    """A patch operation is required to modify a resource."""
+    with pytest.raises(InvalidValueException, match="Missing patch operation"):
+        sync_client.modify(user)
+
+
+def test_modify_deprecated_resource_model_parameter(
+    httpserver, sync_client, user, patch_op
+):
+    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
+    httpserver.expect_request(f"/Users/{user.id}", method="PATCH").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
+        response = sync_client.modify(
+            resource_model=User, id=user.id, patch_op=patch_op
+        )
+    assert response is None

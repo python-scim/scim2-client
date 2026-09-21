@@ -1,10 +1,10 @@
 import pytest
 from scim2_models import Error
+from scim2_models import InvalidValueException
 from scim2_models import Resource
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client import SCIMRequestError
+from scim2_client import RequestNetworkException
 
 
 class UnregisteredResource(Resource):
@@ -58,7 +58,7 @@ def test_errors(httpserver, code, sync_client):
 
 def test_invalid_resource_model(httpserver, sync_client):
     """Test that resource_models passed to the method must be part of SCIMClient.resource_models."""
-    with pytest.raises(SCIMRequestError, match=r"Unknown resource type"):
+    with pytest.raises(InvalidValueException, match=r"Unknown resource type"):
         sync_client.delete(UnregisteredResource, id="foobar")
 
 
@@ -86,8 +86,53 @@ def test_dont_check_response_payload(httpserver, sync_client):
 
 
 def test_request_network_error(httpserver, sync_client):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkException."""
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.delete(User, "anything", url="http://invalid.test")
+
+
+def test_delete_resource_object(httpserver, sync_client, user):
+    """A resource object designates the resource with the same id."""
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    assert sync_client.delete(user) is None
+
+
+def test_delete_resource_object_without_id(sync_client):
+    """A resource object without an id cannot designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.delete(User(user_name="bjensen@example.com"))
+
+
+def test_delete_resource_object_and_id(sync_client, user):
+    """A resource object already carries an id, so passing both is ambiguous."""
+    with pytest.raises(
+        InvalidValueException, match="Cannot pass both a resource object and an id"
+    ):
+        sync_client.delete(user, "another-id")
+
+
+def test_delete_resource_type_without_id(sync_client):
+    """A resource type alone does not designate a resource."""
+    with pytest.raises(InvalidValueException, match="Resource must have an id"):
+        sync_client.delete(User)
+
+
+def test_delete_without_target(sync_client):
+    """Nothing to delete when neither a resource nor a type is given."""
+    with pytest.raises(InvalidValueException, match="No resource type to delete"):
+        sync_client.delete()
+
+
+def test_delete_deprecated_resource_model_parameter(httpserver, sync_client, user):
+    """The 'resource_model' parameter is deprecated in favor of the first parameter."""
+    httpserver.expect_request(f"/Users/{user.id}", method="DELETE").respond_with_data(
+        status=204, content_type="application/scim+json"
+    )
+
+    with pytest.warns(DeprecationWarning, match="'resource_model' parameter"):
+        assert sync_client.delete(resource_model=User, id=user.id) is None
