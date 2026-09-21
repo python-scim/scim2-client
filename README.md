@@ -18,6 +18,7 @@ It allows users and groups creations, modifications and deletions to be synchron
 
 - **CRUD Operations**: `create`, `query`, `replace`, `delete` methods for SCIM resources
 - **PATCH Support**: Partial resource modifications with `add`, `remove` and `replace` operations
+- **Bulk Operations**: Multiple operations sent in a single request with the `bulk` method
 - **Server Discovery**: Automatic retrieval of `ServiceProviderConfig`, `ResourceTypes` and `Schemas`
 - **Search & Filtering**: Support for SCIM filters, sorting, pagination and attribute selection
 - **Sync & Async**: Both synchronous and asynchronous clients available

@@ -400,6 +400,16 @@ Bulk
           )
           response = await scim.bulk(request)
 
+A bulk job the server processed answers ``200``, whatever the outcome of the operations
+it carried. Failed operations raise nothing, and each of them carries its own ``status``
+and an :class:`~scim2_models.Error` object in its ``response`` attribute:
+
+.. code-block:: python
+
+    for operation in response.operations:
+        if operation.status >= 400:
+            print(operation.bulk_id, operation.response.detail)
+
 When the :class:`~scim2_models.ServiceProviderConfig` is known — after a call to
 :meth:`~scim2_client.BaseSyncSCIMClient.discover` for instance — bulk requests are
 checked against the capabilities the server advertises. Requests aimed at a server

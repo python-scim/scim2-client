@@ -155,6 +155,11 @@ class SCIMClient:
 
     As defined at :rfc:`RFC7644 §3.7 <7644#section-3.7>` and
     :rfc:`RFC7644 §3.12 <7644#section-3.12>`.
+    ``200`` is the only success code, as the individual operation results are
+    carried by the response payload. ``413`` is answered when the request
+    exceeds the limits the server advertises, as defined at
+    :rfc:`RFC7644 §3.7.4 <7644#section-3.7.4>`. ``412`` is not expected, since
+    a bulk request is never conditional as a whole.
     """
 
     DELETION_RESPONSE_STATUS_CODES: list[int] = [
@@ -1153,6 +1158,14 @@ class BaseSyncSCIMClient(SCIMClient):
             - A :class:`~scim2_models.Error` object in case of error.
             - A :class:`~scim2_models.BulkResponse` object in case of success.
 
+        .. important::
+
+            A bulk job the server processed answers ``200``, whatever the outcome of the
+            operations it carried, as defined at :rfc:`RFC7644 §3.7.3 <7644#section-3.7.3>`.
+            :paramref:`raise_scim_errors` is about the bulk job itself, so failed operations
+            raise nothing: their ``status`` and the :class:`~scim2_models.Error` object
+            their ``response`` carries are to be read one by one.
+
         :usage:
 
         .. code-block:: python
@@ -1187,6 +1200,9 @@ class BaseSyncSCIMClient(SCIMClient):
             )
             response = scim.bulk(req)
             # 'response' may be a BulkResponse or an Error object
+            for operation in response.operations:
+                if operation.status >= 400:
+                    print(operation.bulk_id, operation.response.detail)
 
         .. tip::
 
@@ -1595,6 +1611,14 @@ class BaseAsyncSCIMClient(SCIMClient):
             - A :class:`~scim2_models.Error` object in case of error.
             - A :class:`~scim2_models.BulkResponse` object in case of success.
 
+        .. important::
+
+            A bulk job the server processed answers ``200``, whatever the outcome of the
+            operations it carried, as defined at :rfc:`RFC7644 §3.7.3 <7644#section-3.7.3>`.
+            :paramref:`raise_scim_errors` is about the bulk job itself, so failed operations
+            raise nothing: their ``status`` and the :class:`~scim2_models.Error` object
+            their ``response`` carries are to be read one by one.
+
         :usage:
 
         .. code-block:: python
@@ -1627,8 +1651,11 @@ class BaseAsyncSCIMClient(SCIMClient):
                     ),
                 ]
             )
-            response = scim.bulk(req)
+            response = await scim.bulk(req)
             # 'response' may be a BulkResponse or an Error object
+            for operation in response.operations:
+                if operation.status >= 400:
+                    print(operation.bulk_id, operation.response.detail)
 
         .. tip::
 

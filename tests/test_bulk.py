@@ -124,6 +124,52 @@ def test_bulk_request_payload(bulk_response, sync_client):
     assert isinstance(sync_client.bulk(req), BulkResponse)
 
 
+def test_operation_errors(httpserver, sync_client):
+    """Test that a processed bulk job reports the failures of its operations.
+
+    A bulk job the server processed answers 200, and each operation carries its
+    own status and error object, as defined in RFC7644 §3.7.3.
+    """
+    httpserver.expect_request("/Bulk", method="POST").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:BulkResponse"],
+            "Operations": [
+                {
+                    "method": "POST",
+                    "bulkId": "qwerty",
+                    "status": "400",
+                    "response": {
+                        "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+                        "scimType": "invalidSyntax",
+                        "detail": "Request is unparsable, syntactically incorrect, or violates schema.",
+                        "status": "400",
+                    },
+                },
+                {
+                    "location": "https://example.com/v2/Users/e9025315-6bea-44e1-899c-1e07454e468b",
+                    "method": "DELETE",
+                    "status": "404",
+                    "response": {
+                        "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+                        "detail": "Resource does not exist.",
+                        "status": "404",
+                    },
+                },
+            ],
+        },
+        status=200,
+    )
+    req = BulkRequest[User](operations=[USER_OPERATION])
+
+    response = sync_client.bulk(req)
+
+    assert isinstance(response, BulkResponse)
+    assert response.operations[0].status == 400
+    assert response.operations[0].response.scim_type == "invalidSyntax"
+    assert response.operations[1].status == 404
+    assert response.operations[1].response.detail == "Resource does not exist."
+
+
 def test_operation_without_data(bulk_response, sync_client):
     """Test that operations carrying no resource are accepted."""
     bulk_response()
