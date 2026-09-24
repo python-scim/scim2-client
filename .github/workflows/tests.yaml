@@ -54,6 +54,8 @@ jobs:
   minversions:
     name: minimum dependency versions
     runs-on: ubuntu-latest
+    env:
+      UV_RESOLUTION: lowest-direct
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv
@@ -61,7 +63,7 @@ jobs:
         with:
           enable-cache: true
       - name: Install minimum dependencies
-        run: uv sync --resolution=lowest-direct --all-extras
+        run: uv sync --all-extras
       - name: Run tests
         run: uv run pytest --showlocals
 
