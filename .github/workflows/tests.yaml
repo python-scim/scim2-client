@@ -92,5 +92,5 @@ jobs:
           version: "0.12.13"
           enable-cache: true
       - name: Install dependencies
-        run: uv sync --group doc --all-extras
+        run: uv sync --python 3.14 --group doc --all-extras
       - run: uv run sphinx-build -W --keep-going -b html doc build/sphinx/html
