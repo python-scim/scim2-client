@@ -38,11 +38,9 @@ def test_replace_user(httpserver, sync_client):
         user_name="bjensen@example.com",
         meta=Meta(
             resource_type="User",
-            created=datetime.datetime(
-                2010, 1, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
-            ),
+            created=datetime.datetime(2010, 1, 23, 4, 56, 22, tzinfo=datetime.UTC),
             last_modified=datetime.datetime(
-                2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                2011, 5, 13, 4, 42, 34, tzinfo=datetime.UTC
             ),
             version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
@@ -79,11 +77,9 @@ def test_replace_user_dict(httpserver, sync_client):
         user_name="bjensen@example.com",
         meta=Meta(
             resource_type="User",
-            created=datetime.datetime(
-                2010, 1, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
-            ),
+            created=datetime.datetime(2010, 1, 23, 4, 56, 22, tzinfo=datetime.UTC),
             last_modified=datetime.datetime(
-                2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                2011, 5, 13, 4, 42, 34, tzinfo=datetime.UTC
             ),
             version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
@@ -137,11 +133,9 @@ def test_dont_check_response_payload(httpserver, sync_client):
         user_name="bjensen@example.com",
         meta=Meta(
             resource_type="User",
-            created=datetime.datetime(
-                2010, 1, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
-            ),
+            created=datetime.datetime(2010, 1, 23, 4, 56, 22, tzinfo=datetime.UTC),
             last_modified=datetime.datetime(
-                2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                2011, 5, 13, 4, 42, 34, tzinfo=datetime.UTC
             ),
             version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
@@ -220,11 +214,9 @@ def test_errors(httpserver, code, sync_client):
         user_name="bjensen@example.com",
         meta=Meta(
             resource_type="User",
-            created=datetime.datetime(
-                2010, 1, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
-            ),
+            created=datetime.datetime(2010, 1, 23, 4, 56, 22, tzinfo=datetime.UTC),
             last_modified=datetime.datetime(
-                2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                2011, 5, 13, 4, 42, 34, tzinfo=datetime.UTC
             ),
             version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
@@ -265,11 +257,9 @@ def test_user_with_no_id(httpserver, sync_client):
         user_name="bjensen@example.com",
         meta=Meta(
             resource_type="User",
-            created=datetime.datetime(
-                2010, 1, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
-            ),
+            created=datetime.datetime(2010, 1, 23, 4, 56, 22, tzinfo=datetime.UTC),
             last_modified=datetime.datetime(
-                2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                2011, 5, 13, 4, 42, 34, tzinfo=datetime.UTC
             ),
             version='W/"3694e05e9dff590"',
             location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",

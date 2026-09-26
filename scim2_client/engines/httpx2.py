@@ -1,5 +1,4 @@
 import json
-import sys
 from contextlib import contextmanager
 from typing import TypeVar
 
@@ -35,8 +34,7 @@ def handle_request_error(payload=None):
 
     except RequestError as exc:
         scim_network_exc = RequestNetworkException(source=payload)
-        if sys.version_info >= (3, 11):  # pragma: no cover
-            scim_network_exc.add_note(str(exc))
+        scim_network_exc.add_note(str(exc))
         raise scim_network_exc from exc
 
 

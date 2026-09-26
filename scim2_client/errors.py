@@ -1,4 +1,3 @@
-import sys
 from typing import Any
 
 from pydantic import ValidationError
@@ -136,6 +135,5 @@ def request_validation_exception(
     """
     errors = Error.from_validation_errors(exc)
     scim_exc = SCIMException.from_error(errors[0], scim_ctx=scim_ctx)
-    if sys.version_info >= (3, 11):  # pragma: no cover
-        scim_exc.add_note(str(exc))
+    scim_exc.add_note(str(exc))
     return scim_exc

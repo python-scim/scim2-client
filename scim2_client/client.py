@@ -1,6 +1,5 @@
 import asyncio
 import json
-import sys
 import warnings
 from collections.abc import Callable
 from collections.abc import Collection
@@ -718,8 +717,7 @@ class SCIMClient:
             result = actual_type.model_validate(response_payload, scim_ctx=scim_ctx)
         except ValidationError as exc:
             scim_exc = ResponsePayloadValidationException()
-            if sys.version_info >= (3, 11):  # pragma: no cover
-                scim_exc.add_note(str(exc))
+            scim_exc.add_note(str(exc))
             raise scim_exc from exc
 
         self._set_version_from_etag(result, headers)
