@@ -12,6 +12,7 @@ on:
 
 env:
   UV_LOCKED: 1
+  UV_PYTHON_PREFERENCE: only-managed
 
 permissions:
   contents: read
@@ -34,9 +35,8 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.13"
+          python-version: ${{ matrix.python }}
           enable-cache: true
-      - name: Install Python ${{ matrix.python }}
-        run: uv python install ${{ matrix.python }}
       - name: Install dependencies
         run: uv sync --all-extras
       - name: Run tests
@@ -50,11 +50,10 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.13"
+          python-version: "3.14"
           enable-cache: true
-      - name: Install Python 3.14
-        run: uv python install 3.14
       - name: Install dependencies
-        run: uv sync --python 3.14 --all-extras
+        run: uv sync --all-extras
       - name: Run tests
         run: uv run pytest --cov --cov-fail-under=100
 
@@ -70,6 +69,7 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.13"
+          python-version: "3.11"
           enable-cache: true
       - name: Install minimum dependencies
         run: uv sync --all-extras
@@ -90,7 +90,8 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.13"
+          python-version: "3.14"
           enable-cache: true
       - name: Install dependencies
-        run: uv sync --python 3.14 --group doc --all-extras
+        run: uv sync --group doc --all-extras
       - run: uv run sphinx-build -W --keep-going -b html doc build/sphinx/html
