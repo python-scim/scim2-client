@@ -7,6 +7,7 @@ from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
+from scim2_client.engines.httpx2 import Client
 from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
@@ -59,7 +60,10 @@ def test_described_objects_are_assigned_one_by_one():
 
 def test_naive_resource_types_registration_is_deprecated():
     """Test that naive resource types are built without being asked for."""
-    client = SyncSCIMClient(None, provider=ScimProvider(models=[User]))
+    client = SyncSCIMClient(
+        Client(base_url="https://scim.example.com/scim/v2"),
+        provider=ScimProvider(models=[User]),
+    )
 
     with pytest.warns(DeprecationWarning, match="'register_naive_resource_types'"):
         client.register_naive_resource_types()
@@ -84,7 +88,9 @@ def test_resource_models_building_is_deprecated():
 def test_naive_endpoints_follow_the_models():
     """Test that endpoints nobody declared are rebuilt when the models change."""
     with pytest.warns(DeprecationWarning):
-        client = SyncSCIMClient(None, resource_models=[User])
+        client = SyncSCIMClient(
+            Client(base_url="https://scim.example.com/scim/v2"), resource_models=[User]
+        )
 
     with pytest.warns(DeprecationWarning):
         client.resource_models = [Group]

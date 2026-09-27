@@ -9,6 +9,7 @@ from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
+from scim2_client.engines.httpx2 import Client
 from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
@@ -17,7 +18,7 @@ def test_guess_resource_endpoint():
         __schema__ = "urn:ietf:params:scim:schemas:core:2.0:Foobar"
 
     client = SyncSCIMClient(
-        None,
+        Client(base_url="https://scim.example.com/scim/v2"),
         provider=ScimProvider(
             models=[User, EnterpriseUser, Group],
             resource_types=[

@@ -11,6 +11,7 @@ from typing import TypeVar
 from typing import Union
 from typing import cast
 from urllib.parse import quote
+from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 from scim2_models import AnyResource
@@ -574,16 +575,50 @@ class SCIMClient:
         provider = self.provider
         for resource_type in provider.resource_types:
             if provider.model_for(resource_type.name) is resource_model:
-                return resource_type.endpoint
+                return self._check_endpoint(resource_type.endpoint)
 
         schema = resource_model.__schema__
         for resource_type in provider.resource_types:
             if schema == resource_type.schema_:
-                return resource_type.endpoint
+                return self._check_endpoint(resource_type.endpoint)
 
         raise InvalidValueException(
             detail=f"No ResourceType is matching the schema: {schema}"
         )
+
+    def _check_endpoint(self, endpoint: str | None) -> str:
+        """Refuse a resource type endpoint that would lead a request away from the server.
+
+        The endpoints come from the description of the server, which could
+        otherwise send the requests, and the credentials they carry, to another
+        host or outside of the base URL. The resource id is appended to the
+        endpoint, so a query or a fragment would swallow it.
+        """
+        if endpoint is None:
+            raise InvalidServiceDescriptionException(
+                message="A resource type has no endpoint"
+            )
+
+        if (
+            "?" in endpoint
+            or "#" in endpoint
+            or not self._stays_under_base_url(endpoint)
+        ):
+            raise InvalidServiceDescriptionException(
+                message=f"The endpoint '{endpoint}' is not under the base URL"
+            )
+
+        return endpoint
+
+    def _stays_under_base_url(self, endpoint: str) -> bool:
+        """Tell whether requests sent to an endpoint stay under the base URL.
+
+        Without knowing the base URL, only the paths relative to it, without
+        dot segments, are known to stay under it.
+        """
+        parts = urlsplit(endpoint)
+        segments = set(parts.path.split("/"))
+        return not (parts.scheme or parts.netloc or segments & {".", ".."})
 
     def register_naive_resource_types(self):
         """Register a *naive* :class:`~scim2_models.ResourceType` for each model the :attr:`provider` describes.

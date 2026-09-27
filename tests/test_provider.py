@@ -54,7 +54,10 @@ def service(httpserver):
 
 def test_endpoints_are_derived_when_no_resource_type_is_known():
     """Test that a provider given no resource type builds naive endpoints."""
-    client = SyncSCIMClient(None, provider=ScimProvider(models=[User, Group]))
+    client = SyncSCIMClient(
+        Client(base_url="https://scim.example.com/scim/v2"),
+        provider=ScimProvider(models=[User, Group]),
+    )
 
     assert client.resource_endpoint(User) == "/Users"
     assert client.resource_endpoint(Group) == "/Groups"
@@ -115,7 +118,7 @@ def test_two_resource_types_may_serve_a_same_schema():
         ],
     )
     client = SyncSCIMClient(
-        None,
+        Client(base_url="https://scim.example.com/scim/v2"),
         provider=ScimProvider(
             models=[User, EnterpriseUser],
             resource_types=[ResourceType.from_resource(User), staff],

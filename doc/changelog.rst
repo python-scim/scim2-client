@@ -14,6 +14,11 @@ Security
   ``?`` or ``#``, including one sent back by the server, can no longer lead a request to
   another resource, another resource type or outside of the base URL. The ``.`` and ``..``
   ids are refused with :class:`~scim2_models.InvalidValueException`.
+- The endpoints of the resource types must stay under the base URL of the client, with the
+  same origin and the same path prefix, and without query nor fragment. A server can no longer
+  send the requests of the client, and the credentials they carry, to another host.
+  :class:`~scim2_client.InvalidServiceDescriptionException` is raised otherwise, including when
+  a resource type has no endpoint.
 
 [0.9.0] - 2026-09-21
 --------------------

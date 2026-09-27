@@ -4,6 +4,7 @@ from typing import TypeVar
 
 from httpx2 import AsyncClient
 from httpx2 import Client
+from httpx2 import InvalidURL
 from httpx2 import RequestError
 from httpx2 import Response
 from scim2_models import AnyResource
@@ -25,6 +26,24 @@ from scim2_client.errors import SCIMClientException
 from scim2_client.errors import UnexpectedContentFormatException
 
 ResourceT = TypeVar("ResourceT", bound=Resource)
+
+
+def stays_under_base_url(client: Client | AsyncClient, endpoint: str) -> bool:
+    """Tell whether the URL httpx2 builds for an endpoint has the origin and the path prefix of the base URL.
+
+    The URL is built as it will be sent, so an absolute endpoint pointing back
+    to the base URL is accepted, and the dot segments are already resolved.
+    """
+    base_url = client.base_url
+    if not base_url.is_absolute_url:
+        return False
+
+    try:
+        url = client.build_request("GET", endpoint).url
+    except InvalidURL:
+        return False
+
+    return url.origin == base_url.origin and url.raw_path.startswith(base_url.raw_path)
 
 
 @contextmanager
@@ -73,6 +92,9 @@ class SyncSCIMClient(BaseSyncSCIMClient):
     def __init__(self, client: Client, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = client
+
+    def _stays_under_base_url(self, endpoint: str) -> bool:
+        return stays_under_base_url(self.client, endpoint)
 
     def create(
         self,
@@ -333,6 +355,9 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
     def __init__(self, client: AsyncClient, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = client
+
+    def _stays_under_base_url(self, endpoint: str) -> bool:
+        return stays_under_base_url(self.client, endpoint)
 
     async def create(
         self,
