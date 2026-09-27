@@ -8,6 +8,11 @@ Changed
 ^^^^^^^
 - Python 3.11 is now the minimum supported version.
 
+Fixed
+^^^^^
+- When a query of the asynchronous ``discover`` fails,
+  the failures of the other queries are no longer reported by asyncio as never retrieved.
+
 Security
 ^^^^^^^^
 - Resource ids are percent-encoded as a single path segment, so an id holding ``/``, ``..``,

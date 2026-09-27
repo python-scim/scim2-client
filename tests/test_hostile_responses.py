@@ -1,3 +1,5 @@
+import asyncio
+import gc
 import json
 
 import pytest
@@ -236,3 +238,32 @@ async def test_discovery_refuses_an_empty_response(make_client):
 
     with pytest.raises(InvalidServiceDescriptionException, match="returned no content"):
         await discover(client)
+
+
+async def test_async_discovery_retrieves_every_failure():
+    """Every failing discovery query is awaited, and the first one in order is raised."""
+
+    def handler(request):
+        payload = {
+            "schemas": [ERROR_SCHEMA],
+            "status": "403",
+            "detail": request.url.path,
+        }
+        return Response(
+            403, json=payload, headers={"Content-Type": "application/scim+json"}
+        )
+
+    unretrieved = []
+    asyncio.get_running_loop().set_exception_handler(
+        lambda loop, context: unretrieved.append(context)
+    )
+    http_client = AsyncClient(base_url=BASE_URL, transport=MockTransport(handler))
+    client = AsyncSCIMClient(http_client, provider=ScimProvider())
+
+    with pytest.raises(SCIMException, match="/scim/v2/ResourceTypes"):
+        await client.discover()
+
+    # Let the other queries finish, then collect them as their frames are dropped.
+    await asyncio.sleep(0.01)
+    gc.collect()
+    assert unretrieved == []

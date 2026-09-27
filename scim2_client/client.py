@@ -2171,36 +2171,40 @@ class BaseAsyncSCIMClient(SCIMClient):
         :raises ~scim2_client.InvalidServiceDescriptionException: When the objects
             the server publishes do not describe a coherent service.
         """
-        query_resource_types = resource_types and not self._resource_types
-        query_schemas = schemas and not self._models
-        query_config = service_provider_config and not self._config
+        queries = {}
+        if resource_types and not self._resource_types:
+            queries[ResourceType] = self.query(ResourceType, **DISCOVERY_OPTIONS)
 
-        if query_schemas:
-            schemas_task = asyncio.create_task(self.query(Schema, **DISCOVERY_OPTIONS))
+        if schemas and not self._models:
+            queries[Schema] = self.query(Schema, **DISCOVERY_OPTIONS)
 
-        if query_resource_types:
-            resources_types_task = asyncio.create_task(
-                self.query(ResourceType, **DISCOVERY_OPTIONS)
+        if service_provider_config and not self._config:
+            queries[ServiceProviderConfig] = self.query(
+                ServiceProviderConfig, **DISCOVERY_OPTIONS
             )
 
-        if query_config:
-            spc_task = asyncio.create_task(
-                self.query(ServiceProviderConfig, **DISCOVERY_OPTIONS)
-            )
+        # Collecting every outcome retrieves the exceptions of all the queries, so
+        # asyncio does not report the ones left behind by the first failure.
+        results = await asyncio.gather(*queries.values(), return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
+
+        published = dict(zip(queries, results, strict=True))
 
         discovered_resource_types = self._resource_types
-        if query_resource_types:
+        if ResourceType in published:
             discovered_resource_types = (
-                self._published(await resources_types_task).resources or []
+                self._published(published[ResourceType]).resources or []
             )
 
         discovered_schemas = None
-        if query_schemas:
-            discovered_schemas = self._published(await schemas_task).resources or []
+        if Schema in published:
+            discovered_schemas = self._published(published[Schema]).resources or []
 
         config = self._config
-        if query_config:
-            config = self._published(await spc_task)
+        if ServiceProviderConfig in published:
+            config = self._published(published[ServiceProviderConfig])
 
         self.provider = self._describe_service(
             discovered_schemas, discovered_resource_types, config
