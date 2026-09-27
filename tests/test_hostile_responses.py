@@ -38,7 +38,10 @@ DEEPLY_NESTED_BODIES = [
     pytest.param(b'{"a":' * 100_000 + b"1" + b"}" * 100_000, id="object"),
 ]
 
-SMALL_STACK_SIZE = 1024 * 1024
+# Python 3.12 and 3.13 count the C recursion against a fixed limit, and crash
+# below about 2 MiB before reaching it. Python 3.14 stops when the stack runs
+# out, and the nested bodies need more than 8 MiB.
+SMALL_STACK_SIZE = 4 * 1024 * 1024
 
 NOT_OBJECT_BODIES = [
     pytest.param(b"[1, 2]", id="array"),
