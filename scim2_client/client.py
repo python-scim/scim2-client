@@ -10,6 +10,7 @@ from typing import ParamSpec
 from typing import TypeVar
 from typing import Union
 from typing import cast
+from urllib.parse import quote
 
 from pydantic import ValidationError
 from scim2_models import AnyResource
@@ -53,6 +54,9 @@ BASE_HEADERS = {
     "Content-Type": "application/scim+json",
 }
 CONFIG_RESOURCES = (ResourceType, Schema, ServiceProviderConfig)
+
+# The sub-delims, ':' and '@' that RFC 3986 §3.3 allows in a path segment.
+_PATH_SEGMENT_SAFE = "!$&'()*+,;=:@"
 
 
 def describe_resource_models(
@@ -98,6 +102,20 @@ def _under_provider(
             return method(self, *args, **kwargs)
 
     return wrapper
+
+
+def _resource_url(endpoint: str, id: str) -> str:
+    """Append an id to an endpoint as a single path segment.
+
+    RFC 7643 §3.1 puts no constraint on the characters of an id, so the
+    characters that would end the segment, such as '/', '?' or '#', are
+    percent-encoded rather than refused. The dot segments are refused, as URL
+    resolution would remove them instead of sending them to the server.
+    """
+    if id in (".", ".."):
+        raise InvalidValueException(detail=f"'{id}' cannot be used as a resource id")
+
+    return f"{endpoint}/{quote(id, safe=_PATH_SEGMENT_SAFE)}"
 
 
 @dataclass
@@ -831,7 +849,7 @@ class SCIMClient:
 
         elif id:
             req.expected_types = [resource_model]
-            req.url = f"{req.url}/{id}"
+            req.url = _resource_url(req.url, id)
             # A 304 answer has no payload, so the object can only be returned
             # back when it is the whole resource that was asked for.
             if resource is not None and not payload:
@@ -984,7 +1002,7 @@ class SCIMClient:
         if not id:
             raise InvalidValueException(detail="Resource must have an id")
 
-        delete_url = self.resource_endpoint(resource_model) + f"/{id}"
+        delete_url = _resource_url(self.resource_endpoint(resource_model), id)
         req.url = req.request_kwargs.pop("url", delete_url)
         self._set_if_match(req, _instance)
         return req
@@ -1037,7 +1055,8 @@ class SCIMClient:
                 scim_ctx=Context.RESOURCE_REPLACEMENT_REQUEST
             )
             req.url = req.request_kwargs.pop(
-                "url", self.resource_endpoint(resource.__class__) + f"/{resource.id}"
+                "url",
+                _resource_url(self.resource_endpoint(resource.__class__), resource.id),
             )
 
         self._set_if_match(req, resource)
@@ -1077,7 +1096,7 @@ class SCIMClient:
         if not check_request_payload:
             req.payload = patch_op
             req.url = req.request_kwargs.pop(
-                "url", f"{self.resource_endpoint(resource_model)}/{id}"
+                "url", _resource_url(self.resource_endpoint(resource_model), id)
             )
 
         else:
@@ -1094,7 +1113,7 @@ class SCIMClient:
                     ) from exc
 
             req.url = req.request_kwargs.pop(
-                "url", f"{self.resource_endpoint(resource_model)}/{id}"
+                "url", _resource_url(self.resource_endpoint(resource_model), id)
             )
 
         req.expected_types = [resource_model]

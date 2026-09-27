@@ -8,6 +8,13 @@ Changed
 ^^^^^^^
 - Python 3.11 is now the minimum supported version.
 
+Security
+^^^^^^^^
+- Resource ids are percent-encoded as a single path segment, so an id holding ``/``, ``..``,
+  ``?`` or ``#``, including one sent back by the server, can no longer lead a request to
+  another resource, another resource type or outside of the base URL. The ``.`` and ``..``
+  ids are refused with :class:`~scim2_models.InvalidValueException`.
+
 [0.9.0] - 2026-09-21
 --------------------
 
