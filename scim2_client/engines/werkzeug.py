@@ -1,5 +1,5 @@
-import json
 from contextlib import contextmanager
+from typing import Any
 from typing import TypeVar
 from urllib.parse import urlencode
 
@@ -23,13 +23,22 @@ from scim2_client.errors import UnexpectedContentFormatException
 ResourceT = TypeVar("ResourceT", bound=Resource)
 
 
+def decode_payload(response) -> Any:
+    """Decode the JSON body of a response, or return None when it has no body.
+
+    A body too deeply nested for the decoder, or holding an integer too long for
+    Python to convert, is reported as any other body that is not valid JSON.
+    """
+    try:
+        return response.json if response.text else None
+    except (ValueError, RecursionError) as exc:
+        raise UnexpectedContentFormatException(source=response) from exc
+
+
 @contextmanager
 def handle_response_error(response):
     try:
         yield
-
-    except json.decoder.JSONDecodeError as exc:
-        raise UnexpectedContentFormatException(source=response) from exc
 
     except (SCIMClientException, SCIMException) as exc:
         exc.source = response
@@ -132,7 +141,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,
@@ -171,7 +180,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,
@@ -206,7 +215,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,
@@ -240,7 +249,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,
@@ -272,7 +281,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,
@@ -302,7 +311,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,
@@ -340,7 +349,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
         with handle_response_error(response):
             return self.check_response(
-                payload=response.json if response.text else None,
+                payload=decode_payload(response),
                 status_code=response.status_code,
                 headers=response.headers,
                 expected_status_codes=req.expected_status_codes,

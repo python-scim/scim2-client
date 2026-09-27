@@ -39,6 +39,7 @@ from scim2_models import get_model_by_payload
 from scim2_client.errors import InvalidServiceDescriptionException
 from scim2_client.errors import ResponsePayloadValidationException
 from scim2_client.errors import SCIMResponseException
+from scim2_client.errors import UnexpectedContentFormatException
 from scim2_client.errors import UnexpectedContentTypeException
 from scim2_client.errors import UnexpectedStatusCodeException
 from scim2_client.errors import request_validation_exception
@@ -58,6 +59,9 @@ CONFIG_RESOURCES = (ResourceType, Schema, ServiceProviderConfig)
 
 # The sub-delims, ':' and '@' that RFC 3986 §3.3 allows in a path segment.
 _PATH_SEGMENT_SAFE = "!$&'()*+,;=:@"
+
+# Discovery cannot build the models from an Error object or a raw payload.
+DISCOVERY_OPTIONS = {"raise_scim_errors": True, "check_response_payload": True}
 
 
 def describe_resource_models(
@@ -730,8 +734,16 @@ class SCIMClient:
             self._check_status_codes(status_code, expected_status_codes)
             return response_payload
 
+        self._check_payload_shape(response_payload)
+
         if response_payload and response_payload.get("schemas") == [Error.__schema__]:
-            error = Error.model_validate(response_payload)
+            try:
+                error = Error.model_validate(response_payload)
+            except ValidationError as exc:
+                scim_exc = ResponsePayloadValidationException()
+                scim_exc.add_note(str(exc))
+                raise scim_exc from exc
+
             if raise_scim_errors:
                 raise server_error_exception(error, scim_ctx=scim_ctx)
             return error
@@ -774,6 +786,39 @@ class SCIMClient:
             raise scim_exc from exc
 
         self._set_version_from_etag(result, headers)
+        return result
+
+    @staticmethod
+    def _check_payload_shape(payload) -> None:
+        """Refuse a payload that cannot be a SCIM message.
+
+        A SCIM message is a JSON object, and its 'schemas', when present, is a list
+        of URIs. The payload is read as such afterwards.
+        """
+        if payload is None:
+            return
+
+        if not isinstance(payload, dict):
+            raise UnexpectedContentFormatException(
+                message="The response payload is not a JSON object"
+            )
+
+        schemas = payload.get("schemas", [])
+        if not isinstance(schemas, list) or not all(
+            isinstance(schema, str) for schema in schemas
+        ):
+            raise UnexpectedContentFormatException(
+                message="The schemas of the response payload are not a list of strings"
+            )
+
+    @staticmethod
+    def _published(result):
+        """Return what a discovery endpoint published, refusing an empty response."""
+        if result is None:
+            raise InvalidServiceDescriptionException(
+                message="A discovery endpoint returned no content"
+            )
+
         return result
 
     @_under_provider
@@ -1658,15 +1703,22 @@ class BaseSyncSCIMClient(SCIMClient):
         """
         discovered_resource_types = self._resource_types
         if resource_types and not discovered_resource_types:
-            discovered_resource_types = self.query(ResourceType).resources or []
+            discovered_resource_types = (
+                self._published(self.query(ResourceType, **DISCOVERY_OPTIONS)).resources
+                or []
+            )
 
         discovered_schemas = None
         if schemas and not self._models:
-            discovered_schemas = self.query(Schema).resources or []
+            discovered_schemas = (
+                self._published(self.query(Schema, **DISCOVERY_OPTIONS)).resources or []
+            )
 
         config = self._config
         if service_provider_config and not config:
-            config = self.query(ServiceProviderConfig)
+            config = self._published(
+                self.query(ServiceProviderConfig, **DISCOVERY_OPTIONS)
+            )
 
         self.provider = self._describe_service(
             discovered_schemas, discovered_resource_types, config
@@ -2124,25 +2176,31 @@ class BaseAsyncSCIMClient(SCIMClient):
         query_config = service_provider_config and not self._config
 
         if query_schemas:
-            schemas_task = asyncio.create_task(self.query(Schema))
+            schemas_task = asyncio.create_task(self.query(Schema, **DISCOVERY_OPTIONS))
 
         if query_resource_types:
-            resources_types_task = asyncio.create_task(self.query(ResourceType))
+            resources_types_task = asyncio.create_task(
+                self.query(ResourceType, **DISCOVERY_OPTIONS)
+            )
 
         if query_config:
-            spc_task = asyncio.create_task(self.query(ServiceProviderConfig))
+            spc_task = asyncio.create_task(
+                self.query(ServiceProviderConfig, **DISCOVERY_OPTIONS)
+            )
 
         discovered_resource_types = self._resource_types
         if query_resource_types:
-            discovered_resource_types = (await resources_types_task).resources or []
+            discovered_resource_types = (
+                self._published(await resources_types_task).resources or []
+            )
 
         discovered_schemas = None
         if query_schemas:
-            discovered_schemas = (await schemas_task).resources or []
+            discovered_schemas = self._published(await schemas_task).resources or []
 
         config = self._config
         if query_config:
-            config = await spc_task
+            config = self._published(await spc_task)
 
         self.provider = self._describe_service(
             discovered_schemas, discovered_resource_types, config

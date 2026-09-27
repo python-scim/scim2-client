@@ -19,6 +19,19 @@ Security
   send the requests of the client, and the credentials they carry, to another host.
   :class:`~scim2_client.InvalidServiceDescriptionException` is raised otherwise, including when
   a resource type has no endpoint.
+- A response that is not a SCIM message raises
+  :class:`~scim2_client.UnexpectedContentFormatException` instead of an ``AttributeError``,
+  a ``TypeError`` or a ``RecursionError``: a body too deeply nested or holding an integer
+  too long to decode, a JSON value that is not an object, or ``schemas`` that are not a
+  list of strings. The payload is still returned as sent when response checks are disabled.
+- An :class:`~scim2_models.Error` object that does not validate raises
+  :class:`~scim2_client.ResponsePayloadValidationException`.
+- :meth:`~scim2_client.BaseSyncSCIMClient.discover` raises the errors the server returns
+  and validates the objects it publishes, whatever
+  :paramref:`~scim2_client.SCIMClient.raise_scim_errors` and
+  :paramref:`~scim2_client.SCIMClient.check_response_payload` say.
+  A discovery endpoint answering without content raises
+  :class:`~scim2_client.InvalidServiceDescriptionException`.
 
 [0.9.0] - 2026-09-21
 --------------------
