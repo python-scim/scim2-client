@@ -1,7 +1,6 @@
 import asyncio
 import gc
 import json
-import threading
 
 import pytest
 from httpx2 import MockTransport
@@ -37,11 +36,6 @@ DEEPLY_NESTED_BODIES = [
     pytest.param(b"[" * 100_000 + b"]" * 100_000, id="array"),
     pytest.param(b'{"a":' * 100_000 + b"1" + b"}" * 100_000, id="object"),
 ]
-
-# Python 3.12 and 3.13 count the C recursion against a fixed limit, and crash
-# below about 2 MiB before reaching it. Python 3.14 stops when the stack runs
-# out, and the nested bodies need more than 8 MiB.
-SMALL_STACK_SIZE = 4 * 1024 * 1024
 
 NOT_OBJECT_BODIES = [
     pytest.param(b"[1, 2]", id="array"),
@@ -121,40 +115,33 @@ def test_undecodable_body_is_an_unexpected_content_format(make_client, call, bod
         call(make_client(body))
 
 
-def raised_on_a_small_stack(call):
-    """Return the exceptions a call raises in a thread with a small stack.
-
-    Since Python 3.14, the depth the JSON decoder reaches depends on the stack
-    size of the process. A small thread stack makes it the same on every machine.
-    """
-    raised = []
-
-    def target():
-        try:
-            call()
-        except Exception as exc:
-            raised.append(exc)
-
-    previous_stack_size = threading.stack_size(SMALL_STACK_SIZE)
-    try:
-        thread = threading.Thread(target=target)
-        thread.start()
-    finally:
-        threading.stack_size(previous_stack_size)
-    thread.join()
-    return raised
-
-
 @pytest.mark.parametrize("body", DEEPLY_NESTED_BODIES)
 @pytest.mark.parametrize("call", CALLS)
 @pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
-def test_deeply_nested_body_is_an_unexpected_content_format(make_client, call, body):
-    """A body nested deeper than the JSON decoder can go is reported as a body that is not JSON."""
-    client = make_client(body)
+def test_deeply_nested_body_is_a_response_error(make_client, call, body):
+    """A body nested very deep is reported as a SCIM response error.
 
-    (exc,) = raised_on_a_small_stack(lambda: call(client))
+    Whether the JSON decoder goes that deep depends on the Python version and on
+    the stack size of the machine, so the exact error depends on them too.
+    """
+    with pytest.raises(SCIMResponseException):
+        call(make_client(body))
 
-    assert isinstance(exc, UnexpectedContentFormatException)
+
+@pytest.mark.parametrize("call", CALLS)
+@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+def test_decoder_recursion_error_is_an_unexpected_content_format(
+    make_client, call, monkeypatch
+):
+    """A body the JSON decoder cannot go deep enough into is reported as a body that is not JSON."""
+
+    def exceed_the_recursion_limit(*args, **kwargs):
+        raise RecursionError("maximum recursion depth exceeded")
+
+    monkeypatch.setattr(json, "loads", exceed_the_recursion_limit)
+
+    with pytest.raises(UnexpectedContentFormatException):
+        call(make_client(b"{}"))
 
 
 @pytest.mark.parametrize("body", NOT_OBJECT_BODIES)
@@ -230,17 +217,13 @@ async def test_async_client_refuses_an_undecodable_body(body):
 
 
 @pytest.mark.parametrize("body", DEEPLY_NESTED_BODIES)
-def test_async_client_refuses_a_deeply_nested_body(body):
-    """The asynchronous client reports a body nested too deep as the synchronous one."""
+async def test_async_client_refuses_a_deeply_nested_body(body):
+    """The asynchronous client reports a body nested very deep as the synchronous one."""
+    http_client = AsyncClient(base_url=BASE_URL, transport=answering(body))
+    client = AsyncSCIMClient(http_client, provider=provider())
 
-    async def query():
-        http_client = AsyncClient(base_url=BASE_URL, transport=answering(body))
-        client = AsyncSCIMClient(http_client, provider=provider())
+    with pytest.raises(SCIMResponseException):
         await client.query(User, "1")
-
-    (exc,) = raised_on_a_small_stack(lambda: asyncio.run(query()))
-
-    assert isinstance(exc, UnexpectedContentFormatException)
 
 
 FORBIDDEN = json.dumps(
