@@ -3,8 +3,8 @@ revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
     "python_full_version >= '3.15' and sys_platform != 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten'",
     "python_full_version < '3.12'",
 ]
@@ -14,12 +14,12 @@ exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for 
 exclude-newer-span = "P14D"
 
 [options.exclude-newer-package]
-pytest-scim2-server = false
+scim2-server = false
+scim2-models = false
 scim2-cli = false
 scim2-client = false
-scim2-models = false
-scim2-server = false
 scim2-tester = false
+pytest-scim2-server = false
 
 [[package]]
 name = "alabaster"
@@ -1254,7 +1254,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=0.24.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-httpserver", specifier = ">=1.1.0" },
-    { name = "scim2-server", specifier = ">=0.1.8" },
+    { name = "scim2-server", specifier = ">=0.3.0" },
     { name = "tox-uv", specifier = ">=1.16.0" },
     { name = "werkzeug", specifier = ">=3.1.3" },
 ]
@@ -1269,42 +1269,29 @@ doc = [
 ]
 
 [[package]]
-name = "scim2-filter-parser"
-version = "0.7.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "sly" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/25/c0/2f4d5caee8faa8f0d0979584c4aab95fa69d626d6f9d211dd6bb7089bc2f/scim2_filter_parser-0.7.0.tar.gz", hash = "sha256:1e11dbe2e186fc1be6d93732b467a3bbaa9deff272dfeb3a0540394cfab7030c", size = 21358, upload-time = "2024-07-20T16:38:23.2Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/54/b54961bfc5018fa593758c439fe0d4a22fbadfabff49a7559850af9a79e1/scim2_filter_parser-0.7.0-py3-none-any.whl", hash = "sha256:a74f90a2d52a77e0f1bc4d77e84b79f88749469f6f7192d64a4f92e4fe50ab69", size = 23409, upload-time = "2024-07-20T16:38:21.525Z" },
-]
-
-[[package]]
 name = "scim2-models"
-version = "0.8.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lark" },
     { name = "pydantic", extra = ["email"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/6c/fca88b0fbb79389aefaf549a82fe59052e0113a7ecddc24bee5b53701587/scim2_models-0.8.0.tar.gz", hash = "sha256:e9d7669e29e7889dd3d80d4cd3ae4674a94bf1a1c370da702a5e18bf50fa2913", size = 91468, upload-time = "2026-09-20T07:10:51.144Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/25/a7722642f8420ecc0f9c4c271901b43208c263d64b1d7c0a1ed76cdfa661/scim2_models-0.9.0.tar.gz", hash = "sha256:a0b35178a2c03ca0b59300ce3c7724857fb9049dbf7f3b106b6696d32d0ae3cb", size = 96051, upload-time = "2026-09-27T20:00:15.438Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/9c/8e67b828fd13871766f7c75067d5b62e9a6ce0546d9276f5c72d477a8d40/scim2_models-0.8.0-py3-none-any.whl", hash = "sha256:cc13863a2154ba4fb343fb64759ab2f3f7e2989b196a6d29f515820e852452d4", size = 113730, upload-time = "2026-09-20T07:10:49.423Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/f9/59cf15d896064e50e1a7b2f7570c4bc5fbe1071816d29f959456487ad617/scim2_models-0.9.0-py3-none-any.whl", hash = "sha256:934d11e7386edd2e0a682dfb279915c74d9f7b3027daf5333794a30bb7f813eb", size = 118555, upload-time = "2026-09-27T20:00:13.633Z" },
 ]
 
 [[package]]
 name = "scim2-server"
-version = "0.1.9"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "scim2-filter-parser" },
     { name = "scim2-models" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c3/0d/6dc0d89a988c79690adf4b44f86fcc5ebe209a1db9008ceec100cc3a1dd8/scim2_server-0.1.9.tar.gz", hash = "sha256:46719347a5e23c3676c8fec458f494bc24792a1c4cc21d2806d7591f92a4f505", size = 26952, upload-time = "2026-03-27T08:12:57.441Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/d6/e731380acbb4d5650e29429584838da3dfe30914409704adca6e66df2e0f/scim2_server-0.3.0.tar.gz", hash = "sha256:1930800e0570be60822d556788b97239c5f8a07151dd01e4e37bc5e0a6ac7a5b", size = 25348, upload-time = "2026-09-28T10:11:32.463Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/9b/0ad5c752bc42258bddee6dc738e04b53875d2fcf868afecbdf7093cb52d2/scim2_server-0.1.9-py3-none-any.whl", hash = "sha256:e0cc2258176dfae8dca823da9451bcff88d3c357a270a03f52878405c26345e2", size = 28960, upload-time = "2026-03-27T08:12:55.822Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/2a/79e5a0e9fde29524f4d1e4c164849174a1c8d62b06466871f8645be6f9ea/scim2_server-0.3.0-py3-none-any.whl", hash = "sha256:6b62aca927242e743b385070e4e2319c72c0b2309e53626f231ef2e0f99dfa10", size = 26894, upload-time = "2026-09-28T10:11:31.115Z" },
 ]
 
 [[package]]
@@ -1319,15 +1306,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ba/d2/8017988e02791162b286576116fedd200ed33e8d8af3579ab3587df3d3d0/shibuya-2026.7.12.tar.gz", hash = "sha256:9496606f5b95595511ad86b773d74b4b8d694a4dcc2f848e6ec34e2ad71d9060", size = 86545, upload-time = "2026-07-11T15:41:16.342Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/84/70/9ca2b8187666be1bcfa82b938107247159f5b566a22b5e43be27df45039d/shibuya-2026.7.12-py3-none-any.whl", hash = "sha256:0a2c0c109e7cc47fc650b01feb671d267c0ffe2e39c98f3529e32d723a9c9d9b", size = 104092, upload-time = "2026-07-11T15:41:14.936Z" },
-]
-
-[[package]]
-name = "sly"
-version = "0.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/41/8a/59e943f7b27904c7756a7b565ffbd55f3841f5cd3d2da2b2b0713c49e488/sly-0.5.tar.gz", hash = "sha256:251d42015e8507158aec2164f06035df4a82b0314ce6450f457d7125e7649024", size = 66702, upload-time = "2022-10-25T14:35:30.592Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/4d/c96d807295183f2360329cd8d8bf5e8072c53d664125b3858c04153f026e/sly-0.5-py3-none-any.whl", hash = "sha256:20485483259eec7f6ba85ff4d2e96a4e50c6621902667fc2695cc8bc2a3e5133", size = 28864, upload-time = "2022-10-25T14:35:28.054Z" },
 ]
 
 [[package]]
@@ -1376,8 +1354,8 @@ version = "9.1.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.15' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
     "python_full_version >= '3.15' and sys_platform != 'emscripten'",
+    "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.15' and sys_platform != 'emscripten'",
 ]
 dependencies = [
