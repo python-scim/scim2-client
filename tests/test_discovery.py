@@ -6,8 +6,8 @@ import pytest
 from scim2_models import EnterpriseUser
 from scim2_models import Extension
 from scim2_models import Group
-from scim2_models import Meta
 from scim2_models import ResourceType
+from scim2_models import ScimProvider
 from scim2_models import User
 
 from scim2_client.engines.httpx2 import Client
@@ -15,7 +15,7 @@ from scim2_client.engines.httpx2 import SyncSCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.backend import InMemoryBackend  # noqa: E402
-from scim2_server.provider import SCIMProvider  # noqa: E402
+from scim2_server.provider import SCIMApplication  # noqa: E402
 
 
 class OtherExtension(Extension):
@@ -25,46 +25,20 @@ class OtherExtension(Extension):
     test2: list[str] | None = None
 
 
-def get_schemas():
-    schemas = [
-        User.to_schema(),
-        Group.to_schema(),
-        OtherExtension.to_schema(),
-        EnterpriseUser.to_schema(),
-    ]
-
-    # SCIMProvider register_schema requires meta object to be set
-    for schema in schemas:
-        schema.meta = Meta(resource_type="Schema")
-
-    return schemas
-
-
-def get_resource_types():
-    resource_types = [
-        ResourceType.from_resource(User[EnterpriseUser | OtherExtension]),
-        ResourceType.from_resource(Group),
-    ]
-
-    # SCIMProvider register_resource_type requires meta object to be set
-    for resource_type in resource_types:
-        resource_type.meta = Meta(resource_type="ResourceType")
-
-    return resource_types
-
-
 @pytest.fixture(scope="session")
 def server():
-    backend = InMemoryBackend()
-    provider = SCIMProvider(backend)
-    for schema in get_schemas():
-        provider.register_schema(schema)
-    for resource_type in get_resource_types():
-        provider.register_resource_type(resource_type)
+    provider = ScimProvider(
+        models=[User, EnterpriseUser, OtherExtension, Group],
+        resource_types=[
+            ResourceType.from_resource(User[EnterpriseUser | OtherExtension]),
+            ResourceType.from_resource(Group),
+        ],
+    )
+    app = SCIMApplication(InMemoryBackend(), provider)
 
     host = "localhost"
     port = portpicker.pick_unused_port()
-    httpd = wsgiref.simple_server.make_server(host, port, provider)
+    httpd = wsgiref.simple_server.make_server(host, port, app)
 
     server_thread = threading.Thread(target=httpd.serve_forever)
     server_thread.start()

@@ -1,7 +1,6 @@
 import pytest
 from scim2_models import BulkOperation
 from scim2_models import BulkRequest
-from scim2_models import InvalidValueException
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import ResponseParameters
@@ -18,24 +17,18 @@ from scim2_client.errors import UnexpectedContentFormatException
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.backend import InMemoryBackend  # noqa: E402
-from scim2_server.provider import SCIMProvider  # noqa: E402
-from scim2_server.utils import load_default_resource_types  # noqa: E402
-from scim2_server.utils import load_default_schemas  # noqa: E402
+from scim2_server.provider import SCIMApplication  # noqa: E402
+from scim2_server.utils import load_default_provider  # noqa: E402
 
 
 @pytest.fixture
-def scim_provider():
-    provider = SCIMProvider(InMemoryBackend())
-    for schema in load_default_schemas().values():
-        provider.register_schema(schema)
-    for resource_type in load_default_resource_types().values():
-        provider.register_resource_type(resource_type)
-    return provider
+def scim_app():
+    return SCIMApplication(InMemoryBackend(), load_default_provider())
 
 
 @pytest.fixture
-def scim_client(scim_provider):
-    werkzeug_client = Client(scim_provider)
+def scim_client(scim_app):
+    werkzeug_client = Client(scim_app)
     scim_client = TestSCIMClient(werkzeug_client)
     scim_client.discover()
     return scim_client
@@ -81,20 +74,23 @@ def test_werkzeug_engine(scim_client):
     with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
 
-    # scim2-server advertises that it does not serve bulk requests
-    with pytest.raises(InvalidValueException, match=r"does not support bulk requests"):
-        scim_client.bulk(
-            BulkRequest[User](
-                operations=[
-                    BulkOperation[User](
-                        method="POST",
-                        path="/Users",
-                        bulk_id="qwerty",
-                        data=User(user_name="Alice"),
-                    )
-                ]
-            )
+    response = scim_client.bulk(
+        BulkRequest[User](
+            operations=[
+                BulkOperation[User](
+                    method="POST",
+                    path="/Users",
+                    bulk_id="qwerty",
+                    data=User(user_name="Alice"),
+                )
+            ]
         )
+    )
+    (operation,) = response.operations
+    assert operation.status == 201
+    assert operation.bulk_id == "qwerty"
+    created_user = scim_client.query(User, operation.location.rsplit("/", 1)[-1])
+    assert created_user.user_name == "Alice"
 
 
 def test_werkzeug_query_with_attributes(scim_client):
