@@ -1345,6 +1345,10 @@ class BaseSyncSCIMClient(SCIMClient):
             Use :class:`~scim2_models.SearchRequest` when listing resources, to
             also pass ``filter``, ``sortBy``, ``sortOrder``, ``startIndex`` and
             ``count`` (:rfc:`RFC 7644 §3.4.2 <7644#section-3.4.2>`).
+            Pass ``cursor`` instead of ``startIndex`` for cursor-based pagination
+            (:rfc:`RFC 9865 §2 <9865#section-2>`). An empty cursor requests the
+            first page. The response gives the cursor of the next page in
+            :attr:`~scim2_models.ListResponse.next_cursor`.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -1813,6 +1817,10 @@ class BaseAsyncSCIMClient(SCIMClient):
             Use :class:`~scim2_models.SearchRequest` when listing resources, to
             also pass ``filter``, ``sortBy``, ``sortOrder``, ``startIndex`` and
             ``count`` (:rfc:`RFC 7644 §3.4.2 <7644#section-3.4.2>`).
+            Pass ``cursor`` instead of ``startIndex`` for cursor-based pagination
+            (:rfc:`RFC 9865 §2 <9865#section-2>`). An empty cursor requests the
+            first page. The response gives the cursor of the next page in
+            :attr:`~scim2_models.ListResponse.next_cursor`.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
