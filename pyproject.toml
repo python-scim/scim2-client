@@ -26,7 +26,7 @@ classifiers = [
 
 requires-python = ">= 3.11"
 dependencies = [
-    "scim2-models>=0.8.0",
+    "scim2-models>=0.10.1",
 ]
 
 [project.optional-dependencies]

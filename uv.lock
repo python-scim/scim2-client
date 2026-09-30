@@ -14,12 +14,12 @@ exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for 
 exclude-newer-span = "P14D"
 
 [options.exclude-newer-package]
-scim2-server = false
-scim2-models = false
+pytest-scim2-server = false
 scim2-cli = false
 scim2-client = false
+scim2-models = false
+scim2-server = false
 scim2-tester = false
-pytest-scim2-server = false
 
 [[package]]
 name = "alabaster"
@@ -1240,7 +1240,7 @@ doc = [
 [package.metadata]
 requires-dist = [
     { name = "httpx2", marker = "extra == 'httpx2'", specifier = ">=2.12" },
-    { name = "scim2-models", specifier = ">=0.8.0" },
+    { name = "scim2-models", specifier = ">=0.10.1" },
     { name = "werkzeug", marker = "extra == 'werkzeug'", specifier = ">=3.1.3" },
 ]
 provides-extras = ["httpx2", "werkzeug"]
@@ -1270,15 +1270,15 @@ doc = [
 
 [[package]]
 name = "scim2-models"
-version = "0.9.0"
+version = "0.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lark" },
     { name = "pydantic", extra = ["email"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e6/25/a7722642f8420ecc0f9c4c271901b43208c263d64b1d7c0a1ed76cdfa661/scim2_models-0.9.0.tar.gz", hash = "sha256:a0b35178a2c03ca0b59300ce3c7724857fb9049dbf7f3b106b6696d32d0ae3cb", size = 96051, upload-time = "2026-09-27T20:00:15.438Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/eb/7a51b7b1f508a18a784f3427c26563505eda510e08bf06584440e9c93c14/scim2_models-0.10.1.tar.gz", hash = "sha256:f97d6fb5eecf0a7ef2b75f301a0b5370f9be2bfa9b072d3c566800460196f624", size = 101791, upload-time = "2026-09-30T16:19:18.053Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/f9/59cf15d896064e50e1a7b2f7570c4bc5fbe1071816d29f959456487ad617/scim2_models-0.9.0-py3-none-any.whl", hash = "sha256:934d11e7386edd2e0a682dfb279915c74d9f7b3027daf5333794a30bb7f813eb", size = 118555, upload-time = "2026-09-27T20:00:13.633Z" },
+    { url = "https://files.pythonhosted.org/packages/97/57/7970e29757eba393a2fc8815e8fa3d0272cef73d397c532d9bbe99bbdba0/scim2_models-0.10.1-py3-none-any.whl", hash = "sha256:7ced87b5cd6ed2735721f17357d8934837f3ea5f9172751e9df4b66afa8baf1a", size = 124372, upload-time = "2026-09-30T16:19:16.666Z" },
 ]
 
 [[package]]
