@@ -1,9 +1,10 @@
 import datetime
 
 import pytest
-from scim2_models import Context
 from scim2_models import Error
+from scim2_models import ExpiredCursorException
 from scim2_models import Group
+from scim2_models import InvalidCursorException
 from scim2_models import InvalidValueException
 from scim2_models import ListResponse
 from scim2_models import Meta
@@ -322,28 +323,82 @@ def test_user_with_invalid_id(sync_client):
     assert response == Error(detail="Resource unknown not found", status=404)
 
 
-def test_cursor_errors(sync_client):
-    """Test that a response with an invalid nextCursor raises ResponsePayloadValidationException."""
-    payload = {
-        "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-        "totalResults": 1,
-        "nextCursor": "invalid%cursor",
-        "Resources": [
-            {
-                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-                "id": "2819c223-7f76-453a-919d-413861904646",
-                "userName": "bjensen@example.com",
-            }
-        ],
-    }
+def test_cursor_pagination(httpserver, sync_client):
+    """Test that the cursor is sent in the query string and the next cursor is returned."""
+    httpserver.expect_oneshot_request(
+        "/Users", query_string="cursor=&count=1"
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+            "itemsPerPage": 1,
+            "nextCursor": "VZUTiyhEQJ94IR",
+            "Resources": [
+                {
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                    "id": "2819c223-7f76-453a-919d-413861904646",
+                    "userName": "bjensen@example.com",
+                }
+            ],
+        },
+        status=200,
+        content_type="application/scim+json",
+    )
+
+    response = sync_client.query(
+        User, query_parameters=SearchRequest(cursor="", count=1)
+    )
+    assert response.next_cursor == "VZUTiyhEQJ94IR"
+    assert response.total_results is None
+    assert response.resources[0].user_name == "bjensen@example.com"
+
+
+@pytest.mark.parametrize("field", ["nextCursor", "previousCursor"])
+@pytest.mark.parametrize("cursor", ["invalid%cursor", ""])
+def test_invalid_response_cursor(httpserver, sync_client, field, cursor):
+    """Test that a response with an invalid cursor raises ResponsePayloadValidationException."""
+    httpserver.expect_oneshot_request("/Users").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+            "totalResults": 1,
+            field: cursor,
+            "Resources": [
+                {
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                    "id": "2819c223-7f76-453a-919d-413861904646",
+                    "userName": "bjensen@example.com",
+                }
+            ],
+        },
+        status=200,
+        content_type="application/scim+json",
+    )
+
     with pytest.raises(ResponsePayloadValidationException):
-        sync_client.check_response(
-            payload=payload,
-            status_code=200,
-            headers={"content-type": "application/scim+json"},
-            expected_types=[ListResponse[User]],
-            scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
-        )
+        sync_client.query(User, query_parameters=SearchRequest(cursor="abc"))
+
+
+@pytest.mark.parametrize(
+    "scim_type,exception",
+    [
+        ("invalidCursor", InvalidCursorException),
+        ("expiredCursor", ExpiredCursorException),
+    ],
+)
+def test_cursor_rejected_by_server(httpserver, sync_client, scim_type, exception):
+    """Test that a cursor rejected by the server raises the matching exception."""
+    httpserver.expect_oneshot_request("/Users").respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+            "scimType": scim_type,
+            "detail": "Cursor rejected",
+            "status": "400",
+        },
+        status=400,
+        content_type="application/scim+json",
+    )
+
+    with pytest.raises(exception, match="Cursor rejected"):
+        sync_client.query(User, query_parameters=SearchRequest(cursor="abc"))
 
 
 def test_raise_scim_errors(sync_client):
