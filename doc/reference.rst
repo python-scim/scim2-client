@@ -38,6 +38,9 @@ here as class attributes.
    :members:
    :member-order: bysource
 
+.. autoclass:: scim2_client.client.ResponseHeaders
+   :members:
+
 Errors
 ------
 

@@ -1,15 +1,20 @@
 import datetime
 
 import pytest
+from httpx2 import Client
+from scim2_models import EnterpriseUser
 from scim2_models import Error
 from scim2_models import InvalidValueException
 from scim2_models import Meta
 from scim2_models import Resource
+from scim2_models import ResourceType
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import User
 
 from scim2_client import RequestNetworkException
 from scim2_client import UnexpectedStatusCodeException
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
 def test_create_user(httpserver, sync_client):
@@ -295,3 +300,41 @@ def test_request_network_error(sync_client):
         RequestNetworkException, match="Network error happened during request"
     ):
         sync_client.create(user_request, url="http://invalid.test")
+
+
+def test_dont_check_request_payload_without_url(sync_client):
+    """An unchecked payload cannot tell the endpoint, so a url must be passed."""
+    user = {
+        "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        "userName": "bjensen@example.com",
+    }
+
+    with pytest.raises(
+        InvalidValueException,
+        match="A url is required when the request payload is not checked",
+    ):
+        sync_client.create(user, check_request_payload=False)
+
+
+def test_create_dict_with_extension_schema(httpserver):
+    """A payload whose first schema is an extension does not tell the resource type."""
+    user = {
+        "schemas": [
+            "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+            "urn:ietf:params:scim:schemas:core:2.0:User",
+        ],
+        "userName": "bjensen@example.com",
+    }
+
+    with Client(base_url=f"http://localhost:{httpserver.port}") as client:
+        scim_client = SyncSCIMClient(
+            client,
+            provider=ScimProvider(
+                models=[User, EnterpriseUser],
+                resource_types=[ResourceType.from_resource(User[EnterpriseUser])],
+            ),
+        )
+        with pytest.raises(
+            InvalidValueException, match="Cannot guess resource type from the payload"
+        ):
+            scim_client.create(user)

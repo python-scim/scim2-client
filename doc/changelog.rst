@@ -15,6 +15,18 @@ Added
 Changed
 ^^^^^^^
 - scim2-models 0.10.1 is now the minimum supported version.
+- The package is checked with mypy in strict mode.
+  The annotations of :meth:`~scim2_client.SCIMClient.check_response` now match what it returns.
+- ``SCIMClient.modify`` is removed. Use the ``modify`` method of the synchronous or asynchronous clients.
+
+Fixed
+^^^^^
+- ``create`` and ``replace`` raise :class:`~scim2_models.InvalidValueException`
+  when ``check_request_payload`` is :data:`False` and no ``url`` is passed.
+  Before, the httpx2 engine raised a :class:`TypeError`
+  and the Werkzeug engine sent the request to the SCIM prefix.
+- A payload whose first schema is an extension raises
+  :class:`~scim2_models.InvalidValueException` with a clearer message.
 
 [0.10.0] - 2026-09-27
 ---------------------

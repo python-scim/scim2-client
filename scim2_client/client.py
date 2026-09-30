@@ -1,12 +1,14 @@
 import asyncio
 import json
 import warnings
+from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Collection
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import wraps
-from typing import Concatenate
-from typing import ParamSpec
+from typing import Any
+from typing import Protocol
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -30,6 +32,7 @@ from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import ResponseParameters
 from scim2_models import Schema
+from scim2_models import ScimObject
 from scim2_models import ScimProvider
 from scim2_models import ScimProviderError
 from scim2_models import SearchRequest
@@ -45,9 +48,10 @@ from scim2_client.errors import UnexpectedStatusCodeException
 from scim2_client.errors import request_validation_exception
 from scim2_client.errors import server_error_exception
 
-ResourceT = TypeVar("ResourceT", bound=Resource)
-ReturnT = TypeVar("ReturnT")
-P = ParamSpec("P")
+ResourceT = TypeVar("ResourceT", bound=Resource[Any])
+MethodT = TypeVar("MethodT", bound=Callable[..., Any])
+PublishedT = TypeVar("PublishedT")
+ScimObjectT = TypeVar("ScimObjectT", bound=ScimObject)
 
 NOT_MODIFIED = 304
 
@@ -61,11 +65,20 @@ CONFIG_RESOURCES = (ResourceType, Schema, ServiceProviderConfig)
 _PATH_SEGMENT_SAFE = "!$&'()*+,;=:@"
 
 # Discovery cannot build the models from an Error object or a raw payload.
-DISCOVERY_OPTIONS = {"raise_scim_errors": True, "check_response_payload": True}
+DISCOVERY_OPTIONS: dict[str, Any] = {
+    "raise_scim_errors": True,
+    "check_response_payload": True,
+}
+
+
+class ResponseHeaders(Protocol):
+    """The headers of a response, looked up by case-insensitive names."""
+
+    def get(self, key: str, /) -> str | None: ...
 
 
 def describe_resource_models(
-    resource_models: Collection[type[Resource]],
+    resource_models: Collection[type[Resource[Any]]],
 ) -> tuple[tuple[DescribedModel, ...], tuple[ResourceType, ...]]:
     """Split composed models into the bare models and the resource types binding them.
 
@@ -92,9 +105,7 @@ def describe_resource_models(
     return tuple(models.values()), tuple(resource_types)
 
 
-def _under_provider(
-    method: "Callable[Concatenate[SCIMClient, P], ReturnT]",
-) -> "Callable[Concatenate[SCIMClient, P], ReturnT]":
+def _under_provider(method: MethodT) -> MethodT:
     """Lend the description of the server to the payloads a method reads and writes.
 
     The policy the description carries then rules how much a payload may depart
@@ -102,11 +113,18 @@ def _under_provider(
     """
 
     @wraps(method)
-    def wrapper(self: "SCIMClient", *args: P.args, **kwargs: P.kwargs) -> ReturnT:
+    def wrapper(self: "SCIMClient", /, *args: Any, **kwargs: Any) -> Any:
         with self.provider:
             return method(self, *args, **kwargs)
 
-    return wrapper
+    return cast(MethodT, wrapper)
+
+
+def _parametrize(
+    generic: type[ScimObjectT], models: Sequence[type[Resource[Any]]]
+) -> type[ScimObjectT]:
+    """Parametrize a generic message with the union of models, known at runtime."""
+    return cast("type[ScimObjectT]", cast(Any, generic)[Union[tuple(models)]])  # noqa: UP007
 
 
 def _resource_url(endpoint: str, id: str) -> str:
@@ -125,12 +143,12 @@ def _resource_url(endpoint: str, id: str) -> str:
 
 @dataclass
 class RequestPayload:
-    request_kwargs: dict
-    url: str | None = None
-    payload: dict | None = None
-    expected_types: list[type[Resource]] | None = None
+    request_kwargs: dict[str, Any]
+    url: str = ""
+    payload: Any = None
+    expected_types: list[type[ScimObject]] | None = None
     expected_status_codes: list[int] | None = None
-    target: Resource | None = None
+    target: Resource[Any] | None = None
 
 
 class SCIMClient:
@@ -311,7 +329,7 @@ class SCIMClient:
         self,
         *,
         provider: ScimProvider | None = None,
-        resource_models: Collection[type[Resource]] | None = None,
+        resource_models: Collection[type[Resource[Any]]] | None = None,
         resource_types: Collection[ResourceType] | None = None,
         service_provider_config: ServiceProviderConfig | None = None,
         check_request_payload: bool = True,
@@ -392,11 +410,11 @@ class SCIMClient:
         )
 
     @property
-    def _composed_models(self) -> tuple[type[Resource], ...]:
+    def _composed_models(self) -> tuple[type[Resource[Any]], ...]:
         """The models the server endpoints serve, extensions included."""
         provider = self.provider
         return tuple(
-            cast("type[Resource]", provider.model_for(resource_type.name))
+            cast("type[Resource[Any]]", provider.model_for(resource_type))
             for resource_type in provider.resource_types
         )
 
@@ -409,13 +427,13 @@ class SCIMClient:
         )
 
     @property
-    def resource_models(self) -> tuple[type[Resource], ...]:
+    def resource_models(self) -> tuple[type[Resource[Any]], ...]:
         """Deprecated, read :attr:`provider` instead."""
         self._warn_description_deprecation("resource_models")
         return self._composed_models
 
     @resource_models.setter
-    def resource_models(self, resource_models: Collection[type[Resource]]) -> None:
+    def resource_models(self, resource_models: Collection[type[Resource[Any]]]) -> None:
         self._warn_description_deprecation("resource_models")
         models, derived = describe_resource_models(resource_models or ())
         self._models = models
@@ -450,7 +468,7 @@ class SCIMClient:
         self._config = service_provider_config
         self._provider = None
 
-    def get_resource_model(self, name: str) -> type[Resource] | None:
+    def get_resource_model(self, name: str) -> type[Resource[Any]] | None:
         """Get a registered model by its name or its schema."""
         model = self.provider.model_for(name)
         if model is None or issubclass(model, Extension):
@@ -458,7 +476,7 @@ class SCIMClient:
 
         composed_models = self._composed_models
         if model in composed_models:
-            return cast("type[Resource]", model)
+            return model
 
         # 'model_for' answers the bare resource for a schema URI, where the client
         # hands out the model an endpoint serves, extensions included.
@@ -466,9 +484,9 @@ class SCIMClient:
             if composed.__schema__ == model.__schema__:
                 return composed
 
-        return cast("type[Resource]", model)
+        return cast("type[Resource[Any]]", model)
 
-    def _check_resource_model(self, resource_model: type[Resource]) -> None:
+    def _check_resource_model(self, resource_model: type[Resource[Any]]) -> None:
         if self.provider.model_for(str(resource_model.__schema__)) is None:
             raise InvalidValueException(
                 detail=f"Unknown resource type: '{resource_model}'"
@@ -480,7 +498,9 @@ class SCIMClient:
         return bool(spc and spc.etag and spc.etag.supported)
 
     @staticmethod
-    def _resource_version(resource: Resource | dict | None) -> str | None:
+    def _resource_version(
+        resource: Resource[Any] | dict[str, Any] | None,
+    ) -> str | None:
         """Read the ETag a resource was read with."""
         if isinstance(resource, Resource):
             return resource.meta.version if resource.meta else None
@@ -490,7 +510,9 @@ class SCIMClient:
 
         return None
 
-    def _set_if_match(self, req: RequestPayload, resource: Resource | dict | None):
+    def _set_if_match(
+        self, req: RequestPayload, resource: Resource[Any] | dict[str, Any] | None
+    ) -> None:
         """Make a write request conditional on the resource not having changed."""
         version = self._resource_version(resource)
         if not version or not self._etag_supported:
@@ -499,7 +521,7 @@ class SCIMClient:
         headers = req.request_kwargs.setdefault("headers", {})
         headers.setdefault("If-Match", version)
 
-    def _set_if_none_match(self, req: RequestPayload, resource: Resource):
+    def _set_if_none_match(self, req: RequestPayload, resource: Resource[Any]) -> None:
         """Make a read request conditional on the resource having changed."""
         version = self._resource_version(resource)
         if not version or not self._etag_supported:
@@ -510,7 +532,7 @@ class SCIMClient:
         headers.setdefault("If-None-Match", version)
 
     @staticmethod
-    def _set_version_from_etag(result, headers: dict):
+    def _set_version_from_etag(result: object, headers: ResponseHeaders) -> None:
         """Fill an empty resource version with the ETag header of the response.
 
         RFC7644 3.14 makes the ETag header mandatory when versioning is
@@ -527,9 +549,20 @@ class SCIMClient:
             result.meta.version = etag
 
     @staticmethod
+    def _unchecked_url(req: RequestPayload) -> str:
+        """Read the url of a request whose payload is sent without being read."""
+        url = req.request_kwargs.pop("url", None)
+        if url is None:
+            raise InvalidValueException(
+                detail="A url is required when the request payload is not checked"
+            )
+
+        return cast(str, url)
+
+    @staticmethod
     def _resolve_patch_arguments(
-        patch_op: PatchOp | dict | str | None, id: str | None
-    ) -> tuple[PatchOp | dict | None, str | None]:
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | str | None, id: str | None
+    ) -> tuple[PatchOp[ResourceT] | dict[str, Any] | None, str | None]:
         """Tell ``modify(resource, id, patch_op)`` apart from ``modify(resource, patch_op)``.
 
         An id is never a valid patch operation, so the second parameter is
@@ -539,12 +572,12 @@ class SCIMClient:
             return patch_op, id
 
         # The id landed in 'patch_op' and the patch operation in 'id'.
-        return cast("PatchOp | dict | None", id), patch_op
+        return cast("PatchOp[ResourceT] | dict[str, Any] | None", id), patch_op
 
     @staticmethod
     def _resolve_target(
-        target: type[Resource] | Resource | None, id: str | None
-    ) -> tuple[type[Resource] | None, str | None, Resource | None]:
+        target: type[Resource[Any]] | Resource[Any] | None, id: str | None
+    ) -> tuple[type[Resource[Any]] | None, str | None, Resource[Any] | None]:
         """Read a resource type and an id, from either a resource object or a resource type and an id."""
         if not isinstance(target, Resource):
             return target, id, None
@@ -559,7 +592,7 @@ class SCIMClient:
 
         return type(target), target.id, target
 
-    def resource_endpoint(self, resource_model: type[Resource] | None) -> str:
+    def resource_endpoint(self, resource_model: type[Resource[Any]] | None) -> str:
         """Find the :attr:`~scim2_models.ResourceType.endpoint` associated with a given :class:`~scim2_models.Resource`.
 
         The endpoint serving the model is looked up first, then any endpoint
@@ -578,12 +611,12 @@ class SCIMClient:
 
         provider = self.provider
         for resource_type in provider.resource_types:
-            if provider.model_for(resource_type.name) is resource_model:
+            if provider.model_for(resource_type) is resource_model:
                 return self._check_endpoint(resource_type.endpoint)
 
         schema = resource_model.__schema__
         for resource_type in provider.resource_types:
-            if schema == resource_type.schema_:
+            if str(schema) == str(resource_type.schema_):
                 return self._check_endpoint(resource_type.endpoint)
 
         raise InvalidValueException(
@@ -624,7 +657,7 @@ class SCIMClient:
         segments = set(parts.path.split("/"))
         return not (parts.scheme or parts.netloc or segments & {".", ".."})
 
-    def register_naive_resource_types(self):
+    def register_naive_resource_types(self) -> None:
         """Register a *naive* :class:`~scim2_models.ResourceType` for each model the :attr:`provider` describes.
 
         This fills the :class:`~scim2_models.ResourceType` with generic values.
@@ -654,7 +687,7 @@ class SCIMClient:
 
     def _check_status_codes(
         self, status_code: int, expected_status_codes: list[int] | None
-    ):
+    ) -> None:
         if (
             self.check_response_status_codes
             and expected_status_codes
@@ -662,14 +695,14 @@ class SCIMClient:
         ):
             raise UnexpectedStatusCodeException(status_code)
 
-    def _check_content_types(self, headers: dict):
+    def _check_content_types(self, headers: ResponseHeaders) -> None:
         # Interoperability considerations:  The "application/scim+json" media
         # type is intended to identify JSON structure data that conforms to
         # the SCIM protocol and schema specifications.  Older versions of
         # SCIM are known to informally use "application/json".
         # https://datatracker.ietf.org/doc/html/rfc7644.html#section-8.1
 
-        actual_content_type = headers.get("content-type", "").split(";").pop(0)
+        actual_content_type = (headers.get("content-type") or "").split(";").pop(0)
         expected_response_content_types = ("application/scim+json", "application/json")
         if (
             self.check_response_content_type
@@ -680,16 +713,16 @@ class SCIMClient:
     @_under_provider
     def check_response(
         self,
-        payload: dict | None,
+        payload: dict[str, Any] | None,
         status_code: int,
-        headers: dict,
+        headers: ResponseHeaders,
         expected_status_codes: list[int] | None = None,
-        expected_types: list[type[Resource]] | None = None,
+        expected_types: Sequence[type[ScimObject]] | None = None,
         check_response_payload: bool | None = None,
         raise_scim_errors: bool | None = None,
         scim_ctx: Context | None = None,
-        target: Resource | None = None,
-    ) -> Error | None | dict | type[Resource]:
+        target: Resource[Any] | None = None,
+    ) -> ScimObject | dict[str, Any] | None:
         """Build the object a server response describes, and check it on the way.
 
         This is what an engine calls once it has performed a request. The content type,
@@ -789,7 +822,7 @@ class SCIMClient:
         return result
 
     @staticmethod
-    def _check_payload_shape(payload) -> None:
+    def _check_payload_shape(payload: object) -> None:
         """Refuse a payload that cannot be a SCIM message.
 
         A SCIM message is a JSON object, and its 'schemas', when present, is a list
@@ -812,7 +845,7 @@ class SCIMClient:
             )
 
     @staticmethod
-    def _published(result):
+    def _published(result: PublishedT | None) -> PublishedT:
         """Return what a discovery endpoint published, refusing an empty response."""
         if result is None:
             raise InvalidServiceDescriptionException(
@@ -824,10 +857,10 @@ class SCIMClient:
     @_under_provider
     def _prepare_create_request(
         self,
-        resource: Resource | dict,
+        resource: Resource[Any] | dict[str, Any],
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -838,18 +871,20 @@ class SCIMClient:
 
         if not check_request_payload:
             req.payload = resource
-            req.url = req.request_kwargs.pop("url", None)
+            req.url = self._unchecked_url(req)
 
         else:
             if isinstance(resource, Resource):
                 resource_model = resource.__class__
 
             else:
-                resource_model = get_model_by_payload(self._composed_models, resource)
-                if not resource_model:
+                guessed_model = get_model_by_payload(self._composed_models, resource)
+                if guessed_model is None or not issubclass(guessed_model, Resource):
                     raise InvalidValueException(
                         detail="Cannot guess resource type from the payload"
                     )
+
+                resource_model = guessed_model
 
                 try:
                     resource = resource_model.model_validate(resource)
@@ -872,12 +907,12 @@ class SCIMClient:
     @_under_provider
     def _prepare_query_request(
         self,
-        target: type[Resource] | Resource | None = None,
+        target: type[Resource[Any]] | Resource[Any] | None = None,
         id: str | None = None,
-        query_parameters: ResponseParameters | dict | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         resource_model, id, resource = self._resolve_target(target, id)
         req = RequestPayload(
@@ -891,7 +926,7 @@ class SCIMClient:
         if resource_model and check_request_payload:
             self._check_resource_model(resource_model)
 
-        payload: ResponseParameters | None
+        payload: Any
         if not check_request_payload:
             payload = query_parameters
 
@@ -917,7 +952,7 @@ class SCIMClient:
         if resource_model is None:
             req.expected_types = [
                 *self._composed_models,
-                ListResponse[Union[self._composed_models]],  # noqa: UP007
+                _parametrize(ListResponse, self._composed_models),
             ]
 
         elif resource_model == ServiceProviderConfig:
@@ -936,17 +971,17 @@ class SCIMClient:
                 self._set_if_none_match(req, resource)
 
         else:
-            req.expected_types = [ListResponse[resource_model]]
+            req.expected_types = [_parametrize(ListResponse, [resource_model])]
 
         return req
 
     @_under_provider
     def _prepare_search_request(
         self,
-        search_request: SearchRequest | None = None,
+        search_request: SearchRequest[Any] | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -969,7 +1004,7 @@ class SCIMClient:
             )
 
         req.url = req.request_kwargs.pop("url", "/.search")
-        req.expected_types = [ListResponse[Union[self._composed_models]]]  # noqa: UP007
+        req.expected_types = [_parametrize(ListResponse, self._composed_models)]
         return req
 
     @property
@@ -986,7 +1021,9 @@ class SCIMClient:
                 detail="The server does not support bulk requests"
             )
 
-    def _check_bulk_limits(self, bulk_request: BulkRequest, payload: dict) -> None:
+    def _check_bulk_limits(
+        self, bulk_request: BulkRequest[Resource[Any]], payload: dict[str, Any]
+    ) -> None:
         """Refuse a bulk request exceeding the limits the server advertises.
 
         Those limits are defined at :rfc:`RFC7644 §3.7.4 <7644#section-3.7.4>`.
@@ -1009,31 +1046,35 @@ class SCIMClient:
                 detail=f"Bulk request payloads are limited to {bulk.max_payload_size} bytes by the server"
             )
 
-    def _check_bulk_resource_models(self, bulk_request: BulkRequest) -> None:
+    def _check_bulk_resource_models(
+        self, bulk_request: BulkRequest[Resource[Any]]
+    ) -> None:
         """Check that every operation carries a resource the client handles."""
         for operation in bulk_request.operations or []:
             if isinstance(operation.data, Resource):
                 self._check_resource_model(operation.data.__class__)
 
-    def _validate_bulk_request(self, bulk_request: BulkRequest | dict) -> BulkRequest:
+    def _validate_bulk_request(
+        self, bulk_request: BulkRequest[Resource[Any]] | dict[str, Any]
+    ) -> BulkRequest[Resource[Any]]:
         """Build the bulk request message a raw payload describes."""
         if not isinstance(bulk_request, dict):
             return bulk_request
 
         try:
-            return BulkRequest[
-                Union[self._composed_models]  # noqa: UP007
-            ].model_validate(bulk_request)
+            return _parametrize(BulkRequest, self._composed_models).model_validate(
+                bulk_request
+            )
         except ValidationError as exc:
             raise request_validation_exception(exc, Context.BULK_REQUEST) from exc
 
     @_under_provider
     def _prepare_bulk_request(
         self,
-        bulk_request: BulkRequest | dict | None = None,
+        bulk_request: BulkRequest[Resource[Any]] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -1054,20 +1095,21 @@ class SCIMClient:
         else:
             message = self._validate_bulk_request(bulk_request)
             self._check_bulk_resource_models(message)
-            req.payload = message.model_dump(scim_ctx=Context.BULK_REQUEST)
-            self._check_bulk_limits(message, req.payload)
+            payload = message.model_dump(scim_ctx=Context.BULK_REQUEST)
+            self._check_bulk_limits(message, payload)
+            req.payload = payload
 
         req.url = req.request_kwargs.pop("url", "/Bulk")
-        req.expected_types = [BulkResponse[Union[self._composed_models]]]  # noqa: UP007
+        req.expected_types = [_parametrize(BulkResponse, self._composed_models)]
         return req
 
     @_under_provider
     def _prepare_delete_request(
         self,
-        resource: Resource | type[Resource] | None = None,
+        resource: Resource[Any] | type[Resource[Any]] | None = None,
         id: str | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         resource_model, id, _instance = self._resolve_target(resource, id)
         req = RequestPayload(
@@ -1090,10 +1132,10 @@ class SCIMClient:
     @_under_provider
     def _prepare_replace_request(
         self,
-        resource: Resource | dict,
+        resource: Resource[Any] | dict[str, Any],
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -1105,18 +1147,20 @@ class SCIMClient:
 
         if not check_request_payload:
             req.payload = resource
-            req.url = kwargs.pop("url", None)
+            req.url = self._unchecked_url(req)
 
         else:
             if isinstance(resource, Resource):
                 resource_model = resource.__class__
 
             else:
-                resource_model = get_model_by_payload(self._composed_models, resource)
-                if not resource_model:
+                guessed_model = get_model_by_payload(self._composed_models, resource)
+                if guessed_model is None or not issubclass(guessed_model, Resource):
                     raise InvalidValueException(
                         detail="Cannot guess resource type from the payload"
                     )
+
+                resource_model = guessed_model
 
                 try:
                     resource = resource_model.model_validate(resource)
@@ -1146,11 +1190,11 @@ class SCIMClient:
     def _prepare_patch_request(
         self,
         resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict | str | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | str | None = None,
         id: str | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> RequestPayload:
         """Prepare a PATCH request payload."""
         patch_op, id = self._resolve_patch_arguments(patch_op, id)
@@ -1200,18 +1244,9 @@ class SCIMClient:
         self._set_if_match(req, _instance)
         return req
 
-    def modify(
-        self,
-        resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict | None = None,
-        id: str | None = None,
-        **kwargs,
-    ) -> ResourceT | Error | dict | None:
-        raise NotImplementedError()
-
     def build_resource_models(
         self, resource_types: Collection[ResourceType], schemas: Collection[Schema]
-    ) -> tuple[type[Resource], ...]:
+    ) -> tuple[type[Resource[Any]], ...]:
         """Build models from server objects.
 
         .. deprecated:: 0.9
@@ -1229,7 +1264,7 @@ class SCIMClient:
         )
         provider = ScimProvider.from_discovery(schemas, resource_types)
         return tuple(
-            cast("type[Resource]", provider.model_for(resource_type.name))
+            cast("type[Resource[Any]]", provider.model_for(resource_type))
             for resource_type in provider.resource_types
         )
 
@@ -1262,14 +1297,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def create(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.CREATION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         """Perform a POST request to create, as defined in :rfc:`RFC7644 §3.3 <7644#section-3.3>`.
 
         :param resource: The resource to create
@@ -1307,16 +1342,16 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def query(
         self,
-        target: type[Resource] | Resource | None = None,
+        target: type[Resource[Any]] | Resource[Any] | None = None,
         id: str | None = None,
-        query_parameters: ResponseParameters | dict | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         The resource to read can be designated either by a
@@ -1406,14 +1441,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def search(
         self,
-        search_request: SearchRequest | None = None,
+        search_request: SearchRequest[Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param resource_models: Resource type or union of types expected
@@ -1453,13 +1488,13 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def bulk(
         self,
-        bulk_request: BulkRequest | dict | None = None,
+        bulk_request: BulkRequest[Resource[Any]] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int] | None = SCIMClient.BULK_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> BulkResponse | Error | dict:
+        **kwargs: Any,
+    ) -> BulkResponse[Resource[Any]] | Error | dict[str, Any]:
         """Perform a POST bulk request to execute bulk operations, as defined in :rfc:`RFC7644 §3.7 <7644#section-3.7>`.
 
         :param bulk_request: An object detailing the bulk request.
@@ -1540,14 +1575,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def delete(
         self,
-        resource: Resource | type[Resource] | None = None,
+        resource: Resource[Any] | type[Resource[Any]] | None = None,
         id: str | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Error | dict | None:
+        **kwargs: Any,
+    ) -> Error | dict[str, Any] | None:
         """Perform a DELETE request, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
 
         The resource to delete can be designated either by a
@@ -1585,14 +1620,14 @@ class BaseSyncSCIMClient(SCIMClient):
 
     def replace(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         """Perform a PUT request to replace a resource, as defined in :rfc:`RFC7644 §3.5.1 <7644#section-3.5.1>`.
 
         :param resource: The new resource to replace.
@@ -1632,15 +1667,15 @@ class BaseSyncSCIMClient(SCIMClient):
     def modify(
         self,
         resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         id: str | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> ResourceT | Error | dict | None:
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any] | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
 
         The resource to modify can be designated either by a
@@ -1692,7 +1727,12 @@ class BaseSyncSCIMClient(SCIMClient):
         """
         raise NotImplementedError()
 
-    def discover(self, schemas=True, resource_types=True, service_provider_config=True):
+    def discover(
+        self,
+        schemas: bool = True,
+        resource_types: bool = True,
+        service_provider_config: bool = True,
+    ) -> None:
         """Dynamically discover the server configuration objects.
 
         Only what the :attr:`~scim2_client.SCIMClient.provider` does not describe
@@ -1705,23 +1745,31 @@ class BaseSyncSCIMClient(SCIMClient):
         :raises ~scim2_client.InvalidServiceDescriptionException: When the objects
             the server publishes do not describe a coherent service.
         """
-        discovered_resource_types = self._resource_types
+        discovered_resource_types: Collection[ResourceType] = self._resource_types
         if resource_types and not discovered_resource_types:
+            resource_types_response = self.query(ResourceType, **DISCOVERY_OPTIONS)
             discovered_resource_types = (
-                self._published(self.query(ResourceType, **DISCOVERY_OPTIONS)).resources
+                self._published(
+                    cast("ListResponse[ResourceType] | None", resource_types_response)
+                ).resources
                 or []
             )
 
         discovered_schemas = None
         if schemas and not self._models:
+            schemas_response = self.query(Schema, **DISCOVERY_OPTIONS)
             discovered_schemas = (
-                self._published(self.query(Schema, **DISCOVERY_OPTIONS)).resources or []
+                self._published(
+                    cast("ListResponse[Schema] | None", schemas_response)
+                ).resources
+                or []
             )
 
         config = self._config
         if service_provider_config and not config:
+            config_response = self.query(ServiceProviderConfig, **DISCOVERY_OPTIONS)
             config = self._published(
-                self.query(ServiceProviderConfig, **DISCOVERY_OPTIONS)
+                cast("ServiceProviderConfig | None", config_response)
             )
 
         self.provider = self._describe_service(
@@ -1734,14 +1782,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def create(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.CREATION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         """Perform a POST request to create, as defined in :rfc:`RFC7644 §3.3 <7644#section-3.3>`.
 
         :param resource: The resource to create
@@ -1779,16 +1827,16 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def query(
         self,
-        target: type[Resource] | Resource | None = None,
+        target: type[Resource[Any]] | Resource[Any] | None = None,
         id: str | None = None,
-        query_parameters: ResponseParameters | dict | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         The resource to read can be designated either by a
@@ -1878,14 +1926,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def search(
         self,
-        search_request: SearchRequest | None = None,
+        search_request: SearchRequest[Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param resource_models: Resource type or union of types expected
@@ -1925,13 +1973,13 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def bulk(
         self,
-        bulk_request: BulkRequest | dict | None = None,
+        bulk_request: BulkRequest[Resource[Any]] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int] | None = SCIMClient.BULK_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> BulkResponse | Error | dict:
+        **kwargs: Any,
+    ) -> BulkResponse[Resource[Any]] | Error | dict[str, Any]:
         """Perform a POST bulk request to execute bulk operations, as defined in :rfc:`RFC7644 §3.7 <7644#section-3.7>`.
 
         :param bulk_request: An object detailing the bulk request.
@@ -2012,14 +2060,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def delete(
         self,
-        resource: Resource | type[Resource] | None = None,
+        resource: Resource[Any] | type[Resource[Any]] | None = None,
         id: str | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Error | dict | None:
+        **kwargs: Any,
+    ) -> Error | dict[str, Any] | None:
         """Perform a DELETE request, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
 
         The resource to delete can be designated either by a
@@ -2057,14 +2105,14 @@ class BaseAsyncSCIMClient(SCIMClient):
 
     async def replace(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         """Perform a PUT request to replace a resource, as defined in :rfc:`RFC7644 §3.5.1 <7644#section-3.5.1>`.
 
         :param resource: The new resource to replace.
@@ -2104,15 +2152,15 @@ class BaseAsyncSCIMClient(SCIMClient):
     async def modify(
         self,
         resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         id: str | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> ResourceT | Error | dict | None:
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any] | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
 
         The resource to modify can be designated either by a
@@ -2165,8 +2213,11 @@ class BaseAsyncSCIMClient(SCIMClient):
         raise NotImplementedError()
 
     async def discover(
-        self, schemas=True, resource_types=True, service_provider_config=True
-    ):
+        self,
+        schemas: bool = True,
+        resource_types: bool = True,
+        service_provider_config: bool = True,
+    ) -> None:
         """Dynamically discover the server configuration objects.
 
         Only what the :attr:`~scim2_client.SCIMClient.provider` does not describe
@@ -2179,7 +2230,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         :raises ~scim2_client.InvalidServiceDescriptionException: When the objects
             the server publishes do not describe a coherent service.
         """
-        queries = {}
+        queries: dict[type[ScimObject], Awaitable[object]] = {}
         if resource_types and not self._resource_types:
             queries[ResourceType] = self.query(ResourceType, **DISCOVERY_OPTIONS)
 
@@ -2200,19 +2251,26 @@ class BaseAsyncSCIMClient(SCIMClient):
 
         published = dict(zip(queries, results, strict=True))
 
-        discovered_resource_types = self._resource_types
+        discovered_resource_types: Collection[ResourceType] = self._resource_types
         if ResourceType in published:
+            resource_types_response = cast(
+                "ListResponse[ResourceType] | None", published[ResourceType]
+            )
             discovered_resource_types = (
-                self._published(published[ResourceType]).resources or []
+                self._published(resource_types_response).resources or []
             )
 
         discovered_schemas = None
         if Schema in published:
-            discovered_schemas = self._published(published[Schema]).resources or []
+            schemas_response = cast("ListResponse[Schema] | None", published[Schema])
+            discovered_schemas = self._published(schemas_response).resources or []
 
         config = self._config
         if ServiceProviderConfig in published:
-            config = self._published(published[ServiceProviderConfig])
+            config_response = cast(
+                "ServiceProviderConfig | None", published[ServiceProviderConfig]
+            )
+            config = self._published(config_response)
 
         self.provider = self._describe_service(
             discovered_schemas, discovered_resource_types, config

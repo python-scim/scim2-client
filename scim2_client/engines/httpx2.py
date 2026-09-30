@@ -1,6 +1,8 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 from typing import TypeVar
+from typing import cast
 
 from httpx2 import AsyncClient
 from httpx2 import Client
@@ -25,7 +27,7 @@ from scim2_client.errors import RequestNetworkException
 from scim2_client.errors import SCIMClientException
 from scim2_client.errors import UnexpectedContentFormatException
 
-ResourceT = TypeVar("ResourceT", bound=Resource)
+ResourceT = TypeVar("ResourceT", bound=Resource[Any])
 
 
 def stays_under_base_url(client: Client | AsyncClient, endpoint: str) -> bool:
@@ -47,7 +49,7 @@ def stays_under_base_url(client: Client | AsyncClient, endpoint: str) -> bool:
 
 
 @contextmanager
-def handle_request_error(payload=None):
+def handle_request_error(payload: object = None) -> Iterator[None]:
     try:
         yield
 
@@ -70,12 +72,13 @@ def decode_payload(response: Response) -> Any:
 
 
 @contextmanager
-def handle_response_error(response: Response):
+def handle_response_error(response: Response) -> Iterator[None]:
     try:
         yield
 
     except (SCIMClientException, SCIMException) as exc:
-        exc.source = response
+        # SCIMException comes from scim2-models and has no 'source' attribute.
+        exc.source = response  # type: ignore[union-attr]
         raise exc
 
 
@@ -98,7 +101,7 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         exception will be raised. If :data:`False` the error object is returned. This value can be overwritten in methods.
     """
 
-    def __init__(self, client: Client, *args, **kwargs):
+    def __init__(self, client: Client, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.client = client
 
@@ -107,14 +110,14 @@ class SyncSCIMClient(BaseSyncSCIMClient):
 
     def create(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.CREATION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         req = self._prepare_create_request(
             resource=resource,
             check_request_payload=check_request_payload,
@@ -126,29 +129,32 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             response = self.client.post(req.url, json=req.payload, **req.request_kwargs)
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
+            return cast(
+                "AnyResource | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
+                ),
             )
 
     def query(
         self,
-        target: type[Resource] | Resource | None = None,
+        target: type[Resource[Any]] | Resource[Any] | None = None,
         id: str | None = None,
-        query_parameters: ResponseParameters | dict | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_query_request(
             target=target,
             id=id,
@@ -164,28 +170,31 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
-                target=req.target,
+            return cast(
+                "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                    target=req.target,
+                ),
             )
 
     def search(
         self,
-        search_request: SearchRequest | None = None,
+        search_request: SearchRequest[Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_search_request(
             search_request=search_request,
             check_request_payload=check_request_payload,
@@ -197,27 +206,30 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             response = self.client.post(req.url, json=req.payload, **req.request_kwargs)
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+            return cast(
+                "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                ),
             )
 
     def bulk(
         self,
-        bulk_request: BulkRequest | dict | None = None,
+        bulk_request: BulkRequest[Resource[Any]] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.BULK_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> BulkResponse | Error | dict:
+        **kwargs: Any,
+    ) -> BulkResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_bulk_request(
             bulk_request=bulk_request,
             check_request_payload=check_request_payload,
@@ -229,27 +241,30 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             response = self.client.post(req.url, json=req.payload, **req.request_kwargs)
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.BULK_RESPONSE,
+            return cast(
+                "BulkResponse[Resource[Any]] | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.BULK_RESPONSE,
+                ),
             )
 
     def delete(
         self,
-        resource: Resource | type[Resource] | None = None,
+        resource: Resource[Any] | type[Resource[Any]] | None = None,
         id: str | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Error | dict | None:
+        **kwargs: Any,
+    ) -> Error | dict[str, Any] | None:
         req = self._prepare_delete_request(
             resource=resource,
             id=id,
@@ -261,25 +276,28 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             response = self.client.delete(req.url, **req.request_kwargs)
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=expected_status_codes,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
+            return cast(
+                "Error | dict[str, Any] | None",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=expected_status_codes,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                ),
             )
 
     def replace(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         req = self._prepare_replace_request(
             resource=resource,
             check_request_payload=check_request_payload,
@@ -291,29 +309,32 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             response = self.client.put(req.url, json=req.payload, **req.request_kwargs)
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_REPLACEMENT_RESPONSE,
+            return cast(
+                "AnyResource | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_REPLACEMENT_RESPONSE,
+                ),
             )
 
     def modify(
         self,
         resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         id: str | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> ResourceT | Error | dict | None:
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any] | None:
         req = self._prepare_patch_request(
             resource=resource,
             patch_op=patch_op,
@@ -329,15 +350,18 @@ class SyncSCIMClient(BaseSyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
+            return cast(
+                "ResourceT | Error | dict[str, Any] | None",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
+                ),
             )
 
 
@@ -361,7 +385,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     """
 
-    def __init__(self, client: AsyncClient, *args, **kwargs):
+    def __init__(self, client: AsyncClient, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.client = client
 
@@ -370,14 +394,14 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
 
     async def create(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.CREATION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         req = self._prepare_create_request(
             resource=resource,
             check_request_payload=check_request_payload,
@@ -391,29 +415,32 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
+            return cast(
+                "AnyResource | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_CREATION_RESPONSE,
+                ),
             )
 
     async def query(
         self,
-        target: type[Resource] | Resource | None = None,
+        target: type[Resource[Any]] | Resource[Any] | None = None,
         id: str | None = None,
-        query_parameters: ResponseParameters | dict | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_query_request(
             target=target,
             id=id,
@@ -429,28 +456,31 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
-                target=req.target,
+            return cast(
+                "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                    target=req.target,
+                ),
             )
 
     async def search(
         self,
-        search_request: SearchRequest | None = None,
+        search_request: SearchRequest[Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Resource | ListResponse[Resource] | Error | dict:
+        **kwargs: Any,
+    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_search_request(
             search_request=search_request,
             check_request_payload=check_request_payload,
@@ -464,27 +494,30 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+            return cast(
+                "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_QUERY_RESPONSE,
+                ),
             )
 
     async def bulk(
         self,
-        bulk_request: BulkRequest | dict | None = None,
+        bulk_request: BulkRequest[Resource[Any]] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.BULK_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> BulkResponse | Error | dict:
+        **kwargs: Any,
+    ) -> BulkResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_bulk_request(
             bulk_request=bulk_request,
             check_request_payload=check_request_payload,
@@ -498,27 +531,30 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.BULK_RESPONSE,
+            return cast(
+                "BulkResponse[Resource[Any]] | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.BULK_RESPONSE,
+                ),
             )
 
     async def delete(
         self,
-        resource: Resource | type[Resource] | None = None,
+        resource: Resource[Any] | type[Resource[Any]] | None = None,
         id: str | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> Error | dict | None:
+        **kwargs: Any,
+    ) -> Error | dict[str, Any] | None:
         req = self._prepare_delete_request(
             resource=resource,
             id=id,
@@ -530,25 +566,28 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             response = await self.client.delete(req.url, **req.request_kwargs)
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=expected_status_codes,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
+            return cast(
+                "Error | dict[str, Any] | None",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=expected_status_codes,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                ),
             )
 
     async def replace(
         self,
-        resource: AnyResource | dict,
+        resource: AnyResource | dict[str, Any],
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.REPLACEMENT_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> AnyResource | Error | dict:
+        **kwargs: Any,
+    ) -> AnyResource | Error | dict[str, Any]:
         req = self._prepare_replace_request(
             resource=resource,
             check_request_payload=check_request_payload,
@@ -562,29 +601,32 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_REPLACEMENT_RESPONSE,
+            return cast(
+                "AnyResource | Error | dict[str, Any]",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_REPLACEMENT_RESPONSE,
+                ),
             )
 
     async def modify(
         self,
         resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         id: str | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseAsyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        **kwargs,
-    ) -> ResourceT | Error | dict | None:
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any] | None:
         req = self._prepare_patch_request(
             resource=resource,
             patch_op=patch_op,
@@ -600,13 +642,16 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
             )
 
         with handle_response_error(response):
-            return self.check_response(
-                payload=decode_payload(response),
-                status_code=response.status_code,
-                headers=response.headers,
-                expected_status_codes=req.expected_status_codes,
-                expected_types=req.expected_types,
-                check_response_payload=check_response_payload,
-                raise_scim_errors=raise_scim_errors,
-                scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
+            return cast(
+                "ResourceT | Error | dict[str, Any] | None",
+                self.check_response(
+                    payload=decode_payload(response),
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    expected_status_codes=req.expected_status_codes,
+                    expected_types=req.expected_types,
+                    check_response_payload=check_response_payload,
+                    raise_scim_errors=raise_scim_errors,
+                    scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
+                ),
             )
