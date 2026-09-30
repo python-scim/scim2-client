@@ -962,7 +962,7 @@ class SCIMClient:
         else:
             req.payload = (
                 search_request.model_dump(
-                    exclude_unset=True, scim_ctx=Context.RESOURCE_QUERY_RESPONSE
+                    exclude_unset=True, scim_ctx=Context.SEARCH_REQUEST
                 )
                 if search_request
                 else None
