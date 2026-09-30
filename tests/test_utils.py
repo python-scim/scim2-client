@@ -1,14 +1,16 @@
 import pytest
 from scim2_models import EnterpriseUser
 from scim2_models import Group
+from scim2_models import InvalidValueException
 from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import Schema
+from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
-from scim2_client import SCIMRequestError
-from scim2_client.engines.httpx import SyncSCIMClient
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
 def test_guess_resource_endpoint():
@@ -16,12 +18,14 @@ def test_guess_resource_endpoint():
         __schema__ = "urn:ietf:params:scim:schemas:core:2.0:Foobar"
 
     client = SyncSCIMClient(
-        None,
-        resource_models=[User[EnterpriseUser], Group],
-        resource_types=[
-            ResourceType.from_resource(User[EnterpriseUser]),
-            ResourceType.from_resource(Group),
-        ],
+        Client(base_url="https://scim.example.com/scim/v2"),
+        provider=ScimProvider(
+            models=[User, EnterpriseUser, Group],
+            resource_types=[
+                ResourceType.from_resource(User[EnterpriseUser]),
+                ResourceType.from_resource(Group),
+            ],
+        ),
     )
     assert client.resource_endpoint(Group) == "/Groups"
     assert client.resource_endpoint(User) == "/Users"
@@ -32,14 +36,17 @@ def test_guess_resource_endpoint():
     # This one is special as it does not take an ending 's'
     assert client.resource_endpoint(ServiceProviderConfig) == "/ServiceProviderConfig"
 
-    with pytest.raises(SCIMRequestError):
+    with pytest.raises(InvalidValueException):
         client.resource_endpoint(Foobar)
 
 
 def test_get_resource_model():
     client = SyncSCIMClient(
         None,
-        resource_models=[User[EnterpriseUser]],
+        provider=ScimProvider(
+            models=[User, EnterpriseUser],
+            resource_types=[ResourceType.from_resource(User[EnterpriseUser])],
+        ),
     )
     assert client.get_resource_model("User") == User[EnterpriseUser]
     assert (

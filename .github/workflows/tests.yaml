@@ -10,10 +10,17 @@ on:
       - main
       - '*.*.*'
 
+env:
+  UV_LOCKED: 1
+  UV_PYTHON_PREFERENCE: only-managed
+
+permissions:
+  contents: read
+
 jobs:
   tests:
     name: py${{ matrix.python }} unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -22,48 +29,91 @@ jobs:
           - '3.13'
           - '3.12'
           - '3.11'
-          - '3.10'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.13"
+          python-version: ${{ matrix.python }}
           enable-cache: true
-      - name: Install Python ${{ matrix.python }}
-        run: uv python install ${{ matrix.python }}
       - name: Install dependencies
         run: uv sync --all-extras
       - name: Run tests
         run: uv run pytest --showlocals
 
-  minversions:
-    name: minimum dependency versions
-    runs-on: ubuntu-latest
+  coverage:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.13"
+          python-version: "3.14"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Run tests
+        run: uv run pytest --cov --cov-fail-under=100
+
+  minversions:
+    name: minimum dependency versions
+    runs-on: ubuntu-24.04
+    env:
+      UV_RESOLUTION: lowest-direct
+      UV_LOCKED: 0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.13"
+          python-version: "3.11"
           enable-cache: true
       - name: Install minimum dependencies
-        run: uv sync --resolution=lowest-direct --all-extras
+        run: uv sync --all-extras
       - name: Run tests
         run: uv run pytest --showlocals
 
   style:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
     - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   doc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.13"
+          python-version: "3.14"
           enable-cache: true
       - name: Install dependencies
-        run: uv sync --group doc
-      - run: uv run sphinx-build doc build/sphinx/html
+        run: uv sync --group doc --all-extras
+      - run: uv run sphinx-build -W --keep-going -b html doc build/sphinx/html
+
+  all-checks:
+    if: always()
+    needs: [tests, coverage, minversions, style, doc]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fail if a needed job did not succeed
+        if: >-
+          contains(needs.*.result, 'failure')
+          || contains(needs.*.result, 'cancelled')
+          || contains(needs.*.result, 'skipped')
+        run: exit 1

@@ -1,6 +1,152 @@
 Changelog
 =========
 
+[0.10.0] - 2026-09-27
+---------------------
+
+Changed
+^^^^^^^
+- Python 3.11 is now the minimum supported version.
+
+Fixed
+^^^^^
+- When a query of the asynchronous ``discover`` fails,
+  the failures of the other queries are no longer reported by asyncio as never retrieved.
+
+Security
+^^^^^^^^
+- Resource ids are percent-encoded as a single path segment, so an id holding ``/``, ``..``,
+  ``?`` or ``#``, including one sent back by the server, can no longer lead a request to
+  another resource, another resource type or outside of the base URL. The ``.`` and ``..``
+  ids are refused with :class:`~scim2_models.InvalidValueException`.
+- The endpoints of the resource types must stay under the base URL of the client, with the
+  same origin and the same path prefix, and without query nor fragment. A server can no longer
+  send the requests of the client, and the credentials they carry, to another host.
+  :class:`~scim2_client.InvalidServiceDescriptionException` is raised otherwise, including when
+  a resource type has no endpoint.
+- A response that is not a SCIM message raises
+  :class:`~scim2_client.UnexpectedContentFormatException` instead of an ``AttributeError``,
+  a ``TypeError`` or a ``RecursionError``: a body too deeply nested or holding an integer
+  too long to decode, a JSON value that is not an object, or ``schemas`` that are not a
+  list of strings. The payload is still returned as sent when response checks are disabled.
+- An :class:`~scim2_models.Error` object that does not validate raises
+  :class:`~scim2_client.ResponsePayloadValidationException`.
+- :meth:`~scim2_client.BaseSyncSCIMClient.discover` raises the errors the server returns
+  and validates the objects it publishes, whatever
+  :paramref:`~scim2_client.SCIMClient.raise_scim_errors` and
+  :paramref:`~scim2_client.SCIMClient.check_response_payload` say.
+  A discovery endpoint answering without content raises
+  :class:`~scim2_client.InvalidServiceDescriptionException`.
+
+[0.9.0] - 2026-09-21
+--------------------
+
+Added
+^^^^^
+- Support for bulk operations with :meth:`~scim2_client.BaseSyncSCIMClient.bulk`. :issue:`4`
+  When the :class:`~scim2_models.ServiceProviderConfig` is known, requests are checked
+  against the bulk capabilities the server advertises, and a request the server would
+  answer with a ``413`` is not sent.
+- The service a client talks to is described by a :class:`~scim2_models.ScimProvider`,
+  passed as ``provider``. Two resource types built upon a same schema are told apart, so
+  :meth:`~scim2_client.SCIMClient.get_resource_model` and
+  :meth:`~scim2_client.SCIMClient.resource_endpoint` answer the model and the endpoint each
+  one serves.
+- The :class:`~scim2_models.ScimPolicy` the ``provider`` carries rules the payloads the
+  client reads and writes, so that a peer departing from the specification on one point can
+  still be talked to.
+- :exc:`~scim2_client.InvalidServiceDescriptionException` is raised when the objects a
+  server publishes do not describe a coherent service, where the incoherence used to pass
+  unnoticed.
+
+Changed
+^^^^^^^
+- scim2-models 0.8.0 is the minimum supported version.
+- :meth:`~scim2_client.BaseSyncSCIMClient.discover` only queries what the ``provider`` does
+  not describe yet, where it used to replace everything it was given.
+- A client given no :class:`~scim2_models.ResourceType` builds naive ones itself, where the
+  endpoints used to be unknown until
+  :meth:`~scim2_client.SCIMClient.register_naive_resource_types` was called.
+
+Deprecated
+^^^^^^^^^^
+- The ``resource_models``, ``resource_types`` and ``service_provider_config`` parameters and
+  attributes, in favor of ``provider``. Will be removed in 1.0.
+- :meth:`~scim2_client.SCIMClient.register_naive_resource_types` and
+  :meth:`~scim2_client.SCIMClient.build_resource_models`, which a
+  :class:`~scim2_models.ScimProvider` does by itself. Will be removed in 1.0.
+
+Removed
+^^^^^^^
+- **Breaking:** everything deprecated in 0.8.0.
+- The ``httpx`` packaging extra and the ``scim2_client.engines.httpx`` module. The engines
+  require `httpx2 <https://github.com/pydantic/httpx2>`_ and live in
+  ``scim2_client.engines.httpx2``. An application that cannot migrate all its dependencies at
+  once can call :code:`httpx2.alias_httpx()` at the very top of its entrypoint, so that
+  :code:`import httpx` resolves to httpx2 process-wide.
+- Passing a :code:`httpx.Client` or a :code:`httpx.AsyncClient` to the request engines.
+- The ``resource_model`` parameter of ``query``, ``delete`` and ``modify``. Pass the resource
+  type or a resource object as the first parameter instead.
+- The ``search_request`` parameter of ``query``, replaced by ``query_parameters``. ``search``
+  keeps its own ``search_request`` parameter.
+- The exceptions with a ``*Error`` suffix, which pointed at their ``*Exception`` counterparts.
+
+[0.8.0] - 2026-09-20
+--------------------
+
+Added
+^^^^^
+- The network request engines are built upon `httpx2 <https://github.com/pydantic/httpx2>`_,
+  which is maintained, and live in ``scim2_client.engines.httpx2``.
+  They are shipped in the ``httpx2`` packaging extra.
+  `httpx <https://github.com/encode/httpx>`_ is still used when httpx2 is not installed.
+- ``query``, ``delete`` and ``modify`` also accept a :class:`~scim2_models.Resource`
+  object in place of a resource type and an id. Objects without an id are rejected.
+  :issue:`13`
+- ``replace``, ``modify`` and ``delete`` send an ``If-Match`` header when the server
+  advertises ETag support and the resource they are given carries a version.
+  :issue:`47`
+- Resource versions are read from the ``ETag`` response header when the server does
+  not fill the ``meta.version`` attribute. :issue:`47`
+- ``query`` sends an ``If-None-Match`` header when it is given a versioned resource
+  object and the server supports ETags. On a ``304 Not Modified`` answer, the object
+  that was passed is returned back. :issue:`47`
+- ``409`` is an expected status code for ``delete``, as :rfc:`RFC7644 §3.12 <7644#section-3.12>`
+  defines it for every write operation.
+
+Changed
+^^^^^^^
+- scim2-models 0.8 is not supported yet, and 0.7.0 is now the minimum supported version.
+- **Breaking:** invalid requests and server :class:`~scim2_models.Error` objects now raise
+  :class:`~scim2_models.SCIMException` subclasses from scim2-models instead of scim2-client
+  custom exceptions. :issue:`39`
+
+Deprecated
+^^^^^^^^^^
+- The ``resource_model`` parameter of ``query``, ``delete`` and ``modify``, renamed
+  ``target`` for ``query`` and ``resource`` for the two others, since it also accepts
+  resource objects. Will be removed in 0.9.
+- The ``httpx`` packaging extra, in favor of the ``httpx2`` extra. Will be removed in 0.9.
+- The ``scim2_client.engines.httpx`` module, in favor of ``scim2_client.engines.httpx2``.
+  Will be removed in 0.9.
+- Passing a :code:`httpx.Client` or a :code:`httpx.AsyncClient` to the request engines,
+  in favor of their httpx2 counterparts. Will be removed in 0.9.
+- The exceptions with a ``*Error`` suffix, in favor of their ``*Exception`` counterparts.
+  The old names still point at the renamed classes, so ``except`` blocks written against
+  them keep working. Will be removed in 0.9.
+
+Removed
+^^^^^^^
+- **Breaking:** ``SCIMRequestError``, ``RequestPayloadValidationError`` and
+  ``SCIMResponseErrorObject``, which have no counterpart among the scim2-models exceptions.
+  Code catching them must catch :class:`~scim2_models.SCIMException` instead, which is also
+  what invalid request payloads and server errors now raise.
+
+Fixed
+^^^^^
+- The ``create`` and ``query`` methods attach the server response to the exceptions they
+  raise, as the other methods do, instead of the request payload.
+
 [0.7.5] - 2026-04-02
 --------------------
 
@@ -23,7 +169,7 @@ Changed
 
 Changed
 ^^^^^^^
-- :class:`~scim2_client.SCIMResponseErrorObject` now exposes a :meth:`~scim2_client.SCIMResponseErrorObject.to_error` method
+- ``SCIMResponseErrorObject`` now exposes a ``to_error()`` method
   returning the :class:`~scim2_models.Error` object from the server. :issue:`37`
 
 [0.7.2] - 2026-02-03
@@ -33,14 +179,14 @@ Fixed
 ^^^^^
 - Skip ``Content-Type`` header validation for 204 responses. :issue:`34`
 
-[0.7.1] - 2025-01-25
+[0.7.1] - 2026-01-25
 --------------------
 
 Fixed
 ^^^^^
 - ``schemas`` is no longer included in GET query parameters per RFC 7644 §3.4.2.
 
-[0.7.0] - 2025-01-25
+[0.7.0] - 2026-01-25
 --------------------
 
 Added
@@ -65,7 +211,7 @@ Fixed
 
 Fixed
 ^^^^^
-- Add support for PATCH operations with :meth:`~scim2_client.SCIMClient.modify`.
+- Add support for PATCH operations with :meth:`~scim2_client.BaseSyncSCIMClient.modify`.
 
 [0.5.2] - 2025-07-17
 --------------------
@@ -108,7 +254,7 @@ Added
 
 Added
 ^^^^^
-- :class:`~scim2_client.client.BaseSyncSCIMClient.discover` has parameters to select which objects to discover.
+- :meth:`~scim2_client.BaseSyncSCIMClient.discover` has parameters to select which objects to discover.
 
 [0.4.1] - 2024-12-02
 --------------------
@@ -141,7 +287,7 @@ Added
 Added
 ^^^^^
 - :class:`~scim2_client.engines.werkzeug.TestSCIMClient` raise a
-  :class:`~scim2_client.UnexpectedContentFormat` exception when response is not JSON.
+  ``UnexpectedContentFormat`` exception when response is not JSON.
 
 [0.3.2] - 2024-11-29
 --------------------
@@ -175,7 +321,7 @@ Added
 ^^^^^
 - The `Unknown resource type` request error keeps a reference to the faulty payload.
 - New :class:`~scim2_client.engines.werkzeug.TestSCIMClient` request engine for application development purpose.
-- New :class:`~scim2_client.engines.httpx.AsyncSCIMClient` request engine. :issue:`1`
+- New ``scim2_client.engines.httpx.AsyncSCIMClient`` request engine. :issue:`1`
 
 Changed
 ^^^^^^^
@@ -197,7 +343,7 @@ Added
 
 Fixed
 ^^^^^
-- :class:`~scim2_client.RequestPayloadValidationError` error message.
+- ``RequestPayloadValidationError`` error message.
 - Don't crash when servers don't return content type headers. :pr:`22,24`
 
 [0.2.0] - 2024-09-01
@@ -251,24 +397,24 @@ Fixed
 
 Added
 ^^^^^
-- :class:`~scim2_client.SCIMResponseErrorObject` implementation.
+- ``SCIMResponseErrorObject`` implementation.
 
 [0.1.5] - 2024-06-05
 --------------------
 
 Changed
 ^^^^^^^
-- Merge :meth:`~scim2_client.SCIMClient.query` and :meth:`~scim2_client.SCIMClient.query_all`.
+- Merge :meth:`~scim2_client.BaseSyncSCIMClient.query` and ``query_all``.
 
 Added
 ^^^^^
-- Implement :meth:`~scim2_client.SCIMClient.delete` `check_response_payload` attribute.
+- Implement :meth:`~scim2_client.BaseSyncSCIMClient.delete` `check_response_payload` attribute.
 - :class:`~scim2_models.ServiceProviderConfig`, :class:`~scim2_models.ResourceType`
   and :class:`~scim2_models.Schema` are added to the default resource types list.
 - Any custom URL can be used with all the :class:`~scim2_client.SCIMClient` methods.
-- :class:`~scim2_client.ResponsePayloadValidationError` implementation.
-- :class:`~scim2_client.RequestPayloadValidationError` implementation.
-- :class:`~scim2_client.RequestNetworkError` implementation.
+- ``ResponsePayloadValidationError`` implementation.
+- ``RequestPayloadValidationError`` implementation.
+- ``RequestNetworkError`` implementation.
 
 Fixed
 ^^^^^
@@ -287,7 +433,7 @@ Fixed
 
 Added
 ^^^^^
-- :meth:`~scim2_client.SCIMClient.create` and :meth:`~scim2_client.SCIMClient.replace` can guess resource types by their payloads.
+- :meth:`~scim2_client.BaseSyncSCIMClient.create` and :meth:`~scim2_client.BaseSyncSCIMClient.replace` can guess resource types by their payloads.
 
 [0.1.2] - 2024-06-02
 --------------------

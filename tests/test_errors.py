@@ -1,49 +1,32 @@
-from scim2_client.errors import ExpiredCursorError
-from scim2_client.errors import InvalidCountError
-from scim2_client.errors import InvalidCursorError
-from scim2_client.errors import SCIMRequestError
+from scim2_models import Error
+from scim2_models import UniquenessException
+
+from scim2_client.errors import server_error_exception
 
 
-def test_invalid_cursor_error_default_message():
-    exc = InvalidCursorError()
-    assert exc.message == "Cursor value is invalid."
-    assert str(exc) == "Cursor value is invalid."
-    assert isinstance(exc, SCIMRequestError)
+def test_server_error_exception_uses_the_class_matching_the_scim_type():
+    """Test that a known scimType is turned into its dedicated exception."""
+    error = Error(status=409, scim_type="uniqueness", detail="User already exists")
+    exc = server_error_exception(error)
+
+    assert isinstance(exc, UniquenessException)
+    assert exc.to_error() == error
 
 
-def test_invalid_cursor_error_custom_message():
-    exc = InvalidCursorError(message="custom cursor issue")
-    assert exc.message == "custom cursor issue"
-    assert str(exc) == "custom cursor issue"
+def test_server_error_exception_keeps_unknown_status_and_scim_type():
+    """Test that values scim2-models has no exception class for are preserved."""
+    error = Error(status=429, scim_type="tooManyRequests", detail="Slow down")
+    exc = server_error_exception(error)
+
+    assert exc.status == 429
+    assert exc.scim_type == "tooManyRequests"
+    assert exc.to_error() == error
 
 
-def test_invalid_count_error_default_message():
-    exc = InvalidCountError()
-    assert exc.message == "Invalid count"
-    assert str(exc) == "Invalid count"
-    assert isinstance(exc, SCIMRequestError)
+def test_server_error_exception_without_status():
+    """Test that an error object carrying no status keeps the default one."""
+    error = Error(detail="Something happened")
+    exc = server_error_exception(error)
 
-
-def test_invalid_count_error_custom_message():
-    exc = InvalidCountError(message="custom count issue")
-    assert exc.message == "custom count issue"
-    assert str(exc) == "custom count issue"
-
-
-def test_expired_cursor_error_default_message():
-    exc = ExpiredCursorError()
-    assert exc.message == "Expired cursor"
-    assert str(exc) == "Expired cursor"
-    assert isinstance(exc, SCIMRequestError)
-
-
-def test_expired_cursor_error_custom_message():
-    exc = ExpiredCursorError(message="custom expiry issue")
-    assert exc.message == "custom expiry issue"
-    assert str(exc) == "custom expiry issue"
-
-
-def test_cursor_and_count_errors_carry_source():
-    source = {"cursor": "abc"}
-    exc = InvalidCursorError(source=source)
-    assert exc.source is source
+    assert exc.status == 400
+    assert exc.error is error

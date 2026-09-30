@@ -3,7 +3,7 @@
 A SCIM client Python library built upon [scim2-models](https://scim2-models.readthedocs.io) ,
 that pythonically build requests and parse responses,
 following the [RFC7643](https://datatracker.ietf.org/doc/html/rfc7643.html) and [RFC7644](https://datatracker.ietf.org/doc/html/rfc7644.html) specifications.
-You can use whatever request engine you prefer to perform network requests, but scim2-client comes with [httpx](https://github.com/encode/httpx) support.
+You can use whatever request engine you prefer to perform network requests, but scim2-client comes with [httpx2](https://github.com/pydantic/httpx2) support.
 
 It aims to be used in SCIM client applications, or in unit tests for SCIM server applications.
 
@@ -18,33 +18,33 @@ It allows users and groups creations, modifications and deletions to be synchron
 
 - **CRUD Operations**: `create`, `query`, `replace`, `delete` methods for SCIM resources
 - **PATCH Support**: Partial resource modifications with `add`, `remove` and `replace` operations
+- **Bulk Operations**: Multiple operations sent in a single request with the `bulk` method
 - **Server Discovery**: Automatic retrieval of `ServiceProviderConfig`, `ResourceTypes` and `Schemas`
 - **Search & Filtering**: Support for SCIM filters, sorting, pagination and attribute selection
 - **Sync & Async**: Both synchronous and asynchronous clients available
-- **Multiple HTTP Engines**: Built-in support for [httpx](https://github.com/encode/httpx) (sync/async) and [werkzeug](https://werkzeug.palletsprojects.com/) (testing). Adaptable to any network engine.
+- **Multiple HTTP Engines**: Built-in support for [httpx2](https://github.com/pydantic/httpx2) (sync/async) and [werkzeug](https://werkzeug.palletsprojects.com/) (testing). Adaptable to any network engine.
 - **Request & Response Validation**: Automatic payload validation against SCIM schemas
 - **Error Handling**: Structured exceptions for network, request and response errors
 
 ## Installation
 
 ```shell
-pip install scim2-client[httpx]
+pip install scim2-client[httpx2]
 ```
 
 ## Usage
-
-Check the [tutorial](https://scim2-client.readthedocs.io/en/latest/tutorial.html)
-and the [reference](https://scim2-client.readthedocs.io/en/latest/reference.html) for more details.
 
 Here is an example of usage:
 
 ```python
 import datetime
-from httpx import Client
-from scim2_client import SCIMResponseErrorObject
-from scim2_client.engines.httpx import SyncSCIMClient
+from httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
+from scim2_models import SCIMException
 
-client = Client(base_url="https://auth.example/scim/v2", headers={"Authorization": "Bearer foobar"})
+client = Client(
+    base_url="https://auth.example/scim/v2", headers={"Authorization": "Bearer foobar"}
+)
 scim = SyncSCIMClient(client)
 scim.discover()
 User = scim.get_resource_model("User")
@@ -68,10 +68,28 @@ assert user.meta.last_modified == datetime.datetime(
 user = User(user_name="bjensen@example.com")
 try:
     scim.create(user)
-except SCIMResponseErrorObject as exc:
+except SCIMException as exc:
     error = exc.to_error()
-    assert error.detail == "One or more of the attribute values are already in use or are reserved."
+    assert (
+        error.detail
+        == "One or more of the attribute values are already in use or are reserved."
+    )
 ```
+
+## Documentation
+
+- [Overview](https://scim2-client.readthedocs.io/en/latest/overview.html) tours the operations a
+  SCIM client performs.
+- [How-to guides](https://scim2-client.readthedocs.io/en/latest/how-to/index.html) cover focused
+  tasks.
+- [Explanation](https://scim2-client.readthedocs.io/en/latest/explanation/index.html) covers what
+  the client checks and what it knows about a server.
+- [Reference](https://scim2-client.readthedocs.io/en/latest/reference.html) lists the public API.
+
+## Contributing
+
+The [contribution page](https://scim2-client.readthedocs.io/en/latest/contributing.html)
+describes how to run the tests, the style checks and the documentation build.
 
 scim2-client belongs in a collection of SCIM tools developed by [Yaal Coop](https://yaal.coop),
 with [scim2-models](https://github.com/python-scim/scim2-models),

@@ -1,16 +1,17 @@
 import datetime
 
 import pytest
-from httpx import Client
 from scim2_models import Error
 from scim2_models import Group
 from scim2_models import ListResponse
 from scim2_models import Meta
+from scim2_models import ScimProvider
 from scim2_models import SearchRequest
 from scim2_models import User
 
-from scim2_client import RequestNetworkError
-from scim2_client.engines.httpx import SyncSCIMClient
+from scim2_client import RequestNetworkException
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 
 def test_all_objects(httpserver):
@@ -28,7 +29,7 @@ def test_all_objects(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -40,7 +41,7 @@ def test_all_objects(httpserver):
                         "resourceType": "User",
                         "created": "2010-02-23T04:56:22Z",
                         "lastModified": "2011-06-13T04:42:34Z",
-                        "version": 'W\\/"deadbeef0000"',
+                        "version": 'W/"deadbeef0000"',
                         "location": "https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                     },
                 },
@@ -52,10 +53,7 @@ def test_all_objects(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search()
     assert response == ListResponse[User](
@@ -67,12 +65,12 @@ def test_all_objects(httpserver):
                 meta=Meta(
                     resource_type="User",
                     created=datetime.datetime(
-                        2010, 1, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
+                        2010, 1, 23, 4, 56, 22, tzinfo=datetime.UTC
                     ),
                     last_modified=datetime.datetime(
-                        2011, 5, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                        2011, 5, 13, 4, 42, 34, tzinfo=datetime.UTC
                     ),
-                    version='W\\/"3694e05e9dff590"',
+                    version='W/"3694e05e9dff590"',
                     location="https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                 ),
             ),
@@ -82,12 +80,12 @@ def test_all_objects(httpserver):
                 meta=Meta(
                     resource_type="User",
                     created=datetime.datetime(
-                        2010, 2, 23, 4, 56, 22, tzinfo=datetime.timezone.utc
+                        2010, 2, 23, 4, 56, 22, tzinfo=datetime.UTC
                     ),
                     last_modified=datetime.datetime(
-                        2011, 6, 13, 4, 42, 34, tzinfo=datetime.timezone.utc
+                        2011, 6, 13, 4, 42, 34, tzinfo=datetime.UTC
                     ),
-                    version='W\\/"deadbeef0000"',
+                    version='W/"deadbeef0000"',
                     location="https://example.com/v2/Users/074860c7-70e9-4db5-ad40-a32bab8be11d",
                 ),
             ),
@@ -109,7 +107,7 @@ def test_search_request(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -129,10 +127,7 @@ def test_search_request(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(req)
     user = response.resources[0]
@@ -158,10 +153,7 @@ def test_dont_check_response(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(req, check_response_payload=False)
     assert response == {"foo": "bar"}
@@ -185,7 +177,7 @@ def test_dont_check_request_payload(httpserver):
                         "resourceType": "User",
                         "created": "2010-01-23T04:56:22Z",
                         "lastModified": "2011-05-13T04:42:34Z",
-                        "version": 'W\\/"3694e05e9dff590"',
+                        "version": 'W/"3694e05e9dff590"',
                         "location": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
                     },
                 },
@@ -205,10 +197,7 @@ def test_dont_check_request_payload(httpserver):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(req, check_request_payload=False)
     assert isinstance(response, ListResponse)
@@ -229,10 +218,7 @@ def test_errors(httpserver, code):
     client = Client(base_url=f"http://localhost:{httpserver.port}")
     scim_client = SyncSCIMClient(
         client,
-        resource_models=(
-            User,
-            Group,
-        ),
+        provider=ScimProvider(models=[User, Group]),
     )
     response = scim_client.search(raise_scim_errors=False)
 
@@ -244,10 +230,10 @@ def test_errors(httpserver, code):
 
 
 def test_request_network_error(httpserver):
-    """Test that httpx exceptions are transformed in RequestNetworkError."""
+    """Test that httpx2 exceptions are transformed in RequestNetworkException."""
     client = Client(base_url=f"http://localhost:{httpserver.port}")
-    scim_client = SyncSCIMClient(client, resource_models=(User,))
+    scim_client = SyncSCIMClient(client, provider=ScimProvider(models=[User]))
     with pytest.raises(
-        RequestNetworkError, match="Network error happened during request"
+        RequestNetworkException, match="Network error happened during request"
     ):
         scim_client.search(url="http://invalid.test")

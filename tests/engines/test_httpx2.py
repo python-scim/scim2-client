@@ -3,35 +3,31 @@ import wsgiref.simple_server
 
 import portpicker
 import pytest
-from httpx import AsyncClient
-from httpx import Client
+from scim2_models import BulkOperation
+from scim2_models import BulkRequest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
+from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 
-from scim2_client.engines.httpx import AsyncSCIMClient
-from scim2_client.engines.httpx import SyncSCIMClient
-from scim2_client.errors import SCIMResponseErrorObject
+from scim2_client.engines.httpx2 import AsyncClient
+from scim2_client.engines.httpx2 import AsyncSCIMClient
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.backend import InMemoryBackend  # noqa: E402
-from scim2_server.provider import SCIMProvider  # noqa: E402
-from scim2_server.utils import load_default_resource_types  # noqa: E402
-from scim2_server.utils import load_default_schemas  # noqa: E402
+from scim2_server.provider import SCIMApplication  # noqa: E402
+from scim2_server.utils import load_default_provider  # noqa: E402
 
 
 @pytest.fixture(scope="session")
 def server():
-    backend = InMemoryBackend()
-    provider = SCIMProvider(backend)
-    for schema in load_default_schemas().values():
-        provider.register_schema(schema)
-    for resource_type in load_default_resource_types().values():
-        provider.register_resource_type(resource_type)
+    app = SCIMApplication(InMemoryBackend(), load_default_provider())
     host = "localhost"
     port = portpicker.pick_unused_port()
-    httpd = wsgiref.simple_server.make_server(host, port, provider)
+    httpd = wsgiref.simple_server.make_server(host, port, app)
 
     server_thread = threading.Thread(target=httpd.serve_forever)
     server_thread.start()
@@ -50,12 +46,12 @@ def test_sync_engine(server):
     scim_client.discover(
         schemas=False, resource_types=False, service_provider_config=False
     )
-    assert not scim_client.resource_models
-    assert not scim_client.resource_types
-    assert not scim_client.service_provider_config
+    assert not scim_client.provider.models
+    assert not scim_client.provider.resource_types
+    assert not scim_client.provider.config
 
     scim_client.discover()
-    assert isinstance(scim_client.service_provider_config, ServiceProviderConfig)
+    assert isinstance(scim_client.provider.config, ServiceProviderConfig)
     User = scim_client.get_resource_model("User")
 
     request_user = User(user_name="foo", display_name="bar")
@@ -93,8 +89,26 @@ def test_sync_engine(server):
     assert queried_user.display_name == "patched name"
 
     scim_client.delete(User, response_user.id)
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         scim_client.query(User, response_user.id)
+
+    response = scim_client.bulk(
+        BulkRequest[User](
+            operations=[
+                BulkOperation[User](
+                    method="POST",
+                    path="/Users",
+                    bulk_id="qwerty",
+                    data=User(user_name="Alice"),
+                )
+            ]
+        )
+    )
+    (operation,) = response.operations
+    assert operation.status == 201
+    assert operation.bulk_id == "qwerty"
+    created_user = scim_client.query(User, operation.location.rsplit("/", 1)[-1])
+    assert created_user.user_name == "Alice"
 
 
 async def test_async_engine(server):
@@ -105,12 +119,12 @@ async def test_async_engine(server):
     await scim_client.discover(
         schemas=False, resource_types=False, service_provider_config=False
     )
-    assert not scim_client.resource_models
-    assert not scim_client.resource_types
-    assert not scim_client.service_provider_config
+    assert not scim_client.provider.models
+    assert not scim_client.provider.resource_types
+    assert not scim_client.provider.config
 
     await scim_client.discover()
-    assert isinstance(scim_client.service_provider_config, ServiceProviderConfig)
+    assert isinstance(scim_client.provider.config, ServiceProviderConfig)
     User = scim_client.get_resource_model("User")
 
     request_user = User(user_name="async_foo", display_name="async_bar")
@@ -152,5 +166,23 @@ async def test_async_engine(server):
     assert queried_user.display_name == "async patched name"
 
     await scim_client.delete(User, response_user.id)
-    with pytest.raises(SCIMResponseErrorObject):
+    with pytest.raises(SCIMException):
         await scim_client.query(User, response_user.id)
+
+    response = await scim_client.bulk(
+        BulkRequest[User](
+            operations=[
+                BulkOperation[User](
+                    method="POST",
+                    path="/Users",
+                    bulk_id="qwerty",
+                    data=User(user_name="Bob"),
+                )
+            ]
+        )
+    )
+    (operation,) = response.operations
+    assert operation.status == 201
+    assert operation.bulk_id == "qwerty"
+    created_user = await scim_client.query(User, operation.location.rsplit("/", 1)[-1])
+    assert created_user.user_name == "Bob"
