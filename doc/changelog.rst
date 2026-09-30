@@ -8,6 +8,7 @@ Added
 ^^^^^
 - Cursor-based pagination (:rfc:`9865`). Pass ``cursor`` in :class:`~scim2_models.SearchRequest`
   and read the next cursor in :attr:`~scim2_models.ListResponse.next_cursor`.
+  When the server advertises cursor pagination, a response without ``totalResults`` is accepted.
   A response with an invalid ``nextCursor`` or ``previousCursor`` raises
   :class:`~scim2_client.ResponsePayloadValidationException`.
 

@@ -8,6 +8,7 @@ from scim2_models import InvalidCursorException
 from scim2_models import InvalidValueException
 from scim2_models import ListResponse
 from scim2_models import Meta
+from scim2_models import Pagination
 from scim2_models import Resource
 from scim2_models import ResponseParameters
 from scim2_models import SCIMException
@@ -17,6 +18,8 @@ from scim2_models import ServiceProviderConfig
 from scim2_models import UniquenessException
 from scim2_models import User
 
+from scim2_client.engines.httpx2 import Client
+from scim2_client.engines.httpx2 import SyncSCIMClient
 from scim2_client.errors import RequestNetworkException
 from scim2_client.errors import ResponsePayloadValidationException
 from scim2_client.errors import SCIMResponseException
@@ -348,6 +351,41 @@ def test_cursor_pagination(httpserver, sync_client):
         User, query_parameters=SearchRequest(cursor="", count=1)
     )
     assert response.next_cursor == "VZUTiyhEQJ94IR"
+    assert response.total_results is None
+    assert response.resources[0].user_name == "bjensen@example.com"
+
+
+def test_cursor_pagination_last_page(httpserver):
+    """Test that the last page of a cursor-only server needs neither a cursor nor totalResults."""
+    httpserver.expect_oneshot_request(
+        "/Users", query_string="cursor=VZUTiyhEQJ94IR"
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+            "itemsPerPage": 1,
+            "Resources": [
+                {
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                    "id": "2819c223-7f76-453a-919d-413861904646",
+                    "userName": "bjensen@example.com",
+                }
+            ],
+        },
+        status=200,
+        content_type="application/scim+json",
+    )
+    provider = ScimProvider(
+        models=[User, Group],
+        config=ServiceProviderConfig(pagination=Pagination(cursor=True, index=False)),
+    )
+
+    with Client(base_url=f"http://localhost:{httpserver.port}") as client:
+        scim_client = SyncSCIMClient(client, provider=provider)
+        response = scim_client.query(
+            User, query_parameters=SearchRequest(cursor="VZUTiyhEQJ94IR")
+        )
+
+    assert response.next_cursor is None
     assert response.total_results is None
     assert response.resources[0].user_name == "bjensen@example.com"
 
