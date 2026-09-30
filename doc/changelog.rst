@@ -13,7 +13,7 @@ Added
 
 Changed
 ^^^^^^^
-- scim2-models 0.10.0 is now the minimum supported version.
+- scim2-models 0.10.1 is now the minimum supported version.
 
 [0.10.0] - 2026-09-27
 ---------------------
