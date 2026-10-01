@@ -1283,15 +1283,15 @@ wheels = [
 
 [[package]]
 name = "scim2-server"
-version = "0.3.0"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "scim2-models" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/d6/e731380acbb4d5650e29429584838da3dfe30914409704adca6e66df2e0f/scim2_server-0.3.0.tar.gz", hash = "sha256:1930800e0570be60822d556788b97239c5f8a07151dd01e4e37bc5e0a6ac7a5b", size = 25348, upload-time = "2026-09-28T10:11:32.463Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/d7/e24113e6138ac700e5309ddaaebc835670bbea3a2fa1dd4775cb38f8d99b/scim2_server-0.3.2.tar.gz", hash = "sha256:201fa45cd547763c04b0146cdceac1a4caf3af127e67e93d961aafe71070e3ae", size = 25867, upload-time = "2026-10-01T09:46:00.884Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/2a/79e5a0e9fde29524f4d1e4c164849174a1c8d62b06466871f8645be6f9ea/scim2_server-0.3.0-py3-none-any.whl", hash = "sha256:6b62aca927242e743b385070e4e2319c72c0b2309e53626f231ef2e0f99dfa10", size = 26894, upload-time = "2026-09-28T10:11:31.115Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/42/dcc8ced75ade5cb69a8bb672d5faebd546810ed93aaaccf488a7054666c2/scim2_server-0.3.2-py3-none-any.whl", hash = "sha256:cdb993b78d8b8d413c06d9b3b8f08231bf00b50cbf8fad382ed023f11f049ac8", size = 27557, upload-time = "2026-10-01T09:45:59.723Z" },
 ]
 
 [[package]]

@@ -14,6 +14,7 @@ from typing import Protocol
 from typing import TypeVar
 from typing import Union
 from typing import cast
+from typing import overload
 from urllib.parse import quote
 from urllib.parse import urlsplit
 
@@ -1652,6 +1653,66 @@ class BaseSyncSCIMClient(SCIMClient):
             exc.source = req.payload
             raise
 
+    @overload
+    def create(
+        self,
+        target: ResourceT,
+        resource: None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def create(
+        self,
+        target: type[ResourceT],
+        resource: ResourceT | dict[str, Any],
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def create(
+        self,
+        target: ResourceType | str | None,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def create(
+        self,
+        *,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def create(
+        self,
+        target: dict[str, Any] | ResourceType | str | None = None,
+        resource: dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> Resource[Any] | Error | dict[str, Any]: ...
+
     def create(
         self,
         target: AnyResource
@@ -1724,6 +1785,84 @@ class BaseSyncSCIMClient(SCIMClient):
             ),
         )
 
+    @overload
+    def query(
+        self,
+        target: type[ServiceProviderConfig],
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ServiceProviderConfig | Error | dict[str, Any]: ...
+
+    @overload
+    def query(
+        self,
+        target: ResourceType | str,
+        id: str | Resource[Any],
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> Resource[Any] | Error | dict[str, Any]: ...
+
+    @overload
+    def query(
+        self,
+        target: ResourceType | str | None = None,
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[Resource[Any]] | Error | dict[str, Any]: ...
+
+    @overload
+    def query(
+        self,
+        target: type[ResourceT],
+        id: str | ResourceT,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def query(
+        self,
+        target: ResourceT,
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def query(
+        self,
+        target: type[ResourceT],
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[ResourceT] | Error | dict[str, Any]: ...
+
     def query(
         self,
         target: type[Resource[Any]] | Resource[Any] | ResourceType | str | None = None,
@@ -1739,7 +1878,7 @@ class BaseSyncSCIMClient(SCIMClient):
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs: Any,
-    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
+    ) -> "Resource[Any] | ListResponse[Any] | Error | dict[str, Any]":
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         The resource type is designated by :paramref:`target`.
@@ -1835,7 +1974,7 @@ class BaseSyncSCIMClient(SCIMClient):
         )
         response = self._send("GET", req)
         return cast(
-            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            "Resource[Any] | ListResponse[Any] | Error | dict[str, Any]",
             self._read_response(
                 response,
                 req,
@@ -1844,6 +1983,30 @@ class BaseSyncSCIMClient(SCIMClient):
                 Context.RESOURCE_QUERY_RESPONSE,
             ),
         )
+
+    @overload
+    def search(
+        self,
+        target: type[ResourceT],
+        search_request: SearchRequest[Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[ResourceT] | Error | dict[str, Any]: ...
+
+    @overload
+    def search(
+        self,
+        target: SearchRequest[Any] | ResourceType | str | None = None,
+        search_request: SearchRequest[Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[Resource[Any]] | Error | dict[str, Any]: ...
 
     def search(
         self,
@@ -1859,7 +2022,7 @@ class BaseSyncSCIMClient(SCIMClient):
         | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs: Any,
-    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
+    ) -> "ListResponse[Any] | Error | dict[str, Any]":
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param target: The :class:`~scim2_models.ResourceType` to search, or its name or id, or a
@@ -1906,7 +2069,7 @@ class BaseSyncSCIMClient(SCIMClient):
         )
         response = self._send("POST", req)
         return cast(
-            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            "ListResponse[Any] | Error | dict[str, Any]",
             self._read_response(
                 response,
                 req,
@@ -2081,6 +2244,66 @@ class BaseSyncSCIMClient(SCIMClient):
                 response, req, check_response_payload, raise_scim_errors
             ),
         )
+
+    @overload
+    def replace(
+        self,
+        target: ResourceT,
+        resource: None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def replace(
+        self,
+        target: type[ResourceT],
+        resource: ResourceT | dict[str, Any],
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def replace(
+        self,
+        target: ResourceType | str | None,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def replace(
+        self,
+        *,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    def replace(
+        self,
+        target: dict[str, Any] | ResourceType | str | None = None,
+        resource: dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> Resource[Any] | Error | dict[str, Any]: ...
 
     def replace(
         self,
@@ -2329,6 +2552,66 @@ class BaseAsyncSCIMClient(SCIMClient):
             exc.source = req.payload
             raise
 
+    @overload
+    async def create(
+        self,
+        target: ResourceT,
+        resource: None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def create(
+        self,
+        target: type[ResourceT],
+        resource: ResourceT | dict[str, Any],
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def create(
+        self,
+        target: ResourceType | str | None,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def create(
+        self,
+        *,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def create(
+        self,
+        target: dict[str, Any] | ResourceType | str | None = None,
+        resource: dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> Resource[Any] | Error | dict[str, Any]: ...
+
     async def create(
         self,
         target: AnyResource
@@ -2401,6 +2684,84 @@ class BaseAsyncSCIMClient(SCIMClient):
             ),
         )
 
+    @overload
+    async def query(
+        self,
+        target: type[ServiceProviderConfig],
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ServiceProviderConfig | Error | dict[str, Any]: ...
+
+    @overload
+    async def query(
+        self,
+        target: ResourceType | str,
+        id: str | Resource[Any],
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> Resource[Any] | Error | dict[str, Any]: ...
+
+    @overload
+    async def query(
+        self,
+        target: ResourceType | str | None = None,
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[Resource[Any]] | Error | dict[str, Any]: ...
+
+    @overload
+    async def query(
+        self,
+        target: type[ResourceT],
+        id: str | ResourceT,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def query(
+        self,
+        target: ResourceT,
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def query(
+        self,
+        target: type[ResourceT],
+        id: ResponseParameters[Any] | dict[str, Any] | None = None,
+        query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[ResourceT] | Error | dict[str, Any]: ...
+
     async def query(
         self,
         target: type[Resource[Any]] | Resource[Any] | ResourceType | str | None = None,
@@ -2416,7 +2777,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         | None = SCIMClient.QUERY_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs: Any,
-    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
+    ) -> "Resource[Any] | ListResponse[Any] | Error | dict[str, Any]":
         """Perform a GET request to read resources, as defined in :rfc:`RFC7644 §3.4.2 <7644#section-3.4.2>`.
 
         The resource type is designated by :paramref:`target`.
@@ -2512,7 +2873,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         )
         response = await self._send("GET", req)
         return cast(
-            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            "Resource[Any] | ListResponse[Any] | Error | dict[str, Any]",
             self._read_response(
                 response,
                 req,
@@ -2521,6 +2882,30 @@ class BaseAsyncSCIMClient(SCIMClient):
                 Context.RESOURCE_QUERY_RESPONSE,
             ),
         )
+
+    @overload
+    async def search(
+        self,
+        target: type[ResourceT],
+        search_request: SearchRequest[Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[ResourceT] | Error | dict[str, Any]: ...
+
+    @overload
+    async def search(
+        self,
+        target: SearchRequest[Any] | ResourceType | str | None = None,
+        search_request: SearchRequest[Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ListResponse[Resource[Any]] | Error | dict[str, Any]: ...
 
     async def search(
         self,
@@ -2536,7 +2921,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         | None = SCIMClient.SEARCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
         **kwargs: Any,
-    ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
+    ) -> "ListResponse[Any] | Error | dict[str, Any]":
         """Perform a POST search request to read all available resources, as defined in :rfc:`RFC7644 §3.4.3 <7644#section-3.4.3>`.
 
         :param target: The :class:`~scim2_models.ResourceType` to search, or its name or id, or a
@@ -2583,7 +2968,7 @@ class BaseAsyncSCIMClient(SCIMClient):
         )
         response = await self._send("POST", req)
         return cast(
-            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            "ListResponse[Any] | Error | dict[str, Any]",
             self._read_response(
                 response,
                 req,
@@ -2758,6 +3143,66 @@ class BaseAsyncSCIMClient(SCIMClient):
                 response, req, check_response_payload, raise_scim_errors
             ),
         )
+
+    @overload
+    async def replace(
+        self,
+        target: ResourceT,
+        resource: None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def replace(
+        self,
+        target: type[ResourceT],
+        resource: ResourceT | dict[str, Any],
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def replace(
+        self,
+        target: ResourceType | str | None,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def replace(
+        self,
+        *,
+        resource: ResourceT,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> ResourceT | Error | dict[str, Any]: ...
+
+    @overload
+    async def replace(
+        self,
+        target: dict[str, Any] | ResourceType | str | None = None,
+        resource: dict[str, Any] | None = None,
+        check_request_payload: bool | None = None,
+        check_response_payload: bool | None = None,
+        expected_status_codes: list[int] | None = ...,
+        raise_scim_errors: bool | None = None,
+        **kwargs: Any,
+    ) -> Resource[Any] | Error | dict[str, Any]: ...
 
     async def replace(
         self,

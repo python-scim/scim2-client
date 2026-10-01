@@ -126,7 +126,7 @@ docstring-code-format = true
 plugins = [
   "pydantic.mypy"
 ]
-files = ["scim2_client"]
+files = ["scim2_client", "tests/test_typing.py"]
 strict = true
 
 [tool.pydantic-mypy]

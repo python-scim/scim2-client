@@ -40,6 +40,12 @@ under, and :data:`None` for a name the server does not serve. The models discove
 the attributes that server declares, extensions included, not the ones the specifications
 describe.
 
+These models are built at runtime and do not inherit the scim2-models classes. A type checker
+sees ``scim.query(User, "123")`` as a ``User``, since the request is made with ``User``. At
+runtime, ``isinstance(user, User)`` is false. Check the class against the model
+:meth:`~scim2_client.SCIMClient.get_resource_model` returns, or describe the server by hand to
+get instances of the scim2-models classes.
+
 Each of the three endpoints can be left out, for a server that does not serve it:
 
 .. code-block:: python

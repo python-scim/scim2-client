@@ -25,6 +25,9 @@ Added
 - ``create`` and ``replace`` read a :class:`dict` payload with the model passed first:
   ``create(User, payload)``.
 - :class:`~scim2_client.BaseAsyncSCIMClient` can be imported from ``scim2_client``.
+- ``query``, ``search``, ``create`` and ``replace`` are typed after their arguments.
+  ``query(User, "123")`` gives a ``User``, ``query(User)`` a ``ListResponse[User]``,
+  and ``query("Employee")`` a ``ListResponse[Resource]``.
 
 Changed
 ^^^^^^^
