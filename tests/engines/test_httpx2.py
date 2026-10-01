@@ -11,6 +11,7 @@ from scim2_models import SCIMException
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 
+from scim2_client import RequestNetworkException
 from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
 from scim2_client.engines.httpx2 import Client
@@ -186,3 +187,41 @@ async def test_async_engine(server):
     assert operation.bulk_id == "qwerty"
     created_user = await scim_client.query(User, operation.location.rsplit("/", 1)[-1])
     assert created_user.user_name == "Bob"
+
+
+def test_sync_engine_request(server):
+    """A raw request reaches the server and returns its response as is."""
+    host, port = server
+    client = Client(base_url=f"http://{host}:{port}")
+    scim_client = SyncSCIMClient(client)
+
+    response = scim_client.request("DELETE", "/Schemas")
+
+    assert response.status_code == 405
+
+
+async def test_async_engine_request(server):
+    """A raw asynchronous request reaches the server and returns its response as is."""
+    host, port = server
+    client = AsyncClient(base_url=f"http://{host}:{port}")
+    scim_client = AsyncSCIMClient(client)
+
+    response = await scim_client.request("DELETE", "/Schemas")
+
+    assert response.status_code == 405
+
+
+def test_sync_engine_request_network_error():
+    """A raw request that cannot be sent raises RequestNetworkException."""
+    scim_client = SyncSCIMClient(Client(base_url="http://invalid.test"))
+
+    with pytest.raises(RequestNetworkException):
+        scim_client.request("GET", "/Schemas")
+
+
+async def test_async_engine_request_network_error():
+    """A raw asynchronous request that cannot be sent raises RequestNetworkException."""
+    scim_client = AsyncSCIMClient(AsyncClient(base_url="http://invalid.test"))
+
+    with pytest.raises(RequestNetworkException):
+        await scim_client.request("GET", "/Schemas")

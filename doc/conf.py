@@ -64,6 +64,8 @@ nitpick_ignore = [
     ("py:class", "scim2_client.client.ResourceT"),
     ("py:class", "scim2_client.engines.httpx2.ResourceT"),
     ("py:class", "scim2_client.engines.werkzeug.ResourceT"),
+    # The httpx2 inventory does not publish its Response class.
+    ("py:class", "httpx2.Response"),
 ]
 
 # -- Sibling projects ------------------------------------------------------

@@ -364,6 +364,10 @@ class SyncSCIMClient(BaseSyncSCIMClient):
                 ),
             )
 
+    def request(self, method: str, url: str, **kwargs: Any) -> Response:
+        with handle_request_error():
+            return self.client.request(method, url, **kwargs)
+
 
 class AsyncSCIMClient(BaseAsyncSCIMClient):
     """Perform SCIM requests over the network and validate responses.
@@ -655,3 +659,7 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
                     scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
                 ),
             )
+
+    async def request(self, method: str, url: str, **kwargs: Any) -> Response:
+        with handle_request_error():
+            return await self.client.request(method, url, **kwargs)

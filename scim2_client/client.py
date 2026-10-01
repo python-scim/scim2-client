@@ -77,6 +77,22 @@ class ResponseHeaders(Protocol):
     def get(self, key: str, /) -> str | None: ...
 
 
+class RawResponse(Protocol):
+    """A response as returned by the HTTP library of an engine."""
+
+    @property
+    def status_code(self) -> int:
+        """The HTTP status code."""
+
+    @property
+    def headers(self) -> ResponseHeaders:
+        """The HTTP headers."""
+
+    @property
+    def text(self) -> str:
+        """The body, decoded as text."""
+
+
 def describe_resource_models(
     resource_models: Collection[type[Resource[Any]]],
 ) -> tuple[tuple[DescribedModel, ...], tuple[ResourceType, ...]]:
@@ -1776,6 +1792,29 @@ class BaseSyncSCIMClient(SCIMClient):
             discovered_schemas, discovered_resource_types, config
         )
 
+    def request(self, method: str, url: str, **kwargs: Any) -> RawResponse:
+        """Send a request to the server, without any SCIM processing.
+
+        Neither the request nor the response is checked, so this is fitted to
+        observe how the server behaves, for instance with an unsupported HTTP method.
+
+        :param method: The HTTP method.
+        :param url: The URL, relative to the SCIM server base URL.
+        :param kwargs: Additional parameters passed to the underlying
+            HTTP request library.
+        :return: The response of the underlying HTTP request library.
+        :raises ~scim2_client.RequestNetworkException: When the request cannot be sent.
+
+        :usage:
+
+        .. code-block:: python
+            :caption: Checking that the ``/Schemas`` endpoint refuses ``DELETE``
+
+            response = scim.request("DELETE", "/Schemas")
+            assert response.status_code == 405
+        """
+        raise NotImplementedError()
+
 
 class BaseAsyncSCIMClient(SCIMClient):
     """Base class for asynchronous request clients."""
@@ -2275,3 +2314,26 @@ class BaseAsyncSCIMClient(SCIMClient):
         self.provider = self._describe_service(
             discovered_schemas, discovered_resource_types, config
         )
+
+    async def request(self, method: str, url: str, **kwargs: Any) -> RawResponse:
+        """Send a request to the server, without any SCIM processing.
+
+        Neither the request nor the response is checked, so this is fitted to
+        observe how the server behaves, for instance with an unsupported HTTP method.
+
+        :param method: The HTTP method.
+        :param url: The URL, relative to the SCIM server base URL.
+        :param kwargs: Additional parameters passed to the underlying
+            HTTP request library.
+        :return: The response of the underlying HTTP request library.
+        :raises ~scim2_client.RequestNetworkException: When the request cannot be sent.
+
+        :usage:
+
+        .. code-block:: python
+            :caption: Checking that the ``/Schemas`` endpoint refuses ``DELETE``
+
+            response = await scim.request("DELETE", "/Schemas")
+            assert response.status_code == 405
+        """
+        raise NotImplementedError()

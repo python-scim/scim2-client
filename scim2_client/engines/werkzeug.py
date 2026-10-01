@@ -382,3 +382,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
                     scim_ctx=Context.RESOURCE_PATCH_RESPONSE,
                 ),
             )
+
+    def request(self, method: str, url: str, **kwargs: Any) -> TestResponse:
+        environ = {**self.environ, **kwargs}
+        return self.client.open(self._make_url(url), method=method, **environ)

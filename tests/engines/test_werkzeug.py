@@ -154,3 +154,31 @@ def test_environ(scim_client):
         provider=ScimProvider(models=[User]),
     )
     scim_client.query(url="/Users")
+
+
+def test_request(scim_client):
+    """A raw request reaches the application and returns its response as is."""
+    response = scim_client.request("DELETE", "/Schemas")
+
+    assert response.status_code == 405
+
+
+def test_request_with_prefix_and_environ():
+    """A raw request is sent under the SCIM prefix, with the client environ."""
+
+    @Request.application
+    def application(request):
+        return Response(
+            f"{request.method} {request.path} {request.headers['X-Test']}", status=405
+        )
+
+    scim_client = TestSCIMClient(
+        client=Client(application),
+        environ={"headers": {"X-Test": "foobar"}},
+        scim_prefix="/scim/v2",
+    )
+
+    response = scim_client.request("DELETE", "/Schemas")
+
+    assert response.status_code == 405
+    assert response.text == "DELETE /scim/v2/Schemas foobar"

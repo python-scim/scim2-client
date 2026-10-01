@@ -41,6 +41,9 @@ here as class attributes.
 .. autoclass:: scim2_client.client.ResponseHeaders
    :members:
 
+.. autoclass:: scim2_client.client.RawResponse
+   :members:
+
 Errors
 ------
 

@@ -11,6 +11,9 @@ Added
   When the server advertises cursor pagination, a response without ``totalResults`` is accepted.
   A response with an invalid ``nextCursor`` or ``previousCursor`` raises
   :class:`~scim2_client.ResponsePayloadValidationException`.
+- The ``request`` method sends a raw request and returns the response of the HTTP library,
+  without any SCIM processing. This helps to check how a server behaves,
+  for instance with an unsupported HTTP method.
 
 Changed
 ^^^^^^^
