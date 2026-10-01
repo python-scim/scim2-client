@@ -698,6 +698,59 @@ def test_query_parameters(httpserver, sync_client):
     assert response.id == "with-rp"
 
 
+def test_query_parameters_dict(httpserver, sync_client):
+    """Query parameters given as a dict are sent to the server."""
+    sync_client.query(
+        User,
+        query_parameters={
+            "attributes": ["userName"],
+            "filter": 'userName sw "b"',
+            "sortBy": "userName",
+            "count": 10,
+        },
+    )
+
+    request, _ = httpserver.log[-1]
+    assert request.args.to_dict(flat=False) == {
+        "attributes": ["userName"],
+        "filter": ['userName sw "b"'],
+        "sortBy": ["userName"],
+        "count": ["10"],
+    }
+
+
+def test_query_parameters_dict_in_place_of_the_id(httpserver, sync_client):
+    """A dict passed in place of the id carries the query parameters."""
+    sync_client.query(User, {"count": 1})
+
+    request, _ = httpserver.log[-1]
+    assert request.args.to_dict() == {"count": "1"}
+
+
+def test_query_parameters_dict_for_a_single_resource(httpserver, sync_client):
+    """A dict of query parameters applies to a single resource query."""
+    httpserver.expect_request(
+        "/Users/with-dict", query_string="attributes=userName"
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "with-dict",
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+
+    response = sync_client.query(User, "with-dict", {"attributes": ["userName"]})
+    assert isinstance(response, User)
+    assert response.id == "with-dict"
+
+
+def test_invalid_query_parameters_dict(sync_client):
+    """An unknown query parameter in a dict is refused before the request is sent."""
+    with pytest.raises(SCIMException):
+        sync_client.query(User, query_parameters={"unknown": "value"})
+
+
 def test_query_dont_check_request_payload(httpserver, sync_client):
     """Raw dict payloads are forwarded as-is when check_request_payload is False."""
     query_string = "attributes=userName&attributes=displayName&excluded_attributes=timezone&excluded_attributes=phoneNumbers&filter=userName+Eq+%22john%22&sort_by=userName&sort_order=ascending&start_index=1&count=10"

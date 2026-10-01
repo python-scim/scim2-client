@@ -1246,6 +1246,16 @@ class SCIMClient:
         if resource_model and check_request_payload:
             self._check_resource_model(resource_model)
 
+        if check_request_payload and isinstance(query_parameters, dict):
+            try:
+                query_parameters = SearchRequest.model_validate(
+                    query_parameters, scim_ctx=Context.RESOURCE_QUERY_REQUEST
+                )
+            except ValidationError as exc:
+                raise request_validation_exception(
+                    exc, Context.RESOURCE_QUERY_REQUEST
+                ) from exc
+
         payload: Any
         if not check_request_payload:
             payload = query_parameters

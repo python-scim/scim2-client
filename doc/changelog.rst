@@ -51,6 +51,8 @@ Changed
 
 Fixed
 ^^^^^
+- Query parameters given as a :class:`dict` to ``query`` are sent to the server.
+  They used to be dropped. An unknown parameter raises a :class:`~scim2_models.SCIMException`.
 - ``create`` and ``replace`` raise :class:`~scim2_models.InvalidValueException`
   when ``check_request_payload`` is :data:`False` and no ``url`` is passed.
   Before, the httpx2 engine raised a :class:`TypeError`
