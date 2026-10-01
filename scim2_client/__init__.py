@@ -1,4 +1,5 @@
 from . import errors
+from .client import BaseAsyncSCIMClient
 from .client import BaseSyncSCIMClient
 from .client import SCIMClient
 from .errors import InvalidServiceDescriptionException
@@ -14,6 +15,7 @@ __all__ = [
     "errors",
     "SCIMClient",
     "BaseSyncSCIMClient",
+    "BaseAsyncSCIMClient",
     "SCIMClientException",
     "SCIMResponseException",
     "RequestNetworkException",

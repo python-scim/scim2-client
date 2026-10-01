@@ -8,8 +8,10 @@ from scim2_models import BulkRequest
 from scim2_models import PatchOp
 from scim2_models import PatchOperation
 from scim2_models import SCIMException
+from scim2_models import ScimProvider
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
+from scim2_models import User
 
 from scim2_client import RequestNetworkException
 from scim2_client.engines.httpx2 import AsyncClient
@@ -225,3 +227,28 @@ async def test_async_engine_request_network_error():
 
     with pytest.raises(RequestNetworkException):
         await scim_client.request("GET", "/Schemas")
+
+
+def test_sync_engine_network_error_carries_the_request_payload():
+    """A request that cannot be sent raises an error carrying the request payload."""
+    scim_client = SyncSCIMClient(
+        Client(base_url="http://invalid.test"), provider=ScimProvider(models=[User])
+    )
+
+    with pytest.raises(RequestNetworkException) as excinfo:
+        scim_client.create(User(user_name="bjensen"))
+
+    assert excinfo.value.source["userName"] == "bjensen"
+
+
+async def test_async_engine_network_error_carries_the_request_payload():
+    """An asynchronous request that cannot be sent raises an error carrying the request payload."""
+    scim_client = AsyncSCIMClient(
+        AsyncClient(base_url="http://invalid.test"),
+        provider=ScimProvider(models=[User]),
+    )
+
+    with pytest.raises(RequestNetworkException) as excinfo:
+        await scim_client.create(User(user_name="bjensen"))
+
+    assert excinfo.value.source["userName"] == "bjensen"

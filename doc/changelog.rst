@@ -24,6 +24,7 @@ Added
   operation, may directly follow a resource object: ``query(user, parameters)``.
 - ``create`` and ``replace`` read a :class:`dict` payload with the model passed first:
   ``create(User, payload)``.
+- :class:`~scim2_client.BaseAsyncSCIMClient` can be imported from ``scim2_client``.
 
 Changed
 ^^^^^^^
@@ -45,6 +46,8 @@ Changed
 - The package is checked with mypy in strict mode.
   The annotations of :meth:`~scim2_client.SCIMClient.check_response` now match what it returns.
 - ``SCIMClient.modify`` is removed. Use the ``modify`` method of the synchronous or asynchronous clients.
+- An engine only has to implement ``request``. The base clients perform every operation with it.
+  Engines that implement the operations themselves keep working.
 
 Fixed
 ^^^^^

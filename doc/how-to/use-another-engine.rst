@@ -49,11 +49,28 @@ test.
 Write an engine
 ---------------
 
-An engine inherits :class:`~scim2_client.BaseSyncSCIMClient`, or its asynchronous counterpart,
-and implements one method per operation. Each one prepares the request, performs it with the
-underlying library, and hands the result to
-:meth:`~scim2_client.SCIMClient.check_response`. The engines shipped with scim2-client are the
-reference to follow.
+An engine inherits :class:`~scim2_client.BaseSyncSCIMClient`, or
+:class:`~scim2_client.BaseAsyncSCIMClient` for an asynchronous library, and implements
+:meth:`~scim2_client.BaseSyncSCIMClient.request`. This method sends a request
+with the underlying library and returns its response. Every operation goes through it.
+It receives the query parameters as ``params`` and the JSON body as ``json``, as in httpx and
+requests. The response must have the attributes of :class:`~scim2_client.client.RawResponse`.
+
+.. code-block:: python
+
+    import requests
+    from scim2_client import BaseSyncSCIMClient
+
+    class RequestsSCIMClient(BaseSyncSCIMClient):
+        def __init__(self, base_url, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.base_url = base_url
+            self.session = requests.Session()
+
+        def request(self, method, url, **kwargs):
+            return self.session.request(method, self.base_url + url, **kwargs)
+
+The engines shipped with scim2-client are the reference to follow.
 
 Pass parameters to the underlying library
 -----------------------------------------

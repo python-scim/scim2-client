@@ -34,6 +34,7 @@ from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import ResponseParameters
 from scim2_models import Schema
+from scim2_models import SCIMException
 from scim2_models import ScimObject
 from scim2_models import ScimProvider
 from scim2_models import ScimProviderError
@@ -42,7 +43,9 @@ from scim2_models import ServiceProviderConfig
 from scim2_models import get_model_by_payload
 
 from scim2_client.errors import InvalidServiceDescriptionException
+from scim2_client.errors import RequestNetworkException
 from scim2_client.errors import ResponsePayloadValidationException
+from scim2_client.errors import SCIMClientException
 from scim2_client.errors import SCIMResponseException
 from scim2_client.errors import UnexpectedContentFormatException
 from scim2_client.errors import UnexpectedContentTypeException
@@ -1088,6 +1091,63 @@ class SCIMClient:
         self._set_version_from_etag(result, headers)
         return result
 
+    def _query_kwargs(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Pass the query parameters to :meth:`request` as the HTTP library of the engine takes them."""
+        return {"params": payload}
+
+    def _request_kwargs(self, method: str, req: RequestPayload) -> dict[str, Any]:
+        """Build the arguments a prepared request is sent with."""
+        body: dict[str, Any] = {}
+        if method == "GET" and req.payload:
+            body = self._query_kwargs(req.payload)
+
+        elif method not in ("GET", "DELETE"):
+            body = {"json": req.payload}
+
+        return {**body, **req.request_kwargs}
+
+    def _parse_json(self, response: RawResponse) -> Any:
+        """Parse the body of a response as the HTTP library of the engine does."""
+        return json.loads(response.text)
+
+    def _decode_payload(self, response: RawResponse) -> Any:
+        """Decode the JSON body of a response, or return None when it has no body.
+
+        A body too deeply nested for the decoder, or holding an integer too long for
+        Python to convert, is reported as any other body that is not valid JSON.
+        """
+        try:
+            return self._parse_json(response) if response.text else None
+        except (ValueError, RecursionError) as exc:
+            raise UnexpectedContentFormatException(source=response) from exc
+
+    def _read_response(
+        self,
+        response: RawResponse,
+        req: RequestPayload,
+        check_response_payload: bool | None,
+        raise_scim_errors: bool | None,
+        scim_ctx: Context | None = None,
+    ) -> ScimObject | dict[str, Any] | None:
+        """Build the object the response to a prepared request describes."""
+        try:
+            return self.check_response(
+                payload=self._decode_payload(response),
+                status_code=response.status_code,
+                headers=response.headers,
+                expected_status_codes=req.expected_status_codes,
+                expected_types=req.expected_types,
+                check_response_payload=check_response_payload,
+                raise_scim_errors=raise_scim_errors,
+                scim_ctx=scim_ctx,
+                target=req.target,
+            )
+
+        except (SCIMClientException, SCIMException) as exc:
+            # SCIMException comes from scim2-models and has no 'source' attribute.
+            exc.source = response  # type: ignore[union-attr]
+            raise
+
     @staticmethod
     def _check_payload_shape(payload: object) -> None:
         """Refuse a payload that cannot be a SCIM message.
@@ -1575,6 +1635,13 @@ class SCIMClient:
 class BaseSyncSCIMClient(SCIMClient):
     """Base class for synchronous request clients."""
 
+    def _send(self, method: str, req: RequestPayload) -> RawResponse:
+        try:
+            return self.request(method, req.url, **self._request_kwargs(method, req))
+        except RequestNetworkException as exc:
+            exc.source = req.payload
+            raise
+
     def create(
         self,
         target: AnyResource
@@ -1628,7 +1695,24 @@ class BaseSyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_create_request(
+            target=target,
+            resource=resource,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("POST", req)
+        return cast(
+            "AnyResource | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_CREATION_RESPONSE,
+            ),
+        )
 
     def query(
         self,
@@ -1731,7 +1815,25 @@ class BaseSyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_query_request(
+            target=target,
+            id=id,
+            query_parameters=query_parameters,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("GET", req)
+        return cast(
+            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_QUERY_RESPONSE,
+            ),
+        )
 
     def search(
         self,
@@ -1785,7 +1887,24 @@ class BaseSyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_search_request(
+            target=target,
+            search_request=search_request,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("POST", req)
+        return cast(
+            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_QUERY_RESPONSE,
+            ),
+        )
 
     def bulk(
         self,
@@ -1872,7 +1991,23 @@ class BaseSyncSCIMClient(SCIMClient):
             checked against the bulk capabilities the server advertises, and a request the
             server would answer with a ``413`` is not sent.
         """
-        raise NotImplementedError()
+        req = self._prepare_bulk_request(
+            bulk_request=bulk_request,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("POST", req)
+        return cast(
+            "BulkResponse[Resource[Any]] | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.BULK_RESPONSE,
+            ),
+        )
 
     def delete(
         self,
@@ -1922,7 +2057,20 @@ class BaseSyncSCIMClient(SCIMClient):
             response = scim.delete(user)
             # 'response' may be None, or an Error object
         """
-        raise NotImplementedError()
+        req = self._prepare_delete_request(
+            target=target,
+            resource=resource,
+            id=id,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("DELETE", req)
+        return cast(
+            "Error | dict[str, Any] | None",
+            self._read_response(
+                response, req, check_response_payload, raise_scim_errors
+            ),
+        )
 
     def replace(
         self,
@@ -1979,7 +2127,24 @@ class BaseSyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_replace_request(
+            target=target,
+            resource=resource,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("PUT", req)
+        return cast(
+            "AnyResource | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_REPLACEMENT_RESPONSE,
+            ),
+        )
 
     def modify(
         self,
@@ -2048,7 +2213,26 @@ class BaseSyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_patch_request(
+            target=target,
+            resource=resource,
+            patch_op=patch_op,
+            id=id,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = self._send("PATCH", req)
+        return cast(
+            "ResourceT | Error | dict[str, Any] | None",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_PATCH_RESPONSE,
+            ),
+        )
 
     def discover(
         self,
@@ -2126,6 +2310,15 @@ class BaseSyncSCIMClient(SCIMClient):
 class BaseAsyncSCIMClient(SCIMClient):
     """Base class for asynchronous request clients."""
 
+    async def _send(self, method: str, req: RequestPayload) -> RawResponse:
+        try:
+            return await self.request(
+                method, req.url, **self._request_kwargs(method, req)
+            )
+        except RequestNetworkException as exc:
+            exc.source = req.payload
+            raise
+
     async def create(
         self,
         target: AnyResource
@@ -2179,7 +2372,24 @@ class BaseAsyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_create_request(
+            target=target,
+            resource=resource,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("POST", req)
+        return cast(
+            "AnyResource | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_CREATION_RESPONSE,
+            ),
+        )
 
     async def query(
         self,
@@ -2282,7 +2492,25 @@ class BaseAsyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_query_request(
+            target=target,
+            id=id,
+            query_parameters=query_parameters,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("GET", req)
+        return cast(
+            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_QUERY_RESPONSE,
+            ),
+        )
 
     async def search(
         self,
@@ -2336,7 +2564,24 @@ class BaseAsyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_search_request(
+            target=target,
+            search_request=search_request,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("POST", req)
+        return cast(
+            "Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_QUERY_RESPONSE,
+            ),
+        )
 
     async def bulk(
         self,
@@ -2423,7 +2668,23 @@ class BaseAsyncSCIMClient(SCIMClient):
             checked against the bulk capabilities the server advertises, and a request the
             server would answer with a ``413`` is not sent.
         """
-        raise NotImplementedError()
+        req = self._prepare_bulk_request(
+            bulk_request=bulk_request,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("POST", req)
+        return cast(
+            "BulkResponse[Resource[Any]] | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.BULK_RESPONSE,
+            ),
+        )
 
     async def delete(
         self,
@@ -2473,7 +2734,20 @@ class BaseAsyncSCIMClient(SCIMClient):
             response = await scim.delete(user)
             # 'response' may be None, or an Error object
         """
-        raise NotImplementedError()
+        req = self._prepare_delete_request(
+            target=target,
+            resource=resource,
+            id=id,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("DELETE", req)
+        return cast(
+            "Error | dict[str, Any] | None",
+            self._read_response(
+                response, req, check_response_payload, raise_scim_errors
+            ),
+        )
 
     async def replace(
         self,
@@ -2530,7 +2804,24 @@ class BaseAsyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_replace_request(
+            target=target,
+            resource=resource,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("PUT", req)
+        return cast(
+            "AnyResource | Error | dict[str, Any]",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_REPLACEMENT_RESPONSE,
+            ),
+        )
 
     async def modify(
         self,
@@ -2599,7 +2890,26 @@ class BaseAsyncSCIMClient(SCIMClient):
             which value will excluded from the request payload, and which values are expected in
             the response payload.
         """
-        raise NotImplementedError()
+        req = self._prepare_patch_request(
+            target=target,
+            resource=resource,
+            patch_op=patch_op,
+            id=id,
+            check_request_payload=check_request_payload,
+            expected_status_codes=expected_status_codes,
+            **kwargs,
+        )
+        response = await self._send("PATCH", req)
+        return cast(
+            "ResourceT | Error | dict[str, Any] | None",
+            self._read_response(
+                response,
+                req,
+                check_response_payload,
+                raise_scim_errors,
+                Context.RESOURCE_PATCH_RESPONSE,
+            ),
+        )
 
     async def discover(
         self,
