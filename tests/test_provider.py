@@ -128,7 +128,7 @@ def test_two_resource_types_may_serve_a_same_schema():
     assert client.get_resource_model("User") is User
     assert client.get_resource_model("Staff") is User[EnterpriseUser]
     assert client.resource_endpoint(User) == "/Users"
-    assert client.resource_endpoint(User[EnterpriseUser]) == "/Staff"
+    assert client.resource_endpoint("Staff") == "/Staff"
 
 
 def test_provider_and_described_objects_are_exclusive():

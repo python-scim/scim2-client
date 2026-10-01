@@ -13,6 +13,7 @@ from scim2_models import Error
 from scim2_models import ListResponse
 from scim2_models import PatchOp
 from scim2_models import Resource
+from scim2_models import ResourceType
 from scim2_models import ResponseParameters
 from scim2_models import SCIMException
 from scim2_models import SearchRequest
@@ -122,7 +123,13 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def create(
         self,
-        resource: AnyResource | dict[str, Any],
+        target: AnyResource
+        | dict[str, Any]
+        | type[Resource[Any]]
+        | ResourceType
+        | str
+        | None = None,
+        resource: AnyResource | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
@@ -131,6 +138,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs: Any,
     ) -> AnyResource | Error | dict[str, Any]:
         req = self._prepare_create_request(
+            target=target,
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -159,8 +167,12 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def query(
         self,
-        target: type[Resource[Any]] | Resource[Any] | None = None,
-        id: str | None = None,
+        target: type[Resource[Any]] | Resource[Any] | ResourceType | str | None = None,
+        id: str
+        | Resource[Any]
+        | ResponseParameters[Any]
+        | dict[str, Any]
+        | None = None,
         query_parameters: ResponseParameters[Any] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -202,6 +214,11 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def search(
         self,
+        target: SearchRequest[Any]
+        | type[Resource[Any]]
+        | ResourceType
+        | str
+        | None = None,
         search_request: SearchRequest[Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
@@ -211,6 +228,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs: Any,
     ) -> Resource[Any] | ListResponse[Resource[Any]] | Error | dict[str, Any]:
         req = self._prepare_search_request(
+            target=target,
             search_request=search_request,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -276,15 +294,18 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def delete(
         self,
-        resource: Resource[Any] | type[Resource[Any]] | None = None,
-        id: str | None = None,
+        target: Resource[Any] | type[Resource[Any]] | ResourceType | str | None = None,
+        id: str | Resource[Any] | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
+        *,
+        resource: Resource[Any] | type[Resource[Any]] | None = None,
         **kwargs: Any,
     ) -> Error | dict[str, Any] | None:
         req = self._prepare_delete_request(
+            target=target,
             resource=resource,
             id=id,
             expected_status_codes=expected_status_codes,
@@ -309,7 +330,13 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def replace(
         self,
-        resource: AnyResource | dict[str, Any],
+        target: AnyResource
+        | dict[str, Any]
+        | type[Resource[Any]]
+        | ResourceType
+        | str
+        | None = None,
+        resource: AnyResource | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
@@ -318,6 +345,7 @@ class TestSCIMClient(BaseSyncSCIMClient):
         **kwargs: Any,
     ) -> AnyResource | Error | dict[str, Any]:
         req = self._prepare_replace_request(
+            target=target,
             resource=resource,
             check_request_payload=check_request_payload,
             expected_status_codes=expected_status_codes,
@@ -344,17 +372,20 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def modify(
         self,
-        resource: ResourceT | type[ResourceT] | None = None,
-        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
-        id: str | None = None,
+        target: ResourceT | type[ResourceT] | ResourceType | str | None = None,
+        id: str | ResourceT | PatchOp[ResourceT] | dict[str, Any] | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | str | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = BaseSyncSCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
+        *,
+        resource: ResourceT | type[ResourceT] | None = None,
         **kwargs: Any,
     ) -> ResourceT | Error | dict[str, Any] | None:
         req = self._prepare_patch_request(
+            target=target,
             resource=resource,
             patch_op=patch_op,
             id=id,

@@ -17,10 +17,15 @@ serve, is refused before a request is built.
 
 **Which endpoints.** :rfc:`RFC7644 §4 <7644#section-4>` lets a server serve its resources
 wherever it likes, and publish the mapping as :class:`~scim2_models.ResourceType` objects. The
-client reads them to turn a model into a URL. It looks the model up first and the schema
-second, so two resource types built upon a same schema — the same ``User`` schema served once
-as ``/Users`` and once as ``/Employees``, for instance — are told apart instead of collapsing
-into whichever came first.
+client reads them to turn a request into a URL.
+
+A server may serve one schema under several resource types: the same ``User`` schema served
+once as ``/Users`` and once as ``/Employees``, for instance. A model cannot tell them apart, so
+every request is about a resource type. Methods take it as their first argument, as an object
+or by its name or id. A model stands for the resource type named after its schema, so ``User``
+reaches the ``User`` resource type, and ``/Employees`` is reached with ``"Employee"``. A
+resource object stands for the resource type in its ``meta.resourceType``, as
+:rfc:`RFC7643 §3.1 <7643#section-3.1>` defines it.
 
 **Which capabilities.** The :class:`~scim2_models.ServiceProviderConfig` says what the server
 supports, and the client uses it instead of trying and failing. A server advertising ETag

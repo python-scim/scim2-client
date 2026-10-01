@@ -308,6 +308,54 @@ success:
 :doc:`how-to/version-resources-with-etags` covers the conditional headers a write carries when
 the server supports them, which keep a modification from overwriting one made in between.
 
+Choose the resource type
+------------------------
+
+Every request is about a :class:`~scim2_models.ResourceType`, which gives the endpoint. By
+default, a model goes to the resource type named after its schema, so ``User`` goes to
+``/Users``. A resource read from the server goes back to the resource type in its
+``meta.resourceType``.
+
+A server may serve one schema under several resource types, for instance users under ``/Users``
+and under ``/Employees``. Pass the resource type as the first argument to reach the other one,
+as an object or by its name or id. The resource, or its id, comes next:
+
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          employee_type = scim.query(ResourceType, "Employee")
+          employees = scim.query(employee_type)
+
+          employee = scim.query("Employee", "my-user-id")
+          response = scim.create("Employee", User(user_name="bjensen"))
+          response = scim.modify("Employee", "my-user-id", patch)
+          scim.delete("Employee", "my-user-id")
+          response = scim.search("Employee", SearchRequest(filter='userName sw "b"'))
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          employee_type = await scim.query(ResourceType, "Employee")
+          employees = await scim.query(employee_type)
+
+          employee = await scim.query("Employee", "my-user-id")
+          response = await scim.create("Employee", User(user_name="bjensen"))
+          response = await scim.modify("Employee", "my-user-id", patch)
+          await scim.delete("Employee", "my-user-id")
+          response = await scim.search("Employee", SearchRequest(filter='userName sw "b"'))
+
+A resource type passed as a name gives untyped results, where ``User`` gives ``User`` objects.
+With a resource type, ``search`` queries the ``/Employees/.search`` endpoint instead of every
+resource type. :doc:`explanation/service-description` covers how the client finds the resource
+type of a request.
+
 Send operations in bulk
 -----------------------
 

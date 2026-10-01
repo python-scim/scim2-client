@@ -14,9 +14,33 @@ Added
 - The ``request`` method sends a raw request and returns the response of the HTTP library,
   without any SCIM processing. This helps to check how a server behaves,
   for instance with an unsupported HTTP method.
+- The first argument of ``query``, ``create``, ``replace``, ``modify``, ``delete`` and ``search``
+  can be a :class:`~scim2_models.ResourceType`, or its name or id. It reaches a resource type
+  that serves the same schema as another one, such as ``/Employees`` next to ``/Users``:
+  ``query("Employee", "123")``, ``create("Employee", user)``. ``search`` then sends the request
+  to the endpoint of the resource type, and accepts a model too: ``search(User, request)``.
+- The second argument of ``query``, ``modify`` and ``delete`` can be a resource object
+  instead of an id, as in ``query("Employee", user)``. The query parameters, or the patch
+  operation, may directly follow a resource object: ``query(user, parameters)``.
+- ``create`` and ``replace`` read a :class:`dict` payload with the model passed first:
+  ``create(User, payload)``.
 
 Changed
 ^^^^^^^
+- A model goes to the resource type named after its schema, and a resource object to the
+  resource type in its ``meta.resourceType``, instead of the first resource type serving
+  the schema.
+- A :class:`~scim2_models.ResourceType` object passed first designates its endpoint.
+  To read a resource type from ``/ResourceTypes``, pass ``query(ResourceType, "User")``.
+- ``modify`` takes the id before the patch operation: ``modify(User, "123", patch)``.
+  ``modify(User, patch, id="123")`` raises a :class:`TypeError`, pass the id first.
+- ``create``, ``replace`` and ``search`` take the resource type before the payload.
+  Pass the parameters that follow the payload by keyword.
+- The parameter of ``resource_endpoint`` is renamed ``target``.
+- Creations and replacements missing an extension that the resource type marks as required
+  raise :class:`~scim2_models.InvalidValueException` before the request is sent.
+- The responses are read with the model of the resource type, extensions included,
+  even when the request was made with the bare model.
 - scim2-models 0.10.1 is now the minimum supported version.
 - The package is checked with mypy in strict mode.
   The annotations of :meth:`~scim2_client.SCIMClient.check_response` now match what it returns.
@@ -30,6 +54,19 @@ Fixed
   and the Werkzeug engine sent the request to the SCIM prefix.
 - A payload whose first schema is an extension raises
   :class:`~scim2_models.InvalidValueException` with a clearer message.
+- Resources read from a resource type that shares its schema with another one are written
+  back to their own resource type, instead of the first one serving the schema.
+
+Deprecated
+^^^^^^^^^^
+- A model with no resource type named after its schema, or whose resource type of that name
+  does not serve it, still goes to a resource type serving its schema. Pass the resource type
+  instead. This raises an error in 0.12. A ``meta.resourceType`` that the client does not know
+  also raises an error in 0.12.
+- The ``resource`` parameter of ``delete`` and ``modify`` is renamed ``target``.
+  Will be removed in 0.12.
+- ``modify(User, patch, "123")``, with the patch operation before the id. Pass the id first.
+  Will be removed in 0.12.
 
 [0.10.0] - 2026-09-27
 ---------------------

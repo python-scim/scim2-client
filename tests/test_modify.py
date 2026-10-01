@@ -440,7 +440,7 @@ def test_modify_resource_type_and_id(httpserver, sync_client, user, patch_op):
         status=204, content_type="application/scim+json"
     )
 
-    assert sync_client.modify(User, patch_op, id=user.id) is None
+    assert sync_client.modify(User, id=user.id, patch_op=patch_op) is None
 
 
 def test_modify_resource_object_without_id(sync_client, patch_op):
@@ -454,7 +454,7 @@ def test_modify_resource_object_and_id(sync_client, user, patch_op):
     with pytest.raises(
         InvalidValueException, match="Cannot pass both a resource object and an id"
     ):
-        sync_client.modify(user, patch_op, id="another-id")
+        sync_client.modify(user, "another-id", patch_op)
 
 
 def test_modify_resource_type_without_id(sync_client, patch_op):
