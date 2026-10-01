@@ -182,3 +182,37 @@ def test_request_with_prefix_and_environ():
 
     assert response.status_code == 405
     assert response.text == "DELETE /scim/v2/Schemas foobar"
+
+
+def test_request_headers_extend_environ_headers():
+    """Headers passed to a request are sent along with the headers of the client environ."""
+
+    @Request.application
+    def application(request):
+        return Response(f"{request.headers['X-Test']} {request.headers['If-Match']}")
+
+    scim_client = TestSCIMClient(
+        client=Client(application),
+        environ={"headers": {"X-Test": "foobar"}},
+    )
+
+    response = scim_client.request("GET", "/Users", headers={"If-Match": '"1"'})
+
+    assert response.text == 'foobar "1"'
+
+
+def test_request_headers_override_environ_headers():
+    """A header passed to a request replaces the client environ header of the same name."""
+
+    @Request.application
+    def application(request):
+        return Response(",".join(request.headers.getlist("X-Test")))
+
+    scim_client = TestSCIMClient(
+        client=Client(application),
+        environ={"headers": [("X-Test", "foo"), ("X-Other", "bar")]},
+    )
+
+    response = scim_client.request("GET", "/Users", headers={"x-test": "baz"})
+
+    assert response.text == "baz"

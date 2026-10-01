@@ -1,6 +1,16 @@
 Changelog
 =========
 
+[Unreleased]
+------------
+
+Fixed
+^^^^^
+- The headers of a request sent by :class:`~scim2_client.engines.werkzeug.TestSCIMClient` are
+  added to the headers of its ``environ``, instead of replacing them. Since 0.8, the
+  ``If-Match`` header of ``replace``, ``modify`` and ``delete`` dropped headers such as
+  ``Authorization``.
+
 [0.11.0] - 2026-10-01
 ---------------------
 

@@ -2,6 +2,7 @@ from typing import Any
 from typing import cast
 from urllib.parse import urlencode
 
+from werkzeug.datastructures import Headers
 from werkzeug.test import Client
 from werkzeug.test import TestResponse
 
@@ -88,4 +89,8 @@ class TestSCIMClient(BaseSyncSCIMClient):
 
     def request(self, method: str, url: str, **kwargs: Any) -> TestResponse:
         environ = {**self.environ, **kwargs}
+        if "headers" in self.environ and "headers" in kwargs:
+            headers = Headers(self.environ["headers"])
+            headers.update(Headers(kwargs["headers"]))
+            environ["headers"] = headers
         return self.client.open(self._make_url(url), method=method, **environ)
