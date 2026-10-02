@@ -638,7 +638,7 @@ def test_response_bad_content_type(sync_client):
 
 
 def test_search_request(httpserver, sync_client):
-    query_string = "attributes=userName&attributes=displayName&filter=userName+Eq+%22john%22&sortBy=userName&sortOrder=ascending&startIndex=1&count=10"
+    query_string = "attributes=userName%2CdisplayName&filter=userName+Eq+%22john%22&sortBy=userName&sortOrder=ascending&startIndex=1&count=10"
 
     httpserver.expect_request(
         "/Users/with-qs", query_string=query_string
@@ -673,7 +673,7 @@ def test_search_request(httpserver, sync_client):
 
 def test_query_parameters(httpserver, sync_client):
     """ResponseParameters can be used instead of SearchRequest for single-resource queries."""
-    query_string = "attributes=userName&attributes=displayName"
+    query_string = "attributes=userName%2CdisplayName"
 
     httpserver.expect_request(
         "/Users/with-rp", query_string=query_string
@@ -696,6 +696,23 @@ def test_query_parameters(httpserver, sync_client):
     response = sync_client.query(User, "with-rp", params)
     assert isinstance(response, User)
     assert response.id == "with-rp"
+
+
+def test_query_empty_list_parameters_are_not_sent(httpserver, sync_client):
+    """Empty attribute lists are left out of the query string."""
+    httpserver.expect_request(
+        "/Users/with-empty", query_string="attributes=userName"
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+            "id": "with-empty",
+            "userName": "bjensen@example.com",
+        },
+        status=200,
+    )
+    params = ResponseParameters(attributes=["userName"], excluded_attributes=[])
+    response = sync_client.query(User, "with-empty", params)
+    assert response.id == "with-empty"
 
 
 def test_query_parameters_dict(httpserver, sync_client):
@@ -752,8 +769,11 @@ def test_invalid_query_parameters_dict(sync_client):
 
 
 def test_query_dont_check_request_payload(httpserver, sync_client):
-    """Raw dict payloads are forwarded as-is when check_request_payload is False."""
-    query_string = "attributes=userName&attributes=displayName&excluded_attributes=timezone&excluded_attributes=phoneNumbers&filter=userName+Eq+%22john%22&sort_by=userName&sort_order=ascending&start_index=1&count=10"
+    """Raw dict payloads are forwarded unvalidated when check_request_payload is False.
+
+    List values are sent as comma-separated values.
+    """
+    query_string = "attributes=userName%2CdisplayName&excluded_attributes=timezone%2CphoneNumbers&filter=userName+Eq+%22john%22&sort_by=userName&sort_order=ascending&start_index=1&count=10"
 
     httpserver.expect_request(
         "/Users/with-qs", query_string=query_string

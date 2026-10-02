@@ -1,6 +1,15 @@
 Changelog
 =========
 
+[Unreleased]
+------------
+
+Fixed
+^^^^^
+- ``attributes`` and ``excludedAttributes`` are sent in the query string as comma-separated
+  values, per :rfc:`7644#section-3.9`. They used to be sent as repeated parameters, and some
+  servers only read the first value.
+
 [0.11.1] - 2026-10-01
 ---------------------
 

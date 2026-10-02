@@ -175,6 +175,18 @@ def _resource_url(endpoint: str, id: str) -> str:
     return f"{endpoint}/{quote(id, safe=_PATH_SEGMENT_SAFE)}"
 
 
+def _join_list_values(params: dict[str, Any]) -> dict[str, Any]:
+    """Send the list query parameters as comma-separated values (RFC 7644 §3.9).
+
+    Empty lists are left out of the query string.
+    """
+    return {
+        key: ",".join(map(str, value)) if isinstance(value, list) else value
+        for key, value in params.items()
+        if value != []
+    }
+
+
 @dataclass
 class RequestPayload:
     request_kwargs: dict[str, Any]
@@ -1100,7 +1112,7 @@ class SCIMClient:
         """Build the arguments a prepared request is sent with."""
         body: dict[str, Any] = {}
         if method == "GET" and req.payload:
-            body = self._query_kwargs(req.payload)
+            body = self._query_kwargs(_join_list_values(req.payload))
 
         elif method not in ("GET", "DELETE"):
             body = {"json": req.payload}

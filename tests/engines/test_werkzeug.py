@@ -105,6 +105,25 @@ def test_werkzeug_query_with_attributes(scim_client):
     assert result.title is None
 
 
+def test_werkzeug_query_list_parameters_are_comma_separated():
+    """List query parameters are sent as comma-separated values (RFC 7644 §3.9)."""
+    query_strings = []
+
+    @Request.application
+    def application(request):
+        query_strings.append(request.query_string.decode())
+        return Response(
+            '{"schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"], "totalResults": 0}',
+            content_type="application/scim+json",
+        )
+
+    scim_client = TestSCIMClient(
+        client=Client(application), provider=ScimProvider(models=[User])
+    )
+    scim_client.query(User, SearchRequest(attributes=["displayName", "title"]))
+    assert query_strings == ["attributes=displayName%2Ctitle"]
+
+
 def test_no_json():
     """Test that pages that do not return JSON raise an UnexpectedContentFormatException error."""
 
