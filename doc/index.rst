@@ -42,7 +42,7 @@ resources with ETags or talking to a server that departs from the specifications
 :doc:`Explanation <explanation/index>` gives the reasons behind the behaviour of the library:
 what it checks in a payload, and what it needs to know about a server.
 
-:doc:`Reference <reference>` lists the complete public API.
+:doc:`Reference <reference/index>` lists the complete public API.
 
 .. toctree::
     :maxdepth: 2
@@ -51,6 +51,6 @@ what it checks in a payload, and what it needs to know about a server.
     Overview <overview>
     How-to guides <how-to/index>
     Explanation <explanation/index>
-    Reference <reference>
+    Reference <reference/index>
     Contributing <contributing>
     Changelog <changelog>

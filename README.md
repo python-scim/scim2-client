@@ -84,7 +84,7 @@ except SCIMException as exc:
   tasks.
 - [Explanation](https://scim2-client.readthedocs.io/en/latest/explanation/index.html) covers what
   the client checks and what it knows about a server.
-- [Reference](https://scim2-client.readthedocs.io/en/latest/reference.html) lists the public API.
+- [Reference](https://scim2-client.readthedocs.io/en/latest/reference/index.html) lists the public API.
 
 ## Contributing
 

@@ -21,7 +21,7 @@ Install scim2-client with the engine it will use:
 This page introduces the operations a client performs, in the order an application meets them.
 Follow it in order for a first tour. The :doc:`how-to guides <how-to/index>` cover focused tasks,
 the :doc:`explanations <explanation/index>` cover what the client checks and what it needs to
-know about a server, and the :doc:`reference` lists the complete API.
+know about a server, and the :doc:`reference <reference/index>` lists the complete API.
 
 Instantiate a client
 --------------------
