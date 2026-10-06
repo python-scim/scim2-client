@@ -12,6 +12,18 @@ and inherits the payload handling from the base client.
    :members:
    :member-order: bysource
 
+.. autoclass:: scim2_client.engines.wsgi.WSGISCIMClient
+   :members:
+   :member-order: bysource
+
+.. autoclass:: scim2_client.engines.asgi.ASGISCIMClient
+   :members:
+   :member-order: bysource
+
+.. autoclass:: scim2_client.engines.inprocess.InProcessResponse
+   :members:
+   :member-order: bysource
+
 .. autoclass:: scim2_client.engines.werkzeug.TestSCIMClient
    :members:
    :member-order: bysource

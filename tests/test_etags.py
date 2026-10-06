@@ -10,13 +10,11 @@ from scim2_models import SCIMException
 from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
-from werkzeug.test import Client
-from werkzeug.wrappers import Request
 from werkzeug.wrappers import Response
 
 from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
-from scim2_client.engines.werkzeug import TestSCIMClient
+from scim2_client.engines.wsgi import WSGISCIMClient
 from scim2_client.errors import UnexpectedStatusCodeException
 
 VERSION = 'W/"3694e05e9dff590"'
@@ -252,17 +250,17 @@ def test_precondition_failed(httpserver, etag_client, versioned_user):
     assert exc_info.value.status == 412
 
 
-def test_werkzeug_engine_sends_if_match(versioned_user):
-    """The werkzeug engine forwards the conditional header to the application."""
+def test_wsgi_engine_sends_if_match(versioned_user):
+    """The WSGI engine forwards the conditional header to the application."""
     seen = {}
 
-    @Request.application
-    def app(request):
-        seen["if_match"] = request.headers.get("If-Match")
-        return Response(status=204, content_type="application/scim+json")
+    def app(environ, start_response):
+        seen["if_match"] = environ.get("HTTP_IF_MATCH")
+        start_response("204 No Content", [("Content-Type", "application/scim+json")])
+        return []
 
-    client = TestSCIMClient(
-        Client(app),
+    client = WSGISCIMClient(
+        app,
         provider=ScimProvider(
             models=[User], config=ServiceProviderConfig(etag=ETag(supported=True))
         ),
@@ -376,17 +374,17 @@ def test_unsolicited_not_modified(httpserver, etag_client):
     assert etag_client.query(User) is None
 
 
-def test_werkzeug_engine_sends_if_none_match(versioned_user):
-    """The werkzeug engine forwards the conditional header to the application."""
+def test_wsgi_engine_sends_if_none_match(versioned_user):
+    """The WSGI engine forwards the conditional header to the application."""
     seen = {}
 
-    @Request.application
-    def app(request):
-        seen["if_none_match"] = request.headers.get("If-None-Match")
-        return Response(status=304)
+    def app(environ, start_response):
+        seen["if_none_match"] = environ.get("HTTP_IF_NONE_MATCH")
+        start_response("304 Not Modified", [])
+        return []
 
-    client = TestSCIMClient(
-        Client(app),
+    client = WSGISCIMClient(
+        app,
         provider=ScimProvider(
             models=[User], config=ServiceProviderConfig(etag=ETag(supported=True))
         ),

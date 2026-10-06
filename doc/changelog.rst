@@ -1,6 +1,20 @@
 Changelog
 =========
 
+[0.12.0] - Unreleased
+---------------------
+
+Added
+^^^^^
+- :class:`~scim2_client.engines.wsgi.WSGISCIMClient` and
+  :class:`~scim2_client.engines.asgi.ASGISCIMClient` call a WSGI or an ASGI application directly,
+  without a network. They only need the standard library, and work with any framework.
+
+Deprecated
+^^^^^^^^^^
+- :class:`~scim2_client.engines.werkzeug.TestSCIMClient` and the ``werkzeug`` extra. Use
+  :class:`~scim2_client.engines.wsgi.WSGISCIMClient` instead. Will be removed in 1.0.
+
 [0.11.2] - 2026-10-02
 ---------------------
 

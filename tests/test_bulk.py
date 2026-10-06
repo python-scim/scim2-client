@@ -17,14 +17,11 @@ from scim2_models import SCIMException
 from scim2_models import ScimProvider
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
-from werkzeug.test import Client
-from werkzeug.wrappers import Request
-from werkzeug.wrappers import Response
 
 from scim2_client import RequestNetworkException
 from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
-from scim2_client.engines.werkzeug import TestSCIMClient
+from scim2_client.engines.wsgi import WSGISCIMClient
 
 USER_OPERATION = BulkOperation[User](
     method="POST",
@@ -394,20 +391,16 @@ def test_async_engine(httpserver):
     assert isinstance(asyncio.run(bulk()), BulkResponse)
 
 
-def test_werkzeug_engine():
-    """Test that the werkzeug engine posts bulk requests."""
+def test_wsgi_engine():
+    """The WSGI engine posts bulk requests."""
     seen = {}
 
-    @Request.application
-    def app(request):
-        seen["payload"] = request.get_json()
-        return Response(
-            json.dumps(RESPONSE_PAYLOAD),
-            status=200,
-            content_type="application/scim+json",
-        )
+    def app(environ, start_response):
+        seen["payload"] = json.load(environ["wsgi.input"])
+        start_response("200 OK", [("Content-Type", "application/scim+json")])
+        return [json.dumps(RESPONSE_PAYLOAD).encode()]
 
-    client = TestSCIMClient(Client(app), provider=ScimProvider(models=[User, Group]))
+    client = WSGISCIMClient(app, provider=ScimProvider(models=[User, Group]))
 
     assert isinstance(
         client.bulk(BulkRequest[User](operations=[USER_OPERATION])), BulkResponse

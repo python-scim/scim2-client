@@ -10,8 +10,6 @@ from scim2_models import ResourceType
 from scim2_models import SCIMException
 from scim2_models import ScimProvider
 from scim2_models import User
-from werkzeug.test import Client as WerkzeugClient
-from werkzeug.wrappers import Response as WerkzeugResponse
 
 from scim2_client import InvalidServiceDescriptionException
 from scim2_client import ResponsePayloadValidationException
@@ -21,7 +19,7 @@ from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
 from scim2_client.engines.httpx2 import Client
 from scim2_client.engines.httpx2 import SyncSCIMClient
-from scim2_client.engines.werkzeug import TestSCIMClient
+from scim2_client.engines.wsgi import WSGISCIMClient
 
 BASE_URL = "https://scim.example.com/scim/v2"
 ERROR_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:Error"
@@ -66,6 +64,13 @@ INVALID_ERROR_BODIES = [
     ),
 ]
 
+
+def discover(client):
+    """Discover the server with a client that knows nothing of it yet."""
+    app = client.client if isinstance(client, SyncSCIMClient) else client.app
+    return type(client)(app, provider=ScimProvider()).discover()
+
+
 CALLS = [
     pytest.param(lambda client: client.query(User, "1"), id="query"),
     pytest.param(lambda client: client.query(User), id="search"),
@@ -74,10 +79,7 @@ CALLS = [
         lambda client: client.replace(User(id="1", user_name="bob")), id="replace"
     ),
     pytest.param(lambda client: client.delete(User, "1"), id="delete"),
-    pytest.param(
-        lambda client: type(client)(client.client, provider=ScimProvider()).discover(),
-        id="discover",
-    ),
+    pytest.param(discover, id="discover"),
 ]
 
 
@@ -101,14 +103,17 @@ def httpx2_client(body, status=200, **kwargs):
     return SyncSCIMClient(http_client, **{"provider": provider(), **kwargs})
 
 
-def werkzeug_client(body, status=200, **kwargs):
-    app = WerkzeugResponse(body, status=status, content_type="application/scim+json")
-    return TestSCIMClient(WerkzeugClient(app), **{"provider": provider(), **kwargs})
+def wsgi_client(body, status=200, **kwargs):
+    def app(environ, start_response):
+        start_response(f"{status} -", [("Content-Type", "application/scim+json")])
+        return [body.encode() if isinstance(body, str) else body]
+
+    return WSGISCIMClient(app, **{"provider": provider(), **kwargs})
 
 
 @pytest.mark.parametrize("body", UNDECODABLE_BODIES)
 @pytest.mark.parametrize("call", CALLS)
-@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
 def test_undecodable_body_is_an_unexpected_content_format(make_client, call, body):
     """A body the JSON decoder chokes on is reported as a body that is not JSON."""
     with pytest.raises(UnexpectedContentFormatException):
@@ -117,7 +122,7 @@ def test_undecodable_body_is_an_unexpected_content_format(make_client, call, bod
 
 @pytest.mark.parametrize("body", DEEPLY_NESTED_BODIES)
 @pytest.mark.parametrize("call", CALLS)
-@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
 def test_deeply_nested_body_is_a_response_error(make_client, call, body):
     """A body nested very deep is reported as a SCIM response error.
 
@@ -129,7 +134,7 @@ def test_deeply_nested_body_is_a_response_error(make_client, call, body):
 
 
 @pytest.mark.parametrize("call", CALLS)
-@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
 def test_decoder_recursion_error_is_an_unexpected_content_format(
     make_client, call, monkeypatch
 ):
@@ -146,7 +151,7 @@ def test_decoder_recursion_error_is_an_unexpected_content_format(
 
 @pytest.mark.parametrize("body", NOT_OBJECT_BODIES)
 @pytest.mark.parametrize("call", CALLS)
-@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
 def test_body_that_is_not_an_object_is_refused(make_client, call, body):
     """A SCIM message is a JSON object, whatever JSON value the server sends."""
     with pytest.raises(UnexpectedContentFormatException, match="is not a JSON object"):
@@ -165,7 +170,7 @@ def test_error_status_with_a_body_that_is_not_an_object_is_refused(body, status)
 
 @pytest.mark.parametrize("body", INVALID_SCHEMAS_BODIES)
 @pytest.mark.parametrize("call", CALLS)
-@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
 def test_schemas_that_are_not_a_list_of_strings_are_refused(make_client, call, body):
     """The schemas select the model of the payload, so they must be URIs."""
     with pytest.raises(

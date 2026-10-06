@@ -16,35 +16,70 @@ Pick a shipped engine
 :class:`~scim2_client.engines.httpx2.AsyncSCIMClient`
     The same API, awaited. It is the engine an asynchronous application uses.
 
-:class:`~scim2_client.engines.werkzeug.TestSCIMClient`
-    Takes a WSGI application and executes the server code directly, without a network. This is
-    faster in a test suite, and an exception raised by the server surfaces in the test rather
-    than turning into a ``500``.
+:class:`~scim2_client.engines.wsgi.WSGISCIMClient`
+    Calls a WSGI application directly, without a network. This is faster in a test suite, and an
+    exception raised by the server surfaces in the test rather than turning into a ``500``.
+
+:class:`~scim2_client.engines.asgi.ASGISCIMClient`
+    The same, awaited, for an ASGI application.
 
 Test a SCIM server without a network
 ------------------------------------
 
-:class:`~scim2_client.engines.werkzeug.TestSCIMClient` is meant for the authors of SCIM servers.
-It takes a :class:`Werkzeug test Client <werkzeug.test.Client>` wrapping the application, and a
-prefix when the SCIM endpoints are not served at the root:
+:class:`~scim2_client.engines.wsgi.WSGISCIMClient` and
+:class:`~scim2_client.engines.asgi.ASGISCIMClient` are meant for the authors of SCIM servers. They
+only need the standard library, and work with any WSGI or ASGI application, such as a Flask,
+Django or Starlette application, or the applications of
+`scim2-server <https://scim2-server.readthedocs.io>`_. Pass the application, and the URL of the
+SCIM endpoints when they are not served at the root:
 
-.. code-block:: python
+.. tab-set::
+   :class: outline
 
-    from scim2_client.engines.werkzeug import TestSCIMClient
-    from scim2_models import Group, ScimProvider, User
-    from werkzeug.test import Client
+   .. tab-item:: WSGI
+      :sync: sync
 
-    scim = TestSCIMClient(
-        Client(myapp.create_app()),
-        scim_prefix="/scim/v2",
-        provider=ScimProvider(models=[User, Group]),
-    )
+      .. code-block:: python
 
-    user = scim.create(User(user_name="bjensen@example.com"))
-    assert user.id
+          from scim2_client.engines.wsgi import WSGISCIMClient
+          from scim2_models import Group, ScimProvider, User
+
+          scim = WSGISCIMClient(
+              myapp.create_app(),
+              base_url="http://localhost/scim/v2",
+              provider=ScimProvider(models=[User, Group]),
+          )
+
+          user = scim.create(User(user_name="bjensen@example.com"))
+          assert user.id
+
+   .. tab-item:: ASGI
+      :sync: async
+
+      .. code-block:: python
+
+          from scim2_client.engines.asgi import ASGISCIMClient
+          from scim2_models import Group, ScimProvider, User
+
+          scim = ASGISCIMClient(
+              myapp.create_app(),
+              base_url="http://localhost/scim/v2",
+              provider=ScimProvider(models=[User, Group]),
+          )
+
+          user = await scim.create(User(user_name="bjensen@example.com"))
+          assert user.id
 
 The client checks the payloads the application produces, and a compliance mistake fails the
 test.
+
+The ``headers`` parameter gives headers to send with every request, such as ``Authorization``.
+The ``environ`` parameter of the WSGI engine and the ``scope`` parameter of the ASGI engine add
+keys to every request, such as ``REMOTE_USER``. The ASGI engine sends no ``lifespan`` message:
+start an application that needs them apart.
+
+:class:`~scim2_client.engines.werkzeug.TestSCIMClient`, which needs Werkzeug, is deprecated in
+favor of :class:`~scim2_client.engines.wsgi.WSGISCIMClient`.
 
 Write an engine
 ---------------

@@ -10,11 +10,13 @@ from scim2_models import User
 from werkzeug.test import Client as WerkzeugClient
 
 from scim2_client import InvalidServiceDescriptionException
+from scim2_client.engines.asgi import ASGISCIMClient
 from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
 from scim2_client.engines.httpx2 import Client
 from scim2_client.engines.httpx2 import SyncSCIMClient
 from scim2_client.engines.werkzeug import TestSCIMClient
+from scim2_client.engines.wsgi import WSGISCIMClient
 
 BASE_URL = "https://scim.example.com/tenantA/scim/v2"
 
@@ -56,12 +58,23 @@ def async_httpx2_client(endpoint):
     return AsyncSCIMClient(AsyncClient(base_url=BASE_URL), provider=provider(endpoint))
 
 
+def wsgi_client(endpoint):
+    return WSGISCIMClient(None, base_url=BASE_URL, provider=provider(endpoint))
+
+
+def asgi_client(endpoint):
+    return ASGISCIMClient(None, base_url=BASE_URL, provider=provider(endpoint))
+
+
 def werkzeug_client(endpoint):
-    return TestSCIMClient(WerkzeugClient(None), provider=provider(endpoint))
+    with pytest.warns(DeprecationWarning):
+        return TestSCIMClient(WerkzeugClient(None), provider=provider(endpoint))
 
 
 @pytest.mark.parametrize("endpoint", FOREIGN_ENDPOINTS)
-@pytest.mark.parametrize("make_client", [httpx2_client, async_httpx2_client])
+@pytest.mark.parametrize(
+    "make_client", [httpx2_client, async_httpx2_client, wsgi_client, asgi_client]
+)
 def test_endpoint_leading_away_from_the_base_url_is_refused(make_client, endpoint):
     """A server cannot send the requests, and their credentials, anywhere but under the base URL."""
     client = make_client(endpoint)
@@ -73,7 +86,9 @@ def test_endpoint_leading_away_from_the_base_url_is_refused(make_client, endpoin
 
 
 @pytest.mark.parametrize("endpoint", OWN_ENDPOINTS)
-@pytest.mark.parametrize("make_client", [httpx2_client, async_httpx2_client])
+@pytest.mark.parametrize(
+    "make_client", [httpx2_client, async_httpx2_client, wsgi_client, asgi_client]
+)
 def test_endpoint_under_the_base_url_is_used(make_client, endpoint):
     """Relative endpoints and absolute ones pointing back to the base URL are both accepted."""
     client = make_client(endpoint)
@@ -108,7 +123,7 @@ def test_endpoint_is_refused_without_a_base_url():
         client.resource_endpoint(User)
 
 
-@pytest.mark.parametrize("make_client", [httpx2_client, werkzeug_client])
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client, werkzeug_client])
 def test_resource_type_without_endpoint_is_refused(make_client):
     """A resource type the server published without endpoint cannot be requested."""
     client = make_client(None)

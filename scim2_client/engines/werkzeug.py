@@ -8,6 +8,7 @@ from werkzeug.test import TestResponse
 
 from scim2_client.client import BaseSyncSCIMClient
 from scim2_client.client import RawResponse
+from scim2_client.client import _deprecation
 
 
 class TestSCIMClient(BaseSyncSCIMClient):
@@ -16,6 +17,11 @@ class TestSCIMClient(BaseSyncSCIMClient):
     This is helpful for developers of SCIM servers.
     This client avoids to perform real HTTP requests and directly execute the server code instead.
     This allows to dynamically catch the exceptions if something gets wrong.
+
+    .. deprecated:: 0.12
+
+        Use :class:`~scim2_client.engines.wsgi.WSGISCIMClient`, which needs no dependency.
+        Will be removed in 1.0.
 
     :param client: An optional custom :class:`Werkzeug test Client <werkzeug.test.Client>`.
         If :data:`None` a default client is initialized.
@@ -64,6 +70,11 @@ class TestSCIMClient(BaseSyncSCIMClient):
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        _deprecation(
+            "'TestSCIMClient' is deprecated, use "
+            "'scim2_client.engines.wsgi.WSGISCIMClient' instead. "
+            "Will be removed in 1.0."
+        )
         super().__init__(*args, **kwargs)
         self.client = client
         self.scim_prefix = scim_prefix

@@ -15,7 +15,7 @@ from scim2_client.client import RawResponse
 from scim2_client.errors import RequestNetworkException
 
 
-def stays_under_base_url(client: Client | AsyncClient, endpoint: str) -> bool:
+def _stays_under_base_url(client: Client | AsyncClient, endpoint: str) -> bool:
     """Tell whether the URL httpx2 builds for an endpoint has the origin and the path prefix of the base URL.
 
     The URL is built as it will be sent, so an absolute endpoint pointing back
@@ -34,7 +34,7 @@ def stays_under_base_url(client: Client | AsyncClient, endpoint: str) -> bool:
 
 
 @contextmanager
-def handle_request_error() -> Iterator[None]:
+def _handle_request_error() -> Iterator[None]:
     try:
         yield
 
@@ -68,13 +68,13 @@ class SyncSCIMClient(BaseSyncSCIMClient):
         self.client = client
 
     def _stays_under_base_url(self, endpoint: str) -> bool:
-        return stays_under_base_url(self.client, endpoint)
+        return _stays_under_base_url(self.client, endpoint)
 
     def _parse_json(self, response: RawResponse) -> Any:
         return cast(Response, response).json()
 
     def request(self, method: str, url: str, **kwargs: Any) -> Response:
-        with handle_request_error():
+        with _handle_request_error():
             return self.client.request(method, url, **kwargs)
 
 
@@ -103,11 +103,11 @@ class AsyncSCIMClient(BaseAsyncSCIMClient):
         self.client = client
 
     def _stays_under_base_url(self, endpoint: str) -> bool:
-        return stays_under_base_url(self.client, endpoint)
+        return _stays_under_base_url(self.client, endpoint)
 
     def _parse_json(self, response: RawResponse) -> Any:
         return cast(Response, response).json()
 
     async def request(self, method: str, url: str, **kwargs: Any) -> Response:
-        with handle_request_error():
+        with _handle_request_error():
             return await self.client.request(method, url, **kwargs)
