@@ -16,10 +16,9 @@ from scim2_models import ScimProvider
 from scim2_models import SearchRequest
 from scim2_models import ServiceProviderConfig
 from scim2_models import User
-from werkzeug.test import Client
 
 from scim2_client import BaseAsyncSCIMClient
-from scim2_client.engines.werkzeug import TestSCIMClient
+from scim2_client.engines.wsgi import WSGISCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.applications.wsgi import WSGIApplication  # noqa: E402
@@ -30,7 +29,7 @@ Raw = Error | dict[str, Any]
 
 
 @pytest.fixture
-def client() -> TestSCIMClient:
+def client() -> WSGISCIMClient:
     """Build a client with the scim2-models classes, so it returns instances of them."""
     app = WSGIApplication(InMemoryStorage(), load_default_provider())
     provider = ScimProvider(
@@ -40,19 +39,19 @@ def client() -> TestSCIMClient:
             ResourceType.from_resource(Group),
         ],
     )
-    scim_client = TestSCIMClient(Client(app), provider=provider)
+    scim_client = WSGISCIMClient(app, provider=provider)
     scim_client.discover()
     return scim_client
 
 
 @pytest.fixture
-def user(client: TestSCIMClient) -> User[Any]:
+def user(client: WSGISCIMClient) -> User[Any]:
     created = client.create(User[Any](user_name="bjensen"))
     assert isinstance(created, User)
     return created
 
 
-def test_query_with_a_model(client: TestSCIMClient, user: User[Any]) -> None:
+def test_query_with_a_model(client: WSGISCIMClient, user: User[Any]) -> None:
     """A model gives a resource with an id, and a list of resources without."""
     assert user.id
     found = assert_type(client.query(User[Any], user.id), User[Any] | Raw)
@@ -69,13 +68,13 @@ def test_query_with_a_model(client: TestSCIMClient, user: User[Any]) -> None:
     assert isinstance(users, ListResponse)
 
 
-def test_query_with_a_resource_object(client: TestSCIMClient, user: User[Any]) -> None:
+def test_query_with_a_resource_object(client: WSGISCIMClient, user: User[Any]) -> None:
     """A resource object gives a resource of its own type."""
     found = assert_type(client.query(user), User[Any] | Raw)
     assert isinstance(found, User)
 
 
-def test_query_with_a_resource_type(client: TestSCIMClient, user: User[Any]) -> None:
+def test_query_with_a_resource_type(client: WSGISCIMClient, user: User[Any]) -> None:
     """A resource type gives untyped resources."""
     assert user.id
     found = assert_type(client.query("User", user.id), Resource[Any] | Raw)
@@ -87,7 +86,7 @@ def test_query_with_a_resource_type(client: TestSCIMClient, user: User[Any]) -> 
     assert isinstance(users, ListResponse)
 
 
-def test_query_server_description(client: TestSCIMClient) -> None:
+def test_query_server_description(client: WSGISCIMClient) -> None:
     """The service provider configuration is a single object, the schemas a list."""
     config = assert_type(
         client.query(ServiceProviderConfig), ServiceProviderConfig | Raw
@@ -98,7 +97,7 @@ def test_query_server_description(client: TestSCIMClient) -> None:
     assert isinstance(schemas, ListResponse)
 
 
-def test_search(client: TestSCIMClient, user: User[Any]) -> None:
+def test_search(client: WSGISCIMClient, user: User[Any]) -> None:
     """A search gives a list of the model it is called with."""
     request = SearchRequest[Any].model_validate({"filter": 'userName eq "bjensen"'})
     users = assert_type(
@@ -110,7 +109,7 @@ def test_search(client: TestSCIMClient, user: User[Any]) -> None:
     assert isinstance(everything, ListResponse)
 
 
-def test_create_and_replace(client: TestSCIMClient, user: User[Any]) -> None:
+def test_create_and_replace(client: WSGISCIMClient, user: User[Any]) -> None:
     """A resource object or a model gives a resource of the same type."""
     created = assert_type(
         client.create(User[Any], {"userName": "alice"}), User[Any] | Raw

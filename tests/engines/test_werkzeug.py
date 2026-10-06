@@ -20,6 +20,14 @@ from scim2_server.applications.wsgi import WSGIApplication  # noqa: E402
 from scim2_server.memory import InMemoryStorage  # noqa: E402
 from scim2_server.utils import load_default_provider  # noqa: E402
 
+pytestmark = pytest.mark.filterwarnings("ignore:'TestSCIMClient' is deprecated")
+
+
+def test_werkzeug_engine_is_deprecated():
+    """The werkzeug engine is replaced by the WSGI engine."""
+    with pytest.warns(DeprecationWarning, match="WSGISCIMClient"):
+        TestSCIMClient(Client(None))
+
 
 @pytest.fixture
 def scim_app():
