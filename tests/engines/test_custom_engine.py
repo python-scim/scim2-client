@@ -12,8 +12,8 @@ from scim2_models import SearchRequest
 from scim2_client import BaseSyncSCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
-from scim2_server.backend import InMemoryBackend  # noqa: E402
-from scim2_server.provider import SCIMApplication  # noqa: E402
+from scim2_server.applications.wsgi import WSGIApplication  # noqa: E402
+from scim2_server.memory import InMemoryStorage  # noqa: E402
 from scim2_server.utils import load_default_provider  # noqa: E402
 
 
@@ -30,7 +30,7 @@ class RequestOnlySCIMClient(BaseSyncSCIMClient):
 
 def test_engine_only_implementing_request():
     """An engine implementing only the request method performs every SCIM operation."""
-    app = SCIMApplication(InMemoryBackend(), load_default_provider())
+    app = WSGIApplication(InMemoryStorage(), load_default_provider())
     client = Client(base_url="http://scim.test", transport=WSGITransport(app=app))
     scim_client = RequestOnlySCIMClient(client)
     scim_client.discover()

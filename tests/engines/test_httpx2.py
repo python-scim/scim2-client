@@ -20,14 +20,14 @@ from scim2_client.engines.httpx2 import Client
 from scim2_client.engines.httpx2 import SyncSCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
-from scim2_server.backend import InMemoryBackend  # noqa: E402
-from scim2_server.provider import SCIMApplication  # noqa: E402
+from scim2_server.applications.wsgi import WSGIApplication  # noqa: E402
+from scim2_server.memory import InMemoryStorage  # noqa: E402
 from scim2_server.utils import load_default_provider  # noqa: E402
 
 
 @pytest.fixture(scope="session")
 def server():
-    app = SCIMApplication(InMemoryBackend(), load_default_provider())
+    app = WSGIApplication(InMemoryStorage(), load_default_provider())
     host = "localhost"
     port = portpicker.pick_unused_port()
     httpd = wsgiref.simple_server.make_server(host, port, app)
