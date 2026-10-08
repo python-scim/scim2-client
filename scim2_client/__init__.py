@@ -1,6 +1,7 @@
 from . import errors
 from .client import BaseAsyncSCIMClient
 from .client import BaseSyncSCIMClient
+from .client import Me
 from .client import SCIMClient
 from .errors import InvalidServiceDescriptionException
 from .errors import RequestNetworkException
@@ -16,6 +17,7 @@ __all__ = [
     "SCIMClient",
     "BaseSyncSCIMClient",
     "BaseAsyncSCIMClient",
+    "Me",
     "SCIMClientException",
     "SCIMResponseException",
     "RequestNetworkException",

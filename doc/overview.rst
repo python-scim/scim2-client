@@ -356,6 +356,53 @@ With a resource type, ``search`` queries the ``/Employees/.search`` endpoint ins
 resource type. :doc:`explanation/service-description` covers how the client finds the resource
 type of a request.
 
+Act on the authenticated client
+-------------------------------
+
+:data:`~scim2_client.Me` designates the resource of the client the server authenticated, without
+its id. Pass it instead of a resource type, and the request goes to ``/Me``, the alias
+:rfc:`RFC 7644 §3.11 <7644#section-3.11>` defines. A server may let a client modify its own
+resource under ``/Me``, and refuse the same request on the URL of the resource:
+
+.. tab-set::
+   :class: outline
+
+   .. tab-item:: Sync
+      :sync: sync
+
+      .. code-block:: python
+
+          from scim2_client import Me
+
+          me = scim.query(Me)
+          me.display_name = "Babs Jensen"
+          me = scim.replace(Me, me)
+          response = scim.modify(Me, patch)
+          scim.delete(Me)
+
+          me = scim.create(Me, User(user_name="bjensen"))
+
+   .. tab-item:: Async
+      :sync: async
+
+      .. code-block:: python
+
+          from scim2_client import Me
+
+          me = await scim.query(Me)
+          me.display_name = "Babs Jensen"
+          me = await scim.replace(Me, me)
+          response = await scim.modify(Me, patch)
+          await scim.delete(Me)
+
+          me = await scim.create(Me, User(user_name="bjensen"))
+
+The resource under ``/Me`` may be of any resource type the server serves, and the server chooses
+the resource type of a resource created under ``/Me``. A server that does not support ``/Me``
+answers ``501 Not Implemented``. A server may also redirect to the resource with a
+``308 Permanent Redirect``. scim2-client does not follow it, but httpx2 does when its client is
+built with ``follow_redirects=True``.
+
 Send operations in bulk
 -----------------------
 
