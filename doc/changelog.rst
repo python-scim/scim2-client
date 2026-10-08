@@ -1,6 +1,17 @@
 Changelog
 =========
 
+[0.13.0] - Unreleased
+---------------------
+
+Removed
+^^^^^^^
+- A model with no resource type named after its schema raises
+  :class:`~scim2_models.InvalidValueException`. Pass the resource type instead.
+  A resource whose ``meta.resourceType`` is unknown, or does not serve it, raises it too.
+- The ``resource`` parameter of ``delete`` and ``modify``. Use ``target`` instead.
+- ``modify(User, patch, "123")``, with the patch operation before the id. Pass the id first.
+
 [0.12.0] - 2026-10-07
 ---------------------
 

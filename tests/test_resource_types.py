@@ -206,30 +206,35 @@ def test_resource_reaches_the_resource_type_it_belongs_to(httpserver, client):
     assert client.delete(user) is None
 
 
-def test_unknown_resource_type_of_a_resource_is_deprecated(httpserver, client):
-    """Test that a resource belonging to an unknown resource type falls back on the one named after its schema."""
-    httpserver.expect_request(f"/Users/{USER_ID}", method="DELETE").respond_with_data(
-        status=204
-    )
+def test_unknown_resource_type_of_a_resource_is_refused(client):
+    """Test that a resource belonging to an unknown resource type is refused."""
     user = User(id=USER_ID, meta=Meta(resource_type="Pet"))
 
-    with pytest.warns(
-        DeprecationWarning, match="The resource type 'Pet' of the resource is unknown"
-    ):
-        assert client.delete(user) is None
+    with pytest.raises(InvalidValueException, match="Unknown resource type: 'Pet'"):
+        client.delete(user)
 
 
-def test_guessing_the_resource_type_is_deprecated(httpserver, make_client):
-    """Test that a model with no resource type named after its schema still reaches a resource type serving it."""
-    client = make_client(resource_type("Person", "/People"), models=[User])
-    httpserver.expect_request(f"/People/{USER_ID}").respond_with_json(
-        user_payload("Person"), content_type="application/scim+json"
+def test_resource_type_of_a_resource_that_does_not_serve_it_is_refused(make_client):
+    """Test that a resource declaring a resource type of another schema is refused."""
+    client = make_client(
+        ResourceType.from_resource(User),
+        resource_type("Member", "/Members", schema=Member.__schema__),
+        models=[User, Member],
     )
+    user = User(id=USER_ID, meta=Meta(resource_type="Member"))
 
-    with pytest.warns(DeprecationWarning, match="pass the resource type instead"):
-        response = client.query(User, USER_ID)
+    with pytest.raises(
+        InvalidValueException, match="The resource type 'Member' does not serve User"
+    ):
+        client.delete(user)
 
-    assert response.id == USER_ID
+
+def test_model_with_no_resource_type_named_after_its_schema_is_refused(make_client):
+    """Test that a model is not sent to a resource type named otherwise, even if it serves its schema."""
+    client = make_client(resource_type("Person", "/People"), models=[User])
+
+    with pytest.raises(InvalidValueException, match="pass the resource type"):
+        client.query(User, USER_ID)
 
 
 def test_resource_type_named_after_another_schema_is_not_used(make_client):
@@ -240,15 +245,15 @@ def test_resource_type_named_after_another_schema_is_not_used(make_client):
         models=[User, Member],
     )
 
-    with pytest.warns(DeprecationWarning, match="pass the resource type instead"):
-        assert client.resource_endpoint(Member) == "/Members"
+    with pytest.raises(InvalidValueException, match="pass the resource type"):
+        client.resource_endpoint(Member)
 
 
 def test_model_served_by_no_resource_type_is_refused(make_client):
     """Test that a model no resource type serves is refused."""
     client = make_client(EMPLOYEE, models=[User, Group])
 
-    with pytest.raises(InvalidValueException, match="No ResourceType is matching"):
+    with pytest.raises(InvalidValueException, match="pass the resource type"):
         client.resource_endpoint(Group)
 
 
@@ -422,35 +427,16 @@ def test_query_parameters_take_the_place_of_the_id(httpserver, client):
         client.query(user, parameters, parameters)
 
 
-def test_patch_operation_before_the_id_is_deprecated(httpserver, client):
-    """Test that the patch operation may still come before the id, with a warning."""
-    httpserver.expect_request(f"/Users/{USER_ID}", method="PATCH").respond_with_data(
-        status=204
-    )
+def test_patch_operation_passed_twice_is_refused(client):
+    """Test that a patch operation in place of the id cannot be followed by another one."""
     patch_op = PatchOp[User](
         operations=[
             PatchOperation(op=PatchOperation.Op.replace_, path="nickName", value="B")
         ]
     )
 
-    with pytest.warns(DeprecationWarning, match="pass the id first"):
-        assert client.modify(User, patch_op, USER_ID) is None
-
     with pytest.raises(InvalidValueException, match="patch operation twice"):
         client.modify(User, patch_op, patch_op)
-
-
-def test_resource_parameter_is_renamed_target(httpserver, client):
-    """Test that the target may still be passed as 'resource', with a warning."""
-    httpserver.expect_request(f"/Users/{USER_ID}", method="DELETE").respond_with_data(
-        status=204
-    )
-
-    with pytest.warns(DeprecationWarning, match="renamed 'target'"):
-        assert client.delete(resource=User, id=USER_ID) is None
-
-    with pytest.raises(InvalidValueException, match="both 'target' and 'resource'"):
-        client.delete(User, USER_ID, resource=User)
 
 
 def test_search_reaches_the_resource_type_of_a_model(httpserver, client):

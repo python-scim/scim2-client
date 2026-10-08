@@ -606,22 +606,6 @@ class SCIMClient:
         return cast(str, url)
 
     @staticmethod
-    def _renamed_target(target: Any, resource: Any) -> Any:
-        """Read the target passed under the deprecated 'resource' name."""
-        if resource is None:
-            return target
-
-        if target is not None:
-            raise InvalidValueException(
-                detail="Cannot pass both 'target' and 'resource'"
-            )
-
-        _deprecation(
-            "The 'resource' parameter is renamed 'target'. Will be removed in 0.12."
-        )
-        return resource
-
-    @staticmethod
     def _resolve_target(
         target: type[Resource[Any]] | Resource[Any] | ResourceType | str | None,
         id: str | Resource[Any] | None,
@@ -816,21 +800,18 @@ class SCIMClient:
             return self._explicit_resource_type(resource_model, declared, resource_type)
 
         if declared:
-            found = self._find_resource_type(declared)
-            if found and self._serves(found, resource_model):
-                return found
-
-            _deprecation(
-                f"The resource type '{declared}' of the resource is unknown "
-                f"or does not serve it. This will raise an error in 0.12."
-            )
+            return self._explicit_resource_type(resource_model, None, declared)
 
         model = cast("type[Resource[Any]]", resource_model)
-        found = self._find_resource_type(str(model.__schema__).split(":")[-1])
-        if found and self._serves(found, model):
-            return found
+        schema = str(model.__schema__)
+        found = self._find_resource_type(schema.split(":")[-1])
+        if found is None or not self._serves(found, model):
+            raise InvalidValueException(
+                detail=f"No resource type named after the schema '{schema}' "
+                f"serves {model.__name__}, pass the resource type"
+            )
 
-        return self._guess_resource_type(model)
+        return found
 
     def _explicit_resource_type(
         self,
@@ -838,7 +819,7 @@ class SCIMClient:
         declared: str | None,
         resource_type: ResourceType | str,
     ) -> ResourceType:
-        """Check that a resource type passed by the caller can serve the request."""
+        """Check that a resource type passed by the caller, or declared by the resource, can serve the request."""
         found = self._find_resource_type(resource_type)
         if found is None:
             name = (
@@ -861,37 +842,6 @@ class SCIMClient:
             )
 
         return found
-
-    def _guess_resource_type(self, resource_model: type[Resource[Any]]) -> ResourceType:
-        """Find a resource type serving a model, the way versions before 0.11 did."""
-        provider = self.provider
-        schema = str(resource_model.__schema__)
-        guessed = next(
-            (
-                resource_type
-                for resource_type in provider.resource_types
-                if provider.model_for(resource_type) is resource_model
-            ),
-            None,
-        ) or next(
-            (
-                resource_type
-                for resource_type in provider.resource_types
-                if str(resource_type.schema_) == schema
-            ),
-            None,
-        )
-        if guessed is None:
-            raise InvalidValueException(
-                detail=f"No ResourceType is matching the schema: {schema}"
-            )
-
-        _deprecation(
-            f"No resource type named after the schema '{schema}' serves "
-            f"{resource_model.__name__}. Guessing the resource type is deprecated, "
-            f"pass the resource type instead. Will be removed in 0.12."
-        )
-        return guessed
 
     @staticmethod
     def _check_required_extensions(
@@ -1470,11 +1420,8 @@ class SCIMClient:
         target: Resource[Any] | type[Resource[Any]] | ResourceType | str | None = None,
         id: str | Resource[Any] | None = None,
         expected_status_codes: list[int] | None = None,
-        *,
-        resource: Resource[Any] | type[Resource[Any]] | None = None,
         **kwargs: Any,
     ) -> RequestPayload:
-        target = self._renamed_target(target, resource)
         resource_model, resource_type, instance, id = self._resolve_target(target, id)
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -1541,23 +1488,15 @@ class SCIMClient:
         self,
         target: ResourceT | type[ResourceT] | ResourceType | str | None = None,
         id: str | ResourceT | PatchOp[ResourceT] | dict[str, Any] | None = None,
-        patch_op: PatchOp[ResourceT] | dict[str, Any] | str | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         expected_status_codes: list[int] | None = None,
-        *,
-        resource: ResourceT | type[ResourceT] | None = None,
         **kwargs: Any,
     ) -> RequestPayload:
         """Prepare a PATCH request payload."""
-        target = self._renamed_target(target, resource)
         # The id is optional, so the patch operation may take its place.
         if not isinstance(id, str | Resource | None):
-            if isinstance(patch_op, str):
-                _deprecation(
-                    "Passing the patch operation before the id is deprecated, "
-                    "pass the id first. Will be removed in 0.12."
-                )
-            elif patch_op is not None:
+            if patch_op is not None:
                 raise InvalidValueException(
                     detail="Cannot pass the patch operation twice"
                 )
@@ -2202,8 +2141,6 @@ class BaseSyncSCIMClient(SCIMClient):
         expected_status_codes: list[int]
         | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        *,
-        resource: Resource[Any] | type[Resource[Any]] | None = None,
         **kwargs: Any,
     ) -> Error | dict[str, Any] | None:
         """Perform a DELETE request, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
@@ -2217,7 +2154,6 @@ class BaseSyncSCIMClient(SCIMClient):
             type, read from its ``meta.resourceType``, and the id.
         :param id: The id of the resource to delete, or a :class:`~scim2_models.Resource`
             object carrying it.
-        :param resource: Deprecated, pass :paramref:`target` instead.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
             If :data:`None` any status code is accepted.
@@ -2244,7 +2180,6 @@ class BaseSyncSCIMClient(SCIMClient):
         """
         req = self._prepare_delete_request(
             target=target,
-            resource=resource,
             id=id,
             expected_status_codes=expected_status_codes,
             **kwargs,
@@ -2395,14 +2330,12 @@ class BaseSyncSCIMClient(SCIMClient):
         self,
         target: ResourceT | type[ResourceT] | ResourceType | str | None = None,
         id: str | ResourceT | PatchOp[ResourceT] | dict[str, Any] | None = None,
-        patch_op: PatchOp[ResourceT] | dict[str, Any] | str | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        *,
-        resource: ResourceT | type[ResourceT] | None = None,
         **kwargs: Any,
     ) -> ResourceT | Error | dict[str, Any] | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
@@ -2420,7 +2353,6 @@ class BaseSyncSCIMClient(SCIMClient):
         :param patch_op: The :class:`~scim2_models.PatchOp` object describing the modifications.
             Must be parameterized with the model of the resource
             (e.g., :code:`PatchOp[User]` for a :code:`User`).
-        :param resource: Deprecated, pass :paramref:`target` instead.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -2460,7 +2392,6 @@ class BaseSyncSCIMClient(SCIMClient):
         """
         req = self._prepare_patch_request(
             target=target,
-            resource=resource,
             patch_op=patch_op,
             id=id,
             check_request_payload=check_request_payload,
@@ -3101,8 +3032,6 @@ class BaseAsyncSCIMClient(SCIMClient):
         expected_status_codes: list[int]
         | None = SCIMClient.DELETION_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        *,
-        resource: Resource[Any] | type[Resource[Any]] | None = None,
         **kwargs: Any,
     ) -> Error | dict[str, Any] | None:
         """Perform a DELETE request, as defined in :rfc:`RFC7644 §3.6 <7644#section-3.6>`.
@@ -3116,7 +3045,6 @@ class BaseAsyncSCIMClient(SCIMClient):
             type, read from its ``meta.resourceType``, and the id.
         :param id: The id of the resource to delete, or a :class:`~scim2_models.Resource`
             object carrying it.
-        :param resource: Deprecated, pass :paramref:`target` instead.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
             If :data:`None` any status code is accepted.
@@ -3143,7 +3071,6 @@ class BaseAsyncSCIMClient(SCIMClient):
         """
         req = self._prepare_delete_request(
             target=target,
-            resource=resource,
             id=id,
             expected_status_codes=expected_status_codes,
             **kwargs,
@@ -3294,14 +3221,12 @@ class BaseAsyncSCIMClient(SCIMClient):
         self,
         target: ResourceT | type[ResourceT] | ResourceType | str | None = None,
         id: str | ResourceT | PatchOp[ResourceT] | dict[str, Any] | None = None,
-        patch_op: PatchOp[ResourceT] | dict[str, Any] | str | None = None,
+        patch_op: PatchOp[ResourceT] | dict[str, Any] | None = None,
         check_request_payload: bool | None = None,
         check_response_payload: bool | None = None,
         expected_status_codes: list[int]
         | None = SCIMClient.PATCH_RESPONSE_STATUS_CODES,
         raise_scim_errors: bool | None = None,
-        *,
-        resource: ResourceT | type[ResourceT] | None = None,
         **kwargs: Any,
     ) -> ResourceT | Error | dict[str, Any] | None:
         """Perform a PATCH request to modify a resource, as defined in :rfc:`RFC7644 §3.5.2 <7644#section-3.5.2>`.
@@ -3319,7 +3244,6 @@ class BaseAsyncSCIMClient(SCIMClient):
         :param patch_op: The :class:`~scim2_models.PatchOp` object describing the modifications.
             Must be parameterized with the model of the resource
             (e.g., :code:`PatchOp[User]` for a :code:`User`).
-        :param resource: Deprecated, pass :paramref:`target` instead.
         :param check_request_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_request_payload`.
         :param check_response_payload: If set, overwrites :paramref:`scim2_client.SCIMClient.check_response_payload`.
         :param expected_status_codes: The list of expected status codes form the response.
@@ -3359,7 +3283,6 @@ class BaseAsyncSCIMClient(SCIMClient):
         """
         req = self._prepare_patch_request(
             target=target,
-            resource=resource,
             patch_op=patch_op,
             id=id,
             check_request_payload=check_request_payload,
