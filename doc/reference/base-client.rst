@@ -17,6 +17,9 @@ here as class attributes.
    :members:
    :member-order: bysource
 
+.. autodata:: scim2_client.Me
+   :no-value:
+
 .. autoclass:: scim2_client.client.ResponseHeaders
    :members:
 

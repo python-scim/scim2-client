@@ -9,6 +9,7 @@ from scim2_models import EnterpriseUser
 from scim2_models import Error
 from scim2_models import Group
 from scim2_models import ListResponse
+from scim2_models import PatchOp
 from scim2_models import Resource
 from scim2_models import ResourceType
 from scim2_models import Schema
@@ -18,28 +19,35 @@ from scim2_models import ServiceProviderConfig
 from scim2_models import User
 
 from scim2_client import BaseAsyncSCIMClient
+from scim2_client import Me
 from scim2_client.engines.wsgi import WSGISCIMClient
 
 scim2_server = pytest.importorskip("scim2_server")
 from scim2_server.applications.wsgi import WSGIApplication  # noqa: E402
 from scim2_server.memory import InMemoryStorage  # noqa: E402
+from scim2_server.requests import ScimRequest  # noqa: E402
+from scim2_server.service import ScimService  # noqa: E402
 from scim2_server.utils import load_default_provider  # noqa: E402
 
 Raw = Error | dict[str, Any]
 
 
-@pytest.fixture
-def client() -> WSGISCIMClient:
-    """Build a client with the scim2-models classes, so it returns instances of them."""
-    app = WSGIApplication(InMemoryStorage(), load_default_provider())
-    provider = ScimProvider(
+def client_provider() -> ScimProvider:
+    """Describe the server with the scim2-models classes, so the client returns instances of them."""
+    return ScimProvider(
         models=[User, EnterpriseUser, Group],
         resource_types=[
             ResourceType.from_resource(User[EnterpriseUser]),
             ResourceType.from_resource(Group),
         ],
     )
-    scim_client = WSGISCIMClient(app, provider=provider)
+
+
+@pytest.fixture
+def client() -> WSGISCIMClient:
+    """Build a client with the scim2-models classes, so it returns instances of them."""
+    app = WSGIApplication(InMemoryStorage(), load_default_provider())
+    scim_client = WSGISCIMClient(app, provider=client_provider())
     scim_client.discover()
     return scim_client
 
@@ -133,6 +141,62 @@ def test_create_and_replace(client: WSGISCIMClient, user: User[Any]) -> None:
     assert isinstance(replaced, User)
 
 
+class MeService(ScimService):
+    """Serve /Me with the user whose id is the subject."""
+
+    def me_target(self, request: ScimRequest) -> tuple[ResourceType, str]:
+        return self.get_resource_type("User"), request.subject
+
+    def me_creation_type(self, request: ScimRequest) -> ResourceType:
+        return self.get_resource_type("User")
+
+
+class MeApplication(WSGIApplication):
+    """Authenticate every client as the user of :attr:`subject`."""
+
+    subject: str | None = None
+
+    def get_subject(self, request: ScimRequest) -> str | None:
+        return self.subject
+
+
+def test_me() -> None:
+    """Me reaches the resource of the authenticated client on a server serving /Me."""
+    provider = load_default_provider()
+    app = MeApplication(InMemoryStorage(), provider, MeService(provider))
+    client = WSGISCIMClient(app, provider=client_provider())
+    client.discover()
+
+    created = assert_type(
+        client.create(Me, User[Any](user_name="bjensen")), User[Any] | Raw
+    )
+    assert isinstance(created, User)
+    assert created.id
+    app.subject = created.id
+
+    found = assert_type(client.query(Me), Resource[Any] | Raw)
+    assert isinstance(found, User)
+    assert found.user_name == "bjensen"
+
+    found.display_name = "Babs"
+    replaced = assert_type(client.replace(Me, found), User[Any] | Raw)
+    assert isinstance(replaced, User)
+    assert replaced.display_name == "Babs"
+
+    patch_op = PatchOp[User[Any]].model_validate(
+        {"Operations": [{"op": "replace", "path": "nickName", "value": "B"}]}
+    )
+    assert_type(client.modify(Me, patch_op), User[Any] | Raw | None)
+    modified = client.query(Me)
+    assert isinstance(modified, User)
+    assert modified.nick_name == "B"
+
+    assert client.delete(Me) is None
+    gone = client.query(User[Any], created.id, raise_scim_errors=False)
+    assert isinstance(gone, Error)
+    assert gone.status == 404
+
+
 if TYPE_CHECKING:
 
     async def check_async_client(client: BaseAsyncSCIMClient, user: User[Any]) -> None:
@@ -147,3 +211,6 @@ if TYPE_CHECKING:
         assert_type(await client.create(user), User[Any] | Raw)
         assert_type(await client.replace(User[Any], {}), User[Any] | Raw)
         assert_type(await client.create({}), Resource[Any] | Raw)
+        assert_type(await client.query(Me), Resource[Any] | Raw)
+        assert_type(await client.create(Me, user), User[Any] | Raw)
+        assert_type(await client.replace(Me, user), User[Any] | Raw)

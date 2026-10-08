@@ -66,6 +66,8 @@ nitpick_ignore = [
     ("py:class", "scim2_client.engines.werkzeug.ResourceT"),
     ("py:class", "scim2_client.engines.wsgi.ResourceT"),
     ("py:class", "scim2_client.engines.asgi.ResourceT"),
+    # The type of scim2_client.Me, which is documented instead.
+    ("py:class", "scim2_client.client._Me"),
     # The httpx2 inventory does not publish its Response class.
     ("py:class", "httpx2.Response"),
     # The WSGI types only exist in typeshed.

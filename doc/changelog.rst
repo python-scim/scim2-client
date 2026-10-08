@@ -4,6 +4,12 @@ Changelog
 [0.13.0] - Unreleased
 ---------------------
 
+Added
+^^^^^
+- :data:`~scim2_client.Me` sends a request to ``/Me``, the resource of the authenticated client
+  (:rfc:`7644#section-3.11`): ``query(Me)``, ``create(Me, user)``, ``replace(Me, user)``,
+  ``modify(Me, patch)``, ``delete(Me)``.
+
 Removed
 ^^^^^^^
 - A model with no resource type named after its schema raises
