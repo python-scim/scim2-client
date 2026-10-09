@@ -1121,10 +1121,13 @@ class SCIMClient:
 
         A body too deeply nested for the decoder, or holding an integer too long for
         Python to convert, is reported as any other body that is not valid JSON.
+        A failure whose body is not JSON, such as an HTML page answered by a proxy,
+        reports its status code instead.
         """
         try:
             return self._parse_json(response) if response.text else None
         except (ValueError, RecursionError) as exc:
+            self._check_failure(response.status_code, None)
             raise UnexpectedContentFormatException(source=response) from exc
 
     def _read_response(

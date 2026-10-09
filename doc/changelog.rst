@@ -1,6 +1,15 @@
 Changelog
 =========
 
+[0.13.2] - Unreleased
+---------------------
+
+Fixed
+^^^^^
+- A failure response whose body is not JSON, such as an HTML page answered by a proxy, raises
+  :exc:`~scim2_client.UnexpectedStatusCodeException` with its status code. It used to raise
+  :exc:`~scim2_client.UnexpectedContentFormatException`, which did not tell the status code.
+
 [0.13.1] - 2026-10-09
 ---------------------
 

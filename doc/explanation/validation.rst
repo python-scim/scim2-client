@@ -32,7 +32,8 @@ A failure must then carry a SCIM error (:rfc:`RFC7644 §3.12 <7644#section-3.12>
 ``2xx`` or a ``304`` response is a success. Any other response without an
 :class:`~scim2_models.Error` body raises :exc:`~scim2_client.UnexpectedStatusCodeException`,
 whatever the status codes the operation expects. Otherwise, a ``401`` answered by a proxy would
-read as a success with no content.
+read as a success with no content. A failure whose body is not JSON, such as an HTML page,
+raises it too, so the status code is reported rather than the format of the body.
 
 The body is then read as an :class:`~scim2_models.Error` when its ``schemas`` say so. This
 happens **before** the status code is examined, so a server returning a well-formed SCIM error

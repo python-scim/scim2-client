@@ -112,6 +112,24 @@ def wsgi_client(body, status=200, **kwargs):
     return WSGISCIMClient(app, **{"provider": provider(), **kwargs})
 
 
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (404, "<html><body>Not Found</body></html>"),
+        (403, "Forbidden"),
+        (502, "<html><body>Bad Gateway</body></html>"),
+    ],
+)
+@pytest.mark.parametrize("call", CALLS)
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
+def test_failure_with_a_body_that_is_not_json_reports_its_status(
+    make_client, call, status, body
+):
+    """A failure whose body is not JSON, such as a page answered by a proxy, reports its status."""
+    with pytest.raises(UnexpectedStatusCodeException, match=f"answered {status}"):
+        call(make_client(body, status))
+
+
 @pytest.mark.parametrize("body", UNDECODABLE_BODIES)
 @pytest.mark.parametrize("call", CALLS)
 @pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
