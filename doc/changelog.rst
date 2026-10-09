@@ -9,6 +9,11 @@ Fixed
 - Until 1.0, ``delete`` and ``modify`` raise a :class:`TypeError` when they are given the
   ``resource`` parameter removed in 0.13. It used to be passed to the HTTP library, and the request
   failed with a misleading "No resource type" error.
+- A failure response without a SCIM error, such as a ``401`` answered by a proxy or a ``404``
+  without body, raises :exc:`~scim2_client.UnexpectedStatusCodeException`, even when
+  :paramref:`~scim2_client.SCIMClient.check_response_status_codes` is :data:`False`.
+  The methods used to return :data:`None`, as for a success with no content, or to report a
+  wrong content type.
 
 [0.13.0] - 2026-10-08
 ---------------------

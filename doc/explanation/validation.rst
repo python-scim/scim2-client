@@ -23,11 +23,16 @@ filtering off too, and the payload is sent exactly as it was given.
 What a response is checked against
 ----------------------------------
 
-A response is checked in four passes.
-
 The ``Content-Type`` comes first, since a body that is not SCIM JSON cannot be read as one.
 :rfc:`RFC7644 §8.1 <7644#section-8.1>` names ``application/scim+json``, and
 ``application/json`` is accepted alongside it because older implementations use it.
+A response without body has no type to check.
+
+A failure must then carry a SCIM error (:rfc:`RFC7644 §3.12 <7644#section-3.12>`). Only a
+``2xx`` or a ``304`` response is a success. Any other response without an
+:class:`~scim2_models.Error` body raises :exc:`~scim2_client.UnexpectedStatusCodeException`,
+whatever the status codes the operation expects. Otherwise, a ``401`` answered by a proxy would
+read as a success with no content.
 
 The body is then read as an :class:`~scim2_models.Error` when its ``schemas`` say so. This
 happens **before** the status code is examined, so a server returning a well-formed SCIM error

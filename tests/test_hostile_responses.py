@@ -15,6 +15,7 @@ from scim2_client import InvalidServiceDescriptionException
 from scim2_client import ResponsePayloadValidationException
 from scim2_client import SCIMResponseException
 from scim2_client import UnexpectedContentFormatException
+from scim2_client import UnexpectedStatusCodeException
 from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
 from scim2_client.engines.httpx2 import Client
@@ -161,11 +162,68 @@ def test_body_that_is_not_an_object_is_refused(make_client, call, body):
 @pytest.mark.parametrize("status", [400, 404, 500])
 @pytest.mark.parametrize("body", NOT_OBJECT_BODIES)
 def test_error_status_with_a_body_that_is_not_an_object_is_refused(body, status):
-    """An error response is read as a SCIM message too."""
+    """An error response whose body is not a SCIM error is refused."""
     client = httpx2_client(body, status)
 
-    with pytest.raises(UnexpectedContentFormatException, match="is not a JSON object"):
+    with pytest.raises(UnexpectedStatusCodeException, match="without a SCIM error"):
         client.query(User, "1")
+
+
+@pytest.mark.parametrize("status", [307, 401, 404, 500, 503])
+@pytest.mark.parametrize("call", CALLS)
+@pytest.mark.parametrize("make_client", [httpx2_client, wsgi_client])
+def test_failure_without_body_is_refused(make_client, call, status):
+    """A failure without body is not read as a success with no content."""
+    with pytest.raises(UnexpectedStatusCodeException, match=f"answered {status}"):
+        call(make_client(b"", status))
+
+
+@pytest.mark.parametrize("call", CALLS)
+def test_failure_without_body_nor_content_type_is_a_status_error(call):
+    """A body-less failure without content type, such as a 401 from a proxy, reports its status."""
+
+    def app(environ, start_response):
+        start_response("401 Unauthorized", [("WWW-Authenticate", "Bearer")])
+        return []
+
+    with pytest.raises(UnexpectedStatusCodeException, match="answered 401"):
+        call(WSGISCIMClient(app, provider=provider()))
+
+
+def test_failure_with_a_body_that_is_not_an_error_is_refused():
+    """A failure with a JSON object that is not a SCIM error is refused."""
+    client = httpx2_client(b'{"message": "Bad gateway"}', 502)
+
+    with pytest.raises(UnexpectedStatusCodeException, match="answered 502"):
+        client.query(User, "1")
+
+
+def test_unchecked_failure_without_error_is_refused():
+    """Without response checks, a failure is still not returned as a payload."""
+    client = httpx2_client(b'{"message": "Bad gateway"}', 502)
+
+    with pytest.raises(UnexpectedStatusCodeException, match="answered 502"):
+        client.query(User, "1", check_response_payload=False)
+
+
+def test_expected_failure_without_body_is_refused():
+    """A failure status the caller expects still needs a SCIM error."""
+    client = httpx2_client(b"", 404, check_response_status_codes=False)
+
+    with pytest.raises(UnexpectedStatusCodeException, match="answered 404"):
+        client.query(User, "1", expected_status_codes=[404])
+
+
+def test_success_without_body_needs_no_content_type():
+    """A response without body has no type to check."""
+
+    def app(environ, start_response):
+        start_response("200 OK", [])
+        return []
+
+    client = WSGISCIMClient(app, provider=provider())
+
+    assert client.delete(User, "1", expected_status_codes=[200]) is None
 
 
 @pytest.mark.parametrize("body", INVALID_SCHEMAS_BODIES)
