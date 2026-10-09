@@ -439,6 +439,13 @@ def test_patch_operation_passed_twice_is_refused(client):
         client.modify(User, patch_op, patch_op)
 
 
+@pytest.mark.parametrize("operation", ["delete", "modify"])
+def test_resource_parameter_is_refused(client, operation):
+    """The resource parameter removed in 0.13 is refused instead of being passed to the HTTP library."""
+    with pytest.raises(TypeError, match="Pass the resource as target"):
+        getattr(client, operation)(resource=User, id="123")
+
+
 def test_search_reaches_the_resource_type_of_a_model(httpserver, client):
     """Test that a search under a model is sent to the endpoint of its resource type."""
     httpserver.expect_request("/Users/.search", method="POST").respond_with_json(

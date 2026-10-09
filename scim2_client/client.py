@@ -80,6 +80,19 @@ DISCOVERY_OPTIONS: dict[str, Any] = {
 _ME_ENDPOINT = "/Me"
 
 
+def _refuse_resource_parameter(operation: str, kwargs: dict[str, Any]) -> None:
+    """Refuse the ``resource`` parameter that ``delete`` and ``modify`` took until 0.12.
+
+    It would otherwise be passed to the HTTP library, and the request would lack its target.
+    Will be removed in 1.0.
+    """
+    if "resource" in kwargs:
+        raise TypeError(
+            f"{operation}() got an unexpected keyword argument 'resource'. "
+            "Pass the resource as target."
+        )
+
+
 class _Me:
     """The resource of the authenticated client, reached under ``/Me`` (:rfc:`RFC 7644 §3.11 <7644#section-3.11>`).
 
@@ -1506,6 +1519,7 @@ class SCIMClient:
         expected_status_codes: list[int] | None = None,
         **kwargs: Any,
     ) -> RequestPayload:
+        _refuse_resource_parameter("delete", kwargs)
         url, _, instance = self._locate_resource(target, id, "delete")
         req = RequestPayload(
             expected_status_codes=expected_status_codes,
@@ -1572,6 +1586,7 @@ class SCIMClient:
         **kwargs: Any,
     ) -> RequestPayload:
         """Prepare a PATCH request payload."""
+        _refuse_resource_parameter("modify", kwargs)
         # The id is optional, so the patch operation may take its place.
         if not isinstance(id, str | Resource | None):
             if patch_op is not None:

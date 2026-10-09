@@ -1,6 +1,15 @@
 Changelog
 =========
 
+[0.13.1] - Unreleased
+---------------------
+
+Fixed
+^^^^^
+- Until 1.0, ``delete`` and ``modify`` raise a :class:`TypeError` when they are given the
+  ``resource`` parameter removed in 0.13. It used to be passed to the HTTP library, and the request
+  failed with a misleading "No resource type" error.
+
 [0.13.0] - 2026-10-08
 ---------------------
 
