@@ -1,3 +1,5 @@
+<img alt="python-scim logo" src="https://raw.githubusercontent.com/python-scim/.github/refs/heads/main/python-scim.svg" height="72" align="right">
+
 # scim2-client
 
 A SCIM client Python library built upon [scim2-models](https://scim2-models.readthedocs.io) ,
