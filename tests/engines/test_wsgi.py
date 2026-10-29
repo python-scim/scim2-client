@@ -119,6 +119,7 @@ def test_raw_content_replaces_the_body_of_an_operation(scim_client):
     response = scim_client.create(
         User(user_name="bjensen"),
         content=b'{"schemas": [',
+        headers={"Content-Type": "application/scim+json"},
         raise_scim_errors=False,
     )
 

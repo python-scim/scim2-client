@@ -55,13 +55,15 @@ Send a raw body
 ---------------
 
 The extra arguments of an operation go to the engine, and replace what the client builds. With
-httpx and the in-process engines, ``content`` replaces the body. The response is read as usual:
+httpx and the in-process engines, ``content`` replaces the body. A raw body is sent without
+``Content-Type``, so pass it in ``headers``. The response is read as usual:
 
 .. code-block:: python
 
     error = scim.create(
         User(user_name="bjensen"),
         content=b'{"schemas": [',
+        headers={"Content-Type": "application/scim+json"},
         raise_scim_errors=False,
     )
     assert error.scim_type == "invalidSyntax"
