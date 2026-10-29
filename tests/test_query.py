@@ -448,7 +448,6 @@ def test_raise_scim_errors(sync_client):
         sync_client.query(User, "unknown", raise_scim_errors=True)
 
     expected = Error(detail="Resource unknown not found", status=404)
-    assert exc_info.value.error == expected
     assert exc_info.value.to_error() == expected
 
 
@@ -457,7 +456,7 @@ def test_query_error_exception_carries_the_response(sync_client):
     with pytest.raises(SCIMException) as exc_info:
         sync_client.query(User, "unknown", raise_scim_errors=True)
 
-    assert exc_info.value.source.status_code == 404
+    assert exc_info.value.response.status_code == 404
 
 
 def test_raise_scim_errors_with_scim_type(sync_client):
@@ -478,7 +477,6 @@ def test_raise_scim_errors_without_detail(sync_client):
     with pytest.raises(SCIMException) as exc_info:
         sync_client.query(User, "no-detail", raise_scim_errors=True)
 
-    assert exc_info.value.error == Error(status=500)
     assert exc_info.value.to_error().status == 500
 
 

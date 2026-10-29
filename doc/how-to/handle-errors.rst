@@ -97,6 +97,27 @@ fault of a response in one clause:
     except SCIMResponseException as exc:
         print(f"The server answered something unusable: {exc}")
 
+Read the response behind an exception
+-------------------------------------
+
+An exception raised while reading a response keeps this response in its ``response``
+attribute, with its status code and its headers. This holds for the
+:exc:`~scim2_client.SCIMClientException` subclasses and for the
+:class:`~scim2_models.SCIMException` raised for an error returned by the server. The attribute
+is :data:`None` when no response was read, for instance when the request never reached the
+server:
+
+.. code-block:: python
+
+    from scim2_client import SCIMResponseException
+    from scim2_models import SCIMException
+
+    try:
+        user = scim.query(User, "my-user-id")
+    except (SCIMException, SCIMResponseException) as exc:
+        if exc.response is not None:
+            print(exc.response.status_code, exc.response.headers.get("Retry-After"))
+
 Read the cause of a request the client refused
 ----------------------------------------------
 

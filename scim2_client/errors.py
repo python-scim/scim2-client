@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from typing import Any
 
 from pydantic import ValidationError
@@ -5,20 +6,29 @@ from scim2_models import Context
 from scim2_models import Error
 from scim2_models import SCIMException
 
+if TYPE_CHECKING:
+    from scim2_client.client import RawResponse
+
 
 class SCIMClientException(Exception):
     """Base exception for scim2-client.
 
     :param message: The exception reason.
-    :param source: The request payload or the response object that have
-        caused the exception.
+    :param source: The request payload that caused the exception.
+    :param response: The response that caused the exception.
     """
 
     def __init__(
-        self, message: str, source: Any = None, *args: Any, **kwargs: Any
+        self,
+        message: str,
+        source: Any = None,
+        *args: Any,
+        response: "RawResponse | None" = None,
+        **kwargs: Any,
     ) -> None:
         self.message = message
         self.source = source
+        self.response = response
         super().__init__(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -109,28 +119,6 @@ class ResponsePayloadValidationException(SCIMResponseException):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", "Server response payload validation error")
         super().__init__(message, *args, **kwargs)
-
-
-def server_error_exception(
-    error: Error, scim_ctx: Context | None = None
-) -> SCIMException:
-    """Build the exception matching an :class:`~scim2_models.Error` object returned by a server.
-
-    The error object is available with the ``error`` attribute, and the raw
-    response with the ``source`` attribute.
-    """
-    exc = SCIMException.from_error(error, scim_ctx=scim_ctx)
-
-    # from_error() rebuilds 'status' and 'scim_type' from the exception class, so
-    # anything the server sent that has no matching class is lost. The values that
-    # were actually received are restored as instance attributes, which 'to_error()'
-    # reads back. This whole function can go once the minimum scim2-models version
-    # keeps the error object itself.
-    if error.status is not None:
-        exc.status = error.status
-    exc.scim_type = error.scim_type or ""
-    exc.error = error  # type: ignore[attr-defined]
-    return exc
 
 
 def request_validation_exception(

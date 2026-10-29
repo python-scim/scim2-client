@@ -219,7 +219,7 @@ def test_create_error_exception_carries_the_response(httpserver, sync_client):
     with pytest.raises(SCIMException) as exc_info:
         sync_client.create(User(user_name="bjensen@example.com"))
 
-    assert exc_info.value.source.status_code == 409
+    assert exc_info.value.response.status_code == 409
 
 
 def test_no_200(httpserver, sync_client):

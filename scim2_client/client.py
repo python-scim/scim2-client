@@ -53,7 +53,6 @@ from scim2_client.errors import UnexpectedContentFormatException
 from scim2_client.errors import UnexpectedContentTypeException
 from scim2_client.errors import UnexpectedStatusCodeException
 from scim2_client.errors import request_validation_exception
-from scim2_client.errors import server_error_exception
 
 ResourceT = TypeVar("ResourceT", bound=Resource[Any])
 MethodT = TypeVar("MethodT", bound=Callable[..., Any])
@@ -1047,7 +1046,7 @@ class SCIMClient:
                 raise scim_exc from exc
 
             if raise_scim_errors:
-                raise server_error_exception(error, scim_ctx=scim_ctx)
+                raise SCIMException.from_error(error, scim_ctx=scim_ctx)
             return error
 
         self._check_status_codes(status_code, expected_status_codes)
@@ -1121,7 +1120,7 @@ class SCIMClient:
             return self._parse_json(response) if response.text else None
         except (ValueError, RecursionError) as exc:
             self._check_failure(response.status_code, None)
-            raise UnexpectedContentFormatException(source=response) from exc
+            raise UnexpectedContentFormatException() from exc
 
     def _read_response(
         self,
@@ -1146,8 +1145,7 @@ class SCIMClient:
             )
 
         except (SCIMClientException, SCIMException) as exc:
-            # SCIMException comes from scim2-models and has no 'source' attribute.
-            exc.source = response  # type: ignore[union-attr]
+            exc.response = response
             raise
 
     @staticmethod

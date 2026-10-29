@@ -9,6 +9,16 @@ Added
 - Support for Python 3.15.
 - :exc:`~scim2_client.UnexpectedStatusCodeException` has a ``status_code`` attribute, and
   :exc:`~scim2_client.UnexpectedContentTypeException` has a ``content_type`` attribute.
+- Exceptions raised while reading a response have a ``response`` attribute that holds this
+  response. This includes the :class:`~scim2_models.SCIMException` raised for an error returned
+  by the server.
+
+Changed
+^^^^^^^
+- **Breaking:** the ``source`` attribute only holds the request payload. Read the response with
+  the ``response`` attribute.
+- **Breaking:** the ``error`` attribute of the exceptions raised for a server error is removed.
+  :meth:`~scim2_models.SCIMException.to_error` returns the same object.
 
 Fixed
 ^^^^^
