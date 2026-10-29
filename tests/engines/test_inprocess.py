@@ -99,10 +99,14 @@ def test_raw_content_is_sent_as_is():
     assert request.headers == [("Host", "scim.test"), ("Content-Length", "8")]
 
 
-def test_json_and_content_cannot_be_both_passed():
-    """A request has a single body."""
-    with pytest.raises(TypeError, match="either 'json' or 'content'"):
-        _prepare_request(BASE_URL, None, "POST", "/Users", json={}, content=b"{}")
+def test_raw_content_wins_over_json():
+    """A raw body replaces a JSON body, as httpx does."""
+    request = _prepare_request(
+        BASE_URL, None, "POST", "/Users", json={"id": "1"}, content=b"not json"
+    )
+
+    assert request.body == b"not json"
+    assert request.headers == [("Host", "scim.test"), ("Content-Length", "8")]
 
 
 def test_unknown_request_argument_is_refused():

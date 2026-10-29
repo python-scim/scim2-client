@@ -112,6 +112,20 @@ def test_raw_request_sends_a_raw_body(scim_client):
     assert response.status_code == 400
 
 
+def test_raw_content_replaces_the_body_of_an_operation(scim_client):
+    """A raw body passed to an operation is sent instead of the payload."""
+    User = scim_client.get_resource_model("User")
+
+    response = scim_client.create(
+        User(user_name="bjensen"),
+        content=b'{"schemas": [',
+        raise_scim_errors=False,
+    )
+
+    assert response.status == 400
+    assert response.scim_type == "invalidSyntax"
+
+
 def test_environ_describes_the_request():
     """The WSGI environment has the method, path, query, headers and body of the request."""
     client = WSGISCIMClient(echo, base_url="https://scim.test/scim/v2")

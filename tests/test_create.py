@@ -204,6 +204,28 @@ def test_conflict(httpserver, sync_client):
     )
 
 
+def test_raw_content_replaces_the_payload(httpserver, sync_client):
+    """A raw body passed to an operation is sent instead of the payload."""
+    httpserver.expect_request(
+        "/Users", method="POST", data=b'{"schemas": ['
+    ).respond_with_json(
+        {
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
+            "status": "400",
+            "scimType": "invalidSyntax",
+        },
+        status=400,
+    )
+
+    response = sync_client.create(
+        User(user_name="bjensen@example.com"),
+        content=b'{"schemas": [',
+        raise_scim_errors=False,
+    )
+
+    assert response == Error(status=400, scim_type="invalidSyntax")
+
+
 def test_create_error_exception_carries_the_response(httpserver, sync_client):
     """Test that a creation exception gives access to the response that carried the error."""
     httpserver.expect_request("/Users", method="POST").respond_with_json(

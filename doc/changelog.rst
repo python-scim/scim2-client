@@ -1,6 +1,15 @@
 Changelog
 =========
 
+[0.14.1] - Unreleased
+---------------------
+
+Changed
+^^^^^^^
+- A ``content`` argument passed to an operation replaces the body the client builds, with the
+  in-process engines as with httpx. The in-process engines used to refuse ``json`` and
+  ``content`` together.
+
 [0.14.0] - 2026-10-29
 ---------------------
 

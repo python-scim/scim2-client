@@ -125,11 +125,9 @@ def _prepare_request(
     """Build a request from the arguments of the request method of an engine.
 
     The parameters are those of httpx: ``params`` for the query string,
-    ``json`` or ``content`` for the body, and ``headers``.
+    ``json`` or ``content`` for the body, and ``headers``. As in httpx, ``content``
+    wins over ``json``.
     """
-    if json is not None and content is not None:
-        raise TypeError("Pass either 'json' or 'content', not both")
-
     target = _build_url(base_url, url)
     if params:
         query = urlencode(params, doseq=True)
@@ -138,8 +136,10 @@ def _prepare_request(
         )
 
     pairs = [("Host", target.netloc)]
-    body = content or b""
-    if json is not None:
+    body = b""
+    if content is not None:
+        body = content
+    elif json is not None:
         body = jsonlib.dumps(json).encode()
         pairs.append(("Content-Type", "application/json"))
     if body:

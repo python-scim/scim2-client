@@ -51,6 +51,21 @@ payloads:
    Check the request :class:`Contexts <scim2_models.Context>` to understand which values are
    excluded from a request payload, and which ones are expected in a response payload.
 
+Send a raw body
+---------------
+
+The extra arguments of an operation go to the engine, and replace what the client builds. With
+httpx and the in-process engines, ``content`` replaces the body. The response is read as usual:
+
+.. code-block:: python
+
+    error = scim.create(
+        User(user_name="bjensen"),
+        content=b'{"schemas": [',
+        raise_scim_errors=False,
+    )
+    assert error.scim_type == "invalidSyntax"
+
 State how far a payload may depart
 ----------------------------------
 
