@@ -43,20 +43,28 @@ class SCIMResponseException(SCIMClientException):
 
 
 class UnexpectedStatusCodeException(SCIMResponseException):
-    """Exception raised when a server returned an unexpected status code."""
+    """Exception raised when a server returned an unexpected status code.
+
+    The status code is available with the ``status_code`` attribute.
+    """
 
     def __init__(self, status_code: int, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop(
             "message", f"Unexpected response status code: {status_code}"
         )
+        self.status_code = status_code
         super().__init__(message, *args, **kwargs)
 
 
 class UnexpectedContentTypeException(SCIMResponseException):
-    """Exception raised when a server returned an unexpected `Content-Type` header."""
+    """Exception raised when a server returned an unexpected `Content-Type` header.
+
+    The content type is available with the ``content_type`` attribute.
+    """
 
     def __init__(self, content_type: str, *args: Any, **kwargs: Any) -> None:
         message = kwargs.pop("message", f"Unexpected content type: {content_type}")
+        self.content_type = content_type
         super().__init__(message, *args, **kwargs)
 
 

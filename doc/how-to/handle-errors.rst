@@ -65,10 +65,13 @@ and says at which point the exchange stopped:
 
 :exc:`~scim2_client.UnexpectedStatusCodeException`
     The server answered a status code the operation does not define, listed per operation in
-    the class attributes of :class:`~scim2_client.SCIMClient`.
+    the class attributes of :class:`~scim2_client.SCIMClient`. A failure without a SCIM error,
+    such as a ``401`` answered by a proxy, raises it too. The ``status_code`` attribute holds
+    the status code.
 
 :exc:`~scim2_client.UnexpectedContentTypeException`
-    The response carried neither ``application/scim+json`` nor ``application/json``.
+    The response carried neither ``application/scim+json`` nor ``application/json``. The
+    ``content_type`` attribute holds the content type it carried.
 
 :exc:`~scim2_client.UnexpectedContentFormatException`
     The response body was not JSON.

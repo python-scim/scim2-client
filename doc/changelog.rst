@@ -7,6 +7,8 @@ Changelog
 Added
 ^^^^^
 - Support for Python 3.15.
+- :exc:`~scim2_client.UnexpectedStatusCodeException` has a ``status_code`` attribute, and
+  :exc:`~scim2_client.UnexpectedContentTypeException` has a ``content_type`` attribute.
 
 Fixed
 ^^^^^

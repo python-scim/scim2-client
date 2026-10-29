@@ -209,6 +209,22 @@ def test_failure_without_body_nor_content_type_is_a_status_error(call):
         call(WSGISCIMClient(app, provider=provider()))
 
 
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (401, b""),
+        (403, b'{"error": "invalid API key"}'),
+        (404, b"<html><body>Not Found</body></html>"),
+    ],
+)
+def test_failure_without_error_exposes_its_status_code(status, body):
+    """The status code of a failure without SCIM error is readable on the exception."""
+    with pytest.raises(UnexpectedStatusCodeException) as exc_info:
+        httpx2_client(body, status).discover()
+
+    assert exc_info.value.status_code == status
+
+
 def typed_client(body, status, content_type):
     def handler(request):
         return Response(status, content=body, headers={"Content-Type": content_type})
@@ -233,6 +249,27 @@ def test_scim_error_with_an_unexpected_content_type_is_refused():
 
     with pytest.raises(UnexpectedContentTypeException, match="text/plain"):
         client.query(User, "1")
+
+
+def test_unexpected_content_type_exposes_the_content_type():
+    """The content type of a response that is not SCIM is readable on the exception."""
+    body = b'{"id": "1", "userName": "bob"}'
+    client = typed_client(body, 200, "text/plain; charset=utf-8")
+
+    with pytest.raises(UnexpectedContentTypeException) as exc_info:
+        client.query(User, "1")
+
+    assert exc_info.value.content_type == "text/plain"
+
+
+def test_unexpected_status_exposes_its_status_code():
+    """The status code an operation does not define is readable on the exception."""
+    client = httpx2_client(b'{"id": "1", "userName": "bob"}', 202)
+
+    with pytest.raises(UnexpectedStatusCodeException) as exc_info:
+        client.query(User, "1")
+
+    assert exc_info.value.status_code == 202
 
 
 def test_failure_with_a_body_that_is_not_an_error_is_refused():
