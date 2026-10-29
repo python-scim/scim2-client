@@ -62,10 +62,6 @@ ScimObjectT = TypeVar("ScimObjectT", bound=ScimObject)
 
 NOT_MODIFIED = 304
 
-BASE_HEADERS = {
-    "Accept": "application/scim+json",
-    "Content-Type": "application/scim+json",
-}
 CONFIG_RESOURCES = (ResourceType, Schema, ServiceProviderConfig)
 
 # The sub-delims, ':' and '@' that RFC 3986 §3.3 allows in a path segment.
