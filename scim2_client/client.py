@@ -998,9 +998,9 @@ class SCIMClient:
     ) -> ScimObject | dict[str, Any] | None:
         """Build the object a server response describes, and check it on the way.
 
-        This is what an engine calls once it has performed a request. The content type,
-        the :class:`~scim2_models.Error` the server may have returned, the status code and
-        the payload are examined in that order.
+        This is what an engine calls once it has performed a request. A failure without
+        :class:`~scim2_models.Error`, the content type, the :class:`~scim2_models.Error` the
+        server may have returned, the status code and the payload are examined in that order.
 
         :param payload: The decoded body of the response, or :data:`None` when it carried none.
         :param status_code: The HTTP status code of the response.
@@ -1026,15 +1026,12 @@ class SCIMClient:
         # https://datatracker.ietf.org/doc/html/rfc7644.html#section-3.12
 
         no_content_status_codes = [204, 205, 304]
-        if status_code in no_content_status_codes:
-            response_payload = None
-
-        else:
-            if payload is not None:
-                self._check_content_types(headers)
-            response_payload = payload
+        response_payload = None if status_code in no_content_status_codes else payload
 
         self._check_failure(status_code, response_payload)
+
+        if response_payload is not None:
+            self._check_content_types(headers)
 
         if check_response_payload is None:
             check_response_payload = self.check_response_payload

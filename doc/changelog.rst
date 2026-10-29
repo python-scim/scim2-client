@@ -8,6 +8,12 @@ Added
 ^^^^^
 - Support for Python 3.15.
 
+Fixed
+^^^^^
+- A failure response without a SCIM error raises :exc:`~scim2_client.UnexpectedStatusCodeException`
+  whatever its content type. A JSON body sent as ``text/plain`` used to raise
+  :exc:`~scim2_client.UnexpectedContentTypeException`, which did not tell the status code.
+
 [0.13.2] - 2026-10-09
 ---------------------
 

@@ -15,6 +15,7 @@ from scim2_client import InvalidServiceDescriptionException
 from scim2_client import ResponsePayloadValidationException
 from scim2_client import SCIMResponseException
 from scim2_client import UnexpectedContentFormatException
+from scim2_client import UnexpectedContentTypeException
 from scim2_client import UnexpectedStatusCodeException
 from scim2_client.engines.httpx2 import AsyncClient
 from scim2_client.engines.httpx2 import AsyncSCIMClient
@@ -206,6 +207,32 @@ def test_failure_without_body_nor_content_type_is_a_status_error(call):
 
     with pytest.raises(UnexpectedStatusCodeException, match="answered 401"):
         call(WSGISCIMClient(app, provider=provider()))
+
+
+def typed_client(body, status, content_type):
+    def handler(request):
+        return Response(status, content=body, headers={"Content-Type": content_type})
+
+    http_client = Client(base_url=BASE_URL, transport=MockTransport(handler))
+    return SyncSCIMClient(http_client, provider=provider())
+
+
+@pytest.mark.parametrize("call", CALLS)
+def test_failure_without_error_is_a_status_error_whatever_its_content_type(call):
+    """A failure without SCIM error reports its status, even with an unexpected content type."""
+    client = typed_client(b'{"error": "nope"}', 403, "text/plain")
+
+    with pytest.raises(UnexpectedStatusCodeException, match="answered 403"):
+        call(client)
+
+
+def test_scim_error_with_an_unexpected_content_type_is_refused():
+    """A SCIM error sent with an unexpected content type is refused for its content type."""
+    body = json.dumps({"schemas": [ERROR_SCHEMA], "status": "403"}).encode()
+    client = typed_client(body, 403, "text/plain")
+
+    with pytest.raises(UnexpectedContentTypeException, match="text/plain"):
+        client.query(User, "1")
 
 
 def test_failure_with_a_body_that_is_not_an_error_is_refused():
